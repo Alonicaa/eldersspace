@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EldersSpace Admin | Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script>
+        // Initialize theme immediately to prevent flash
+        (function() {
+            const savedTheme = localStorage.getItem('elderspace_theme') || 'dark';
+            if (savedTheme === 'light') {
+                document.documentElement.classList.add('light-mode');
+            }
+        })();
+    </script>
+</head>
+<body>
+
+    <section id="login-screen" class="login-screen">
+        <div class="login-card">
+            <div class="login-brand"><i class="fas fa-users-viewfinder"></i> EldersSpace Admin</div>
+            <h1>เข้าสู่ระบบผู้ดูแล</h1>
+            <p>กรอกเบอร์โทรเพื่อรับ OTP และยืนยันตัวตนก่อนเข้า Dashboard</p>
+            <form id="admin-login-form">
+                <label for="admin-phone">เบอร์โทรศัพท์</label>
+                <input id="admin-phone" name="phone_number" type="text" placeholder="เช่น 0891234567" required>
+
+                <div class="otp-actions">
+                    <button class="login-btn secondary" id="request-otp-btn" type="button">ขอรหัส OTP</button>
+                </div>
+
+                <label for="admin-otp">รหัส OTP</label>
+                <input id="admin-otp" name="otp_code" type="text" placeholder="กรอกรหัส 6 หลัก" maxlength="6" inputmode="numeric" required disabled>
+
+                <div id="otp-hint" class="otp-hint">ยังไม่ได้ขอ OTP</div>
+
+                <div id="login-error" class="login-error"></div>
+                <button class="login-btn" id="verify-otp-btn" type="submit" disabled>ยืนยัน OTP และเข้าสู่ระบบ</button>
+            </form>
+        </div>
+    </section>
+
+    <div id="dashboard-app" class="hidden">
+    <aside class="sidebar">
+        <div class="sidebar-brand"><i class="fas fa-users-viewfinder"></i> EldersSpace</div>
+        <div class="nav-group">
+            <div class="nav-label">Core Analytics</div>
+            <div class="nav-item active" onclick="navTo('home', this)"><i class="fas fa-fw fa-tachometer-alt"></i> Dashboard Overview</div>
+            
+            <div class="nav-label">Community Moderation</div>
+            <div class="nav-item" onclick="navTo('posts', this)"><i class="fas fa-fw fa-newspaper"></i> Content Monitor</div>
+            <div class="nav-item" onclick="navTo('reports', this)"><i class="fas fa-fw fa-shield-halved"></i> Report Queue (<span id="report-queue-count">0</span>)</div>
+            
+            <div class="nav-label">Community Care</div>
+            <div class="nav-item" onclick="navTo('companies', this)"><i class="fas fa-fw fa-user-shield"></i> Elder Accounts</div>
+            <div class="nav-item" onclick="navTo('ads', this)"><i class="fas fa-fw fa-bullhorn"></i> In-App Ads</div>
+            
+            <div class="nav-label">Finance & Campaigns</div>
+            <div class="nav-item" onclick="navTo('points', this)"><i class="fas fa-fw fa-coins"></i> Points & Redemption</div>
+            <div class="nav-item" onclick="navTo('rewards', this)"><i class="fas fa-fw fa-gift"></i> Points Management</div>
+            <div class="nav-item" onclick="navTo('reward-catalog', this)"><i class="fas fa-fw fa-tag"></i> Campaign Catalog</div>
+            <div class="nav-item" onclick="navTo('promo-codes', this)"><i class="fas fa-fw fa-code"></i> Promo Code Manager</div>
+            <div class="nav-item" onclick="navTo('promo-verifier', this)"><i class="fas fa-fw fa-search"></i> Promo Code Verifier</div>
+            <div class="nav-item" onclick="navTo('redemptions', this)"><i class="fas fa-fw fa-receipt"></i> Redemption History</div>
+            <div class="nav-item" onclick="navTo('scan-qr', this)"><i class="fas fa-fw fa-qrcode"></i> Scan/Verify QR</div>
+            
+            <div class="nav-label">System Admin</div>
+            <div class="nav-item" onclick="navTo('security', this)"><i class="fas fa-fw fa-lock"></i> Security & Logs</div>
+        </div>
+    </aside>
+
+    <main class="main">
+        <header>
+            <div style="color: var(--text-secondary); font-size: 0.8rem;">Status: <span id="db-status" style="color:var(--green)">● Connecting...</span></div>
+            <div style="display: flex; align-items: center; gap: 0.85rem;">
+                <button id="theme-toggle-btn" title="Toggle Dark / Light Mode">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <div style="text-align: right">
+                    <small id="admin-name" style="color:var(--text-primary)">Admin</small><br>
+                    <small id="admin-phone-label" style="color:var(--text-muted)">-</small>
+                </div>
+                <img id="admin-avatar" src="https://ui-avatars.com/api/?name=Admin&background=4A6CF7&color=fff" style="width:35px; border-radius:50%">
+                <button class="btn btn-del" id="logout-btn">Logout</button>
+            </div>
+        </header>
+
+        <div class="content">
+            <div id="page-home" class="page-content active">
+                <h1 class="page-title">Executive Summary</h1>
+                <p class="summary-hint">แตะการ์ดเพื่อดูรายละเอียดในหน้าจัดการแต่ละส่วน</p>
+                
+                <div class="stats-grid">
+                    <div class="stat-card blue clickable" data-nav-page="companies"><div class="stat-info"><div class="stat-label">Users ทั้งหมด</div><div id="stat-users-total" class="stat-value">-</div></div><i class="fas fa-users stat-icon"></i></div>
+                    <div class="stat-card green clickable" data-nav-page="companies"><div class="stat-info"><div class="stat-label">DAU (24 ชั่วโมง)</div><div id="stat-users-today" class="stat-value">-</div></div><i class="fas fa-user-plus stat-icon"></i></div>
+                    <div class="stat-card blue clickable" data-nav-page="posts"><div class="stat-info"><div class="stat-label">โพสต์ทั้งหมด</div><div id="stat-posts-total" class="stat-value">-</div></div><i class="fas fa-file-alt stat-icon"></i></div>
+                    <div class="stat-card green clickable" data-nav-page="posts"><div class="stat-info"><div class="stat-label">โพสต์วันนี้</div><div id="stat-posts-today" class="stat-value">-</div></div><i class="fas fa-clock stat-icon"></i></div>
+                    <div class="stat-card yellow clickable" data-nav-page="reports"><div class="stat-info"><div class="stat-label">Likes ทั้งหมด</div><div id="stat-likes-total" class="stat-value">-</div></div><i class="fas fa-thumbs-up stat-icon"></i></div>
+                    <div class="stat-card cyan clickable" data-nav-page="reports"><div class="stat-info"><div class="stat-label">Comments ทั้งหมด</div><div id="stat-comments-total" class="stat-value">-</div></div><i class="fas fa-comments stat-icon"></i></div>
+                </div>
+
+                <div class="dashboard-row">
+                    <div class="white-box">
+                        <div class="box-header">
+                            <div class="box-title"><i class="fas fa-chart-line"></i> Activity Graph</div>
+                            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; justify-content: flex-end;">
+                                <button class="btn btn-toggle active" id="today-btn" onclick="switchActivityView('today')" style="padding: 0.3rem 0.8rem; font-size: 0.85rem;">วันนี้</button>
+                                <button class="btn btn-toggle" id="week-btn" onclick="switchActivityView('week')" style="padding: 0.3rem 0.8rem; font-size: 0.85rem;">สัปดาห์</button>
+                                <button class="btn btn-toggle" id="month-btn" onclick="switchActivityView('month')" style="padding: 0.3rem 0.8rem; font-size: 0.85rem;">เดือน</button>
+                            </div>
+                        </div>
+                        <canvas id="activityChart" height="120"></canvas>
+                        <div style="margin-top:0.5rem; color:#6c757d; font-size:0.82rem; line-height:1.5;">
+                            แกน X แสดงช่วงเวลา/วันตามโหมดที่เลือก ส่วนแกน Y แสดงจำนวนผู้ใช้งานที่ active
+                        </div>
+                    </div>
+                    <div class="white-box">
+                        <div class="box-header"><div class="box-title"><i class="fas fa-lock"></i> Security: OTP & Login</div></div>
+                        <div style="margin-top: 1rem;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.8rem;">
+                                <span>OTP Request</span><b id="home-otp-request" style="color:var(--p-blue)">0</b>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.8rem;">
+                                <span>OTP Failed</span><b id="home-otp-failed" style="color:var(--d-red)">0</b>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.8rem;">
+                                <span>Success Rate</span><b id="home-otp-success-rate" style="color:var(--p-green)">0%</b>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 1.5rem;">
+                                <span>Alerts</span><b id="home-alerts-count" style="color:var(--d-red)">0</b>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-row">
+                    <div class="white-box">
+                        <div class="box-header"><div class="box-title"><i class="fas fa-fire"></i> Trending Posts (Hot Content)</div></div>
+                        <table>
+                            <thead><tr><th>หัวข้อโพสต์</th><th>เบอร์โทร</th><th>หมวดหมู่</th><th>Engagement</th><th>จัดการ</th></tr></thead>
+                            <tbody id="trending-table"></tbody>
+                        </table>
+                    </div>
+                    <div class="white-box">
+                        <div class="box-header"><div class="box-title"><i class="fas fa-user"></i> Recent Activity Feed</div></div>
+                        <div id="activity-feed"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-posts" class="page-content">
+                <h1 class="page-title">Content Monitor (<i class="fas fa-newspaper"></i> โพสต์ล่าสุด)</h1>
+                <div class="white-box">
+                    <div class="moderation-search-wrap">
+                        <label for="content-monitor-search">ค้นหาโพสต์</label>
+                        <input id="content-monitor-search" type="text" placeholder="ค้นหาจากชื่อผู้โพสต์, เบอร์โทร หรือข้อความโพสต์" />
+                    </div>
+                    <div class="moderation-filter-bar">
+                        <button class="btn btn-toggle active" type="button" data-content-filter="all">ทั้งหมด</button>
+                        <button class="btn btn-toggle" type="button" data-content-filter="reported">ถูกรายงาน</button>
+                        <button class="btn btn-toggle" type="button" data-content-filter="new">โพสต์ใหม่</button>
+                        <button class="btn btn-toggle" type="button" data-content-filter="engagement">engagement สูง</button>
+                    </div>
+                    <table>
+                        <thead><tr><th>ผู้โพสต์</th><th>เนื้อหา</th><th>สถานะ</th><th><i class="fas fa-chart-bar"></i> Engagement</th><th><i class="fas fa-flag"></i> Reports</th><th><i class="fas fa-clock"></i> เวลา</th><th>Quick Action</th><th>รายละเอียด</th></tr></thead>
+                        <tbody id="content-monitor-table"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="page-reports" class="page-content">
+                <h1 class="page-title">Moderation Queue (<i class="fas fa-circle-exclamation"></i> Reported Posts)</h1>
+                <div class="white-box">
+                    <div class="moderation-filter-bar">
+                        <button class="btn btn-toggle active" type="button" data-report-filter="pending">รอตรวจ</button>
+                        <button class="btn btn-toggle" type="button" data-report-filter="all">ทั้งหมด</button>
+                        <button class="btn btn-toggle" type="button" data-report-filter="reviewed">ตรวจแล้ว</button>
+                        <button class="btn btn-toggle" type="button" data-report-filter="dismissed">ปฏิเสธแล้ว</button>
+                    </div>
+                    <table>
+                        <thead><tr><th>ผู้โพสต์</th><th>เนื้อหาที่โดนรายงาน</th><th>จำนวน report</th><th>เหตุผล</th><th>รายงานล่าสุด</th><th>Action</th></tr></thead>
+                        <tbody id="report-table"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="page-companies" class="page-content">
+                <h1 class="page-title">Elder Account Center (<i class="fas fa-person"></i> จัดการบัญชีผู้สูงอายุ)</h1>
+                <div class="white-box">
+                    <div class="moderation-search-wrap company-search-wrap">
+                        <label for="company-search">ค้นหาผู้ใช้งาน</label>
+                        <div class="company-search-actions">
+                            <input id="company-search" type="text" placeholder="ค้นหาจากชื่อผู้ใช้, เบอร์โทร หรือข้อมูลย่อ" />
+                            <button class="btn btn-check" id="company-search-btn" type="button"><i class="fas fa-search"></i> ค้นหา</button>
+                            <button class="btn btn-ghost" id="company-search-clear-btn" type="button">ล้าง</button>
+                        </div>
+                    </div>
+                    <table>
+                        <thead><tr><th>ชื่อผู้ใช้</th><th>เบอร์</th><th>ข้อมูลย่อ</th><th>สถานะ</th><th>Action</th></tr></thead>
+                        <tbody id="company-table"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="page-ads" class="page-content">
+                <h1 class="page-title">In-App Ads Manager (<i class="fas fa-bullhorn"></i> ลงโฆษณาภายในแอป)</h1>
+                <div class="dashboard-row">
+                    <div class="white-box" style="flex: 1; min-width: 45%;">
+                        <div class="box-header"><div class="box-title">สร้างโฆษณาใหม่</div></div>
+                        <div class="admin-form-grid" style="margin-top: 1rem;">
+                            <div>
+                                <label for="ad-title">หัวข้อโฆษณา</label>
+                                <input id="ad-title" type="text" placeholder="เช่น โปรสุขภาพสำหรับผู้สูงอายุ" />
+                            </div>
+                            <div>
+                                <label for="ad-target-page">ตำแหน่งแสดงผล</label>
+                                <select id="ad-target-page">
+                                    <option value="home_feed">หน้า Home Feed</option>
+                                    <option value="community">หน้า Community</option>
+                                    <option value="reward">หน้า Reward</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="ad-start-date">วันเริ่มต้น</label>
+                                <input id="ad-start-date" type="date" />
+                            </div>
+                            <div>
+                                <label for="ad-end-date">วันสิ้นสุด</label>
+                                <input id="ad-end-date" type="date" />
+                            </div>
+                            <div class="full-width">
+                                <label for="ad-copy">ข้อความโฆษณา</label>
+                                <textarea id="ad-copy" rows="4" placeholder="รายละเอียดที่ต้องการแสดงในแอป"></textarea>
+                            </div>
+                            <div class="full-width" style="display: flex; gap: 0.6rem;">
+                                <button class="btn btn-check" id="save-ad-btn" type="button">บันทึกโฆษณา</button>
+                                <button class="btn btn-del" id="reset-ad-btn" type="button">ล้างฟอร์ม</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="white-box" style="flex: 1; min-width: 45%;">
+                        <div class="box-header"><div class="box-title">รายการโฆษณาที่สร้างไว้</div></div>
+                        <table>
+                            <thead><tr><th>หัวข้อ</th><th>ตำแหน่ง</th><th>ช่วงเวลา</th><th>สถานะ</th><th>Action</th></tr></thead>
+                            <tbody id="ads-table"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-points" class="page-content">
+                <h1 class="page-title">Points & Redemption (<i class="fas fa-coins"></i> คะแนนสะสม)</h1>
+                <div class="white-box">
+                    <div class="points-toolbar">
+                        <div class="points-search-wrap">
+                            <i class="fas fa-search points-search-icon"></i>
+                            <input type="text" id="points-search" class="points-input" placeholder="ค้นหา...">
+                        </div>
+                        <select id="points-filter" class="points-select">
+                            <option value="">● ทั้งหมด</option>
+                            <option value="active">Active</option>
+                            <option value="blocked">Blocked</option>
+                        </select>
+                        <div class="custom-dropdown" id="points-sort-dropdown">
+                            <button type="button" class="custom-dropdown-trigger points-sort-btn" id="points-sort-trigger">
+                                <i class="fas fa-chart-line"></i> <span id="points-sort-label">แต้มสูงสุด</span>
+                            </button>
+                            <div class="custom-dropdown-menu points-dropdown-menu">
+                                <button type="button" class="custom-dropdown-item points-dropdown-item" data-value="points">
+                                    <i class="fas fa-chart-line"></i> แต้มสูงสุด
+                                </button>
+                                <button type="button" class="custom-dropdown-item points-dropdown-item" data-value="streak">
+                                    <i class="fas fa-fire"></i> Streak สูงสุด
+                                </button>
+                                <button type="button" class="custom-dropdown-item points-dropdown-item" data-value="name">
+                                    <i class="fas fa-font"></i> ชื่อ (A-Z)
+                                </button>
+                            </div>
+                        </div>
+                        <input type="hidden" id="points-sort" value="points">
+                    </div>
+                    <table class="points-table">
+                        <thead>
+                            <tr>
+                                <th>อันดับ</th>
+                                <th>ผู้ใช้งาน</th>
+                                <th>เบอร์โทร</th>
+                                <th>แต้ม</th>
+                                <th>Streak</th>
+                                <th>สถานะ</th>
+                                <th>การจัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="points-table"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="page-security" class="page-content">
+                <h1 class="page-title">Security & Logs (<i class="fas fa-lock"></i>)</h1>
+                <div class="dashboard-row">
+                    <div class="white-box">
+                        <div class="box-header"><div class="box-title">OTP & Login Metrics</div></div>
+                        <div class="security-metrics-grid">
+                            <div class="security-metric-card">
+                                <span>OTP Request วันนี้</span><b id="otp-request-today">0</b>
+                            </div>
+                            <div class="security-metric-card">
+                                <span>OTP Failed วันนี้</span><b id="otp-failed-today">0</b>
+                            </div>
+                            <div class="security-metric-card">
+                                <span>Login Success วันนี้</span><b id="login-success-today">0</b>
+                            </div>
+                            <div class="security-metric-card">
+                                <span>Login Failed วันนี้</span><b id="login-failed-today">0</b>
+                            </div>
+                            <div class="security-metric-card full-width">
+                                <span>OTP Success Rate (%)</span><b id="otp-success-rate">0%</b>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="white-box">
+                        <div class="box-header"><div class="box-title">Security Alerts</div></div>
+                        <div id="security-alerts" class="security-alert-list">
+                            <div class="security-alert empty">ยังไม่มี security alert</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="white-box">
+                    <div class="box-header"><div class="box-title">Recent Security Logs</div></div>
+                    <div class="security-filter-bar">
+                        <button class="btn btn-toggle active" type="button" data-security-range="today">วันนี้</button>
+                        <button class="btn btn-toggle" type="button" data-security-range="7d">7 วัน</button>
+                        <button class="btn btn-toggle" type="button" data-security-range="30d">30 วัน</button>
+                        <span class="security-filter-separator"></span>
+                        <button class="btn btn-toggle active" type="button" data-security-category="all">ทั้งหมด</button>
+                        <button class="btn btn-toggle" type="button" data-security-category="login">login</button>
+                        <button class="btn btn-toggle" type="button" data-security-category="otp">otp</button>
+                        <button class="btn btn-toggle" type="button" data-security-category="security">security</button>
+                    </div>
+                    <table class="security-logs-table">
+                        <thead>
+                            <tr>
+                                <th>เหตุการณ์</th>
+                                <th>ผู้ใช้งาน</th>
+                                <th>รายละเอียด</th>
+                                <th>IP / DEVICE</th>
+                                <th>เวลา</th>
+                            </tr>
+                        </thead>
+                        <tbody id="security-table"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="page-rewards" class="page-content">
+                <h1 class="page-title">Points Management (<i class="fas fa-gift"></i> จัดการแต้ม)</h1>
+                
+                <div class="dashboard-row">
+                    <div class="white-box" style="flex: 1; min-width: 45%;">
+                        <div class="box-header"><div class="box-title"><i class="fas fa-gear"></i> Reward Settings (ตั้งค่าแต้ม)</div></div>
+                        <small id="reward-settings-current" style="display:block; margin-top:0.55rem; color:#5f6b84;">ค่าปัจจุบันจากระบบ: กำลังโหลด...</small>
+                        <div style="margin-top: 1rem;">
+                            <div style="margin-bottom: 1rem;">
+                                <label>นาทีต่อโบนัส:</label>
+                                <input type="number" id="session-bonus-threshold" min="1" style="width:100%; padding:0.5rem; border:1px solid #ddd; border-radius:4px; margin-top:0.3rem;">
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <label>แต้มต่อโบนัส:</label>
+                                <input type="number" id="session-bonus-points" min="1" style="width:100%; padding:0.5rem; border:1px solid #ddd; border-radius:4px; margin-top:0.3rem;">
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <label>โบนัสสูงสุดต่อวัน:</label>
+                                <input type="number" id="usage-reward-daily-limit-count" min="1" style="width:100%; padding:0.5rem; border:1px solid #ddd; border-radius:4px; margin-top:0.3rem;">
+                            </div>
+                            <div style="margin-bottom: 1rem; padding:0.65rem 0.75rem; border:1px dashed #bcd; border-radius:8px; color:#2f4f6f; background:#f8fbff;">
+                                รีเซ็ตโควตา: ทุกวัน 00:00 (เวลาไทย)
+                            </div>
+                            <button class="btn btn-check" onclick="saveRewardSettings()" style="width:100%;"><i class="fas fa-floppy-disk"></i> บันทึกการตั้งค่าแต้มเวลาใช้งาน</button>
+                        </div>
+                    </div>
+
+                    <div class="white-box" style="flex: 1; min-width: 45%;">
+                        <div class="box-header"><div class="box-title"><i class="fas fa-chart-bar"></i> Bonus Events (อีเว้นแจกแต้ม)</div></div>
+                        <div style="margin-top: 1rem;">
+                            <button class="btn btn-check" onclick="showBonusEventForm()" style="width:100%; margin-bottom:1rem;"><i class="fas fa-plus"></i> สร้างอีเว้นใหม่</button>
+                            <div id="bonus-events-list" style="max-height:300px; overflow-y:auto;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-row" style="margin-top: 2rem;">
+                    <div class="white-box" style="flex: 1; min-width: 45%;">
+                        <div class="box-header"><div class="box-title"><i class="fas fa-key"></i> Daily Login Rewards (แต้มเช็คอินรายวัน)</div></div>
+                        <small id="daily-login-current" style="display:block; margin-top:0.55rem; color:#5f6b84;">ค่าปัจจุบันจากระบบ: กำลังโหลด...</small>
+                        <div style="margin-top: 1rem;">
+                            <div style="margin-bottom: 1rem;">
+                                <label>แต้มต่อการเข้าสู่ระบบรายวัน:</label>
+                                <input type="number" id="daily-login-bonus" min="1" style="width:100%; padding:0.5rem; border:1px solid #ddd; border-radius:4px; margin-top:0.3rem;">
+                            </div>
+                            <div style="margin-bottom: 1rem; padding:0.65rem 0.75rem; border:1px dashed #bcd; border-radius:8px; color:#2f4f6f; background:#f8fbff;">
+                                ผู้ใช้ได้รับแต้มนี้เมื่อเข้าสู่ระบบครั้งแรกในแต่ละวัน
+                            </div>
+                            <button class="btn btn-check" onclick="saveDailyLoginSettings()" style="width:100%;"><i class="fas fa-floppy-disk"></i> บันทึกการตั้งค่าแต้มเช็คอิน</button>
+                        </div>
+                    </div>
+
+                    <div class="white-box" style="flex: 1; min-width: 45%;">
+                        <div class="box-header"><div class="box-title"><i class="fas fa-fire"></i> Streak Milestone Rewards (โบนัสลำดับวัน)</div></div>
+                        <small id="streak-milestone-current" style="display:block; margin-top:0.55rem; color:#5f6b84;">ค่าปัจจุบันจากระบบ: กำลังโหลด...</small>
+                        <div style="margin-top: 1rem;">
+                            <div style="margin-bottom: 1rem;">
+                                <label>ล็อคอินติดต่อกันกี่วัน:</label>
+                                <input type="number" id="streak-milestone-days" min="1" style="width:100%; padding:0.5rem; border:1px solid #ddd; border-radius:4px; margin-top:0.3rem;">
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <label>แต้มโบนัสที่ได้:</label>
+                                <input type="number" id="streak-milestone-bonus" min="1" style="width:100%; padding:0.5rem; border:1px solid #ddd; border-radius:4px; margin-top:0.3rem;">
+                            </div>
+                            <div style="margin-bottom: 1rem; padding:0.65rem 0.75rem; border:1px dashed #bcd; border-radius:8px; color:#2f4f6f; background:#f8fbff;">
+                                ผู้ใช้ได้รับแต้มโบนัสเพิ่มเติมเมื่อเข้าสู่ระบบติดต่อกันถึงจำนวนวันที่กำหนด
+                            </div>
+                            <button class="btn btn-check" onclick="saveStreakMilestoneSettings()" style="width:100%;"><i class="fas fa-floppy-disk"></i> บันทึกการตั้งค่าลำดับวัน</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-row" style="margin-top: 2rem;">
+                    <div class="white-box" style="flex: 1; min-width: 45%;">
+                        <div class="box-header"><div class="box-title"><i class="fas fa-list-check"></i> Activity Reward Settings (ตั้งค่าแต้มกิจกรรม)</div></div>
+                        <small id="activity-reward-current" style="display:block; margin-top:0.55rem; color:#5f6b84;">ค่าปัจจุบันจากระบบ: กำลังโหลด...</small>
+                        <div style="margin-top: 1rem;">
+                            <div style="margin-bottom: 1rem;">
+                                <label>แต้มกรอกโปรไฟล์ครบ (ครั้งเดียว):</label>
+                                <input type="number" id="profile-completion-points" min="0" style="width:100%; padding:0.5rem; border:1px solid #ddd; border-radius:4px; margin-top:0.3rem;">
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <label>โพสต์พร้อมรูปขั้นต่ำต่อวัน:</label>
+                                <input type="number" id="post-activity-required-posts" min="1" style="width:100%; padding:0.5rem; border:1px solid #ddd; border-radius:4px; margin-top:0.3rem;">
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <label>แต้มเมื่อโพสต์ครบเงื่อนไข:</label>
+                                <input type="number" id="post-activity-points" min="0" style="width:100%; padding:0.5rem; border:1px solid #ddd; border-radius:4px; margin-top:0.3rem;">
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <label>แต้มต่อคอมเมนต์:</label>
+                                <input type="number" id="comment-activity-points" min="0" style="width:100%; padding:0.5rem; border:1px solid #ddd; border-radius:4px; margin-top:0.3rem;">
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <label>คอมเมนต์สูงสุดที่ได้แต้ม/วัน:</label>
+                                <input type="number" id="comment-activity-daily-limit-count" min="1" style="width:100%; padding:0.5rem; border:1px solid #ddd; border-radius:4px; margin-top:0.3rem;">
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <label>แต้มแชร์กิจกรรม (1 ครั้งต่อโพสต์ต้นฉบับ):</label>
+                                <input type="number" id="share-activity-points" min="0" style="width:100%; padding:0.5rem; border:1px solid #ddd; border-radius:4px; margin-top:0.3rem;">
+                            </div>
+                            <button class="btn btn-check" onclick="saveActivityRewardSettings()" style="width:100%;"><i class="fas fa-floppy-disk"></i> บันทึกการตั้งค่าแต้มกิจกรรม</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="page-reward-catalog" class="page-content">
+                <h1 class="page-title"><i class="fas fa-tag"></i> Campaign Catalog</h1>
+                
+                <div class="white-box">
+                    <div class="box-header" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                        <div class="box-title"><i class="fas fa-gift"></i> จัดการแคมเปญ/ส่วนลด</div>
+                        <button class="btn btn-check" onclick="showCreateRewardForm()" style="padding: 0.5rem 1rem; font-size: 0.9rem; white-space: nowrap;">
+                            <i class="fas fa-plus"></i> เพิ่มรางวัลใหม่
+                        </button>
+                    </div>
+                    
+                    <!-- Reward Creation Form -->
+                    <div id="reward-create-form" style="display:none; margin-top: 1.5rem; padding: 1.5rem; background: var(--bg-card-alt); border-radius: 12px; border: 1px solid var(--border);">
+                        <h4 style="margin: 0 0 1.2rem 0; font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">สร้างรางวัลใหม่</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem;">
+                            <div>
+                                <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">ชื่อรางวัล *</label>
+                                <input type="text" id="reward-name" placeholder="เช่น บัตรสตาร์บัคส์ 100 บาท" style="width:100%; padding:0.7rem 0.9rem; border:1px solid var(--border); background: var(--bg-card); border-radius:6px; margin-top:0.3rem; font-size: 0.9rem; color: var(--text-primary); outline: none; transition: border-color 0.2s, box-shadow 0.2s;" onfocus="this.style.borderColor='var(--blue)'; this.style.boxShadow='0 0 0 3px rgba(74,108,247,0.1)'" onblur="this.style.borderColor='var(--border)'; this.style.boxShadow=''">
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">จำนวนแต้มที่ต้อง *</label>
+                                <input type="number" id="reward-points" placeholder="500" min="1" style="width:100%; padding:0.7rem 0.9rem; border:1px solid var(--border); background: var(--bg-card); border-radius:6px; margin-top:0.3rem; font-size: 0.9rem; color: var(--text-primary); outline: none; transition: border-color 0.2s, box-shadow 0.2s;" onfocus="this.style.borderColor='var(--blue)'; this.style.boxShadow='0 0 0 3px rgba(74,108,247,0.1)'" onblur="this.style.borderColor='var(--border)'; this.style.boxShadow=''">
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">หมวดหมู่</label>
+                                <input type="text" id="reward-category" placeholder="เช่น เครื่องดื่ม, อาหาร, ของขวัญ" style="width:100%; padding:0.7rem 0.9rem; border:1px solid var(--border); background: var(--bg-card); border-radius:6px; margin-top:0.3rem; font-size: 0.9rem; color: var(--text-primary); outline: none; transition: border-color 0.2s, box-shadow 0.2s;" onfocus="this.style.borderColor='var(--blue)'; this.style.boxShadow='0 0 0 3px rgba(74,108,247,0.1)'" onblur="this.style.borderColor='var(--border)'; this.style.boxShadow=''">
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">รูปภาพ (อัพโหลด)</label>
+                                <input type="file" id="reward-image" accept="image/*" style="width:100%; padding:0.7rem 0.9rem; border:1px solid var(--border); background: var(--bg-card); border-radius:6px; margin-top:0.3rem; font-size: 0.9rem; color: var(--text-primary);">
+                                <div id="reward-image-preview" style="margin-top: 0.5rem; max-width: 100px; border-radius: 6px; overflow: hidden; display: none;">
+                                    <img id="reward-image-preview-img" src="" alt="Preview" style="width: 100%; height: auto; border-radius: 6px;">
+                                </div>
+                            </div>
+                            <div style="grid-column: 1 / -1;">
+                                <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">คำอธิบาย</label>
+                                <textarea id="reward-description" placeholder="รายละเอียดรางวัล" rows="3" style="width:100%; padding:0.7rem 0.9rem; border:1px solid var(--border); background: var(--bg-card); border-radius:6px; margin-top:0.3rem; font-size: 0.9rem; color: var(--text-primary); outline: none; transition: border-color 0.2s, box-shadow 0.2s; font-family: inherit;" onfocus="this.style.borderColor='var(--blue)'; this.style.boxShadow='0 0 0 3px rgba(74,108,247,0.1)'" onblur="this.style.borderColor='var(--border)'; this.style.boxShadow=''"></textarea>
+                            </div>
+                            <div style="grid-column: 1 / -1;">
+                                <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">วิธีใช้รหัส / เงื่อนไขการใช้งาน</label>
+                                <textarea id="reward-usage-instructions" placeholder="เช่น นำรหัสนี้ไปแสดงที่ร้านสตาร์บัคส์ เพื่อรับสิทธิ์ลดราคา" rows="3" style="width:100%; padding:0.7rem 0.9rem; border:1px solid var(--border); background: var(--bg-card); border-radius:6px; margin-top:0.3rem; font-size: 0.9rem; color: var(--text-primary); outline: none; transition: border-color 0.2s, box-shadow 0.2s; font-family: inherit;" onfocus="this.style.borderColor='var(--blue)'; this.style.boxShadow='0 0 0 3px rgba(74,108,247,0.1)'" onblur="this.style.borderColor='var(--border)'; this.style.boxShadow=''"></textarea>
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">ระยะเวลาใช้ได้ (ชั่วโมง)</label>
+                                <input type="number" id="reward-validity-hours" placeholder="1" min="1" value="1" style="width:100%; padding:0.7rem 0.9rem; border:1px solid var(--border); background: var(--bg-card); border-radius:6px; margin-top:0.3rem; font-size: 0.9rem; color: var(--text-primary); outline: none; transition: border-color 0.2s, box-shadow 0.2s;" onfocus="this.style.borderColor='var(--blue)'; this.style.boxShadow='0 0 0 3px rgba(74,108,247,0.1)'" onblur="this.style.borderColor='var(--border)'; this.style.boxShadow=''">
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">วันเริ่มแคมเปญ</label>
+                                <input type="datetime-local" id="reward-campaign-start" style="width:100%; padding:0.7rem 0.9rem; border:1px solid var(--border); background: var(--bg-card); border-radius:6px; margin-top:0.3rem; font-size: 0.9rem; color: var(--text-primary); outline: none; transition: border-color 0.2s, box-shadow 0.2s;" onfocus="this.style.borderColor='var(--blue)'; this.style.boxShadow='0 0 0 3px rgba(74,108,247,0.1)'" onblur="this.style.borderColor='var(--border)'; this.style.boxShadow=''">
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">วันสิ้นสุดแคมเปญ</label>
+                                <input type="datetime-local" id="reward-campaign-end" style="width:100%; padding:0.7rem 0.9rem; border:1px solid var(--border); background: var(--bg-card); border-radius:6px; margin-top:0.3rem; font-size: 0.9rem; color: var(--text-primary); outline: none; transition: border-color 0.2s, box-shadow 0.2s;" onfocus="this.style.borderColor='var(--blue)'; this.style.boxShadow='0 0 0 3px rgba(74,108,247,0.1)'" onblur="this.style.borderColor='var(--border)'; this.style.boxShadow=''">
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">Limit ต่อผู้ใช้ (-1 = Unlimited)</label>
+                                <input type="number" id="reward-user-limit" min="-1" placeholder="-1" style="width:100%; padding:0.7rem 0.9rem; border:1px solid var(--border); background: var(--bg-card); border-radius:6px; margin-top:0.3rem; font-size: 0.9rem; color: var(--text-primary); outline: none; transition: border-color 0.2s, box-shadow 0.2s;" onfocus="this.style.borderColor='var(--blue)'; this.style.boxShadow='0 0 0 3px rgba(74,108,247,0.1)'" onblur="this.style.borderColor='var(--border)'; this.style.boxShadow=''">
+                            </div>
+                            <div>
+                                <label style="display: flex; align-items: center; font-size: 0.9rem; color: var(--text-primary); gap: 0.6rem; margin-top: 0.8rem; cursor: pointer;">
+                                    <input type="checkbox" id="reward-active" checked style="cursor: pointer;">
+                                    <span>เปิดใช้งาน</span>
+                                </label>
+                            </div>
+                            <div style="grid-column: 1 / -1; display: flex; gap: 0.8rem; margin-top: 0.5rem;">
+                                <button class="btn btn-check" onclick="saveNewReward()" style="flex: 1;">
+                                    <i class="fas fa-save"></i> บันทึกรางวัล
+                                </button>
+                                <button class="btn btn-ghost" onclick="closeCreateRewardForm()" style="flex: 1;">
+                                    <i class="fas fa-times"></i> ยกเลิก
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rewards Table -->
+                    <div style="margin-top: 1.5rem; overflow-x: auto; border-radius: 8px; border: 1px solid var(--border);">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                            <thead style="background: var(--bg-card-alt); border-bottom: 2px solid var(--border);">
+                                <tr>
+                                    <th style="text-align: left; padding: 1rem; font-weight: 600; color: var(--text-primary);">รูป</th>
+                                    <th style="text-align: left; padding: 1rem; font-weight: 600; color: var(--text-primary);">ชื่อรางวัล</th>
+                                    <th style="text-align: center; padding: 1rem; font-weight: 600; color: var(--text-primary);">หมวดหมู่</th>
+                                    <th style="text-align: center; padding: 1rem; font-weight: 600; color: var(--text-primary);">แต้ม</th>
+                                    <th style="text-align: center; padding: 1rem; font-weight: 600; color: var(--text-primary);">แลกแล้ว</th>
+                                    <th style="text-align: center; padding: 1rem; font-weight: 600; color: var(--text-primary);">Limit/คน</th>
+                                    <th style="text-align: center; padding: 1rem; font-weight: 600; color: var(--text-primary);">เริ่ม</th>
+                                    <th style="text-align: center; padding: 1rem; font-weight: 600; color: var(--text-primary);">สิ้นสุด</th>
+                                    <th style="text-align: center; padding: 1rem; font-weight: 600; color: var(--text-primary);">สถานะ</th>
+                                    <th style="text-align: center; padding: 1rem; font-weight: 600; color: var(--text-primary);">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rewards-list-table" style="text-align: center;">
+                                <tr style="text-align: center; border-top: 1px solid var(--border);">
+                                    <td colspan="7" style="padding: 2rem; color: var(--text-muted); font-size: 0.95rem;">
+                                        <i class="fas fa-spinner fa-spin"></i> กำลังโหลด...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Redemption History Page -->
+            <div id="page-redemptions" class="page-content">
+                <h1 class="page-title"><i class="fas fa-receipt"></i> Redemption History (รายการแลกแต้ม)</h1>
+                
+                <div class="white-box">
+                    <div class="box-header"><div class="box-title">Filter & Search</div></div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                        <div>
+                            <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem;">Search by Phone/Name/Reward</label>
+                            <input type="text" id="redemption-search" placeholder="ค้นหา..." style="width:100%; padding:0.5rem; border:1px solid var(--border); border-radius:4px; font-size: 0.9rem;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem;">Status</label>
+                            <select id="redemption-status-filter" style="width:100%; padding:0.5rem; border:1px solid var(--border); border-radius:4px; font-size: 0.9rem;">
+                                <option value="">ทั้งหมด</option>
+                                <option value="pending">รอดำเนินการ</option>
+                                <option value="used">ใช้แล้ว</option>
+                                <option value="cancelled">ยกเลิก</option>
+                                <option value="expired">หมดอายุ</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem;">Date From</label>
+                            <input type="date" id="redemption-date-from" style="width:100%; padding:0.5rem; border:1px solid var(--border); border-radius:4px; font-size: 0.9rem;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem;">Date To</label>
+                            <input type="date" id="redemption-date-to" style="width:100%; padding:0.5rem; border:1px solid var(--border); border-radius:4px; font-size: 0.9rem;">
+                        </div>
+                    </div>
+                    <button class="btn btn-check" onclick="loadRedemptions()" style="margin-top: 1rem; width: 100%;"><i class="fas fa-search"></i> Search</button>
+                </div>
+                
+                <div class="white-box" style="margin-top: 2rem;">
+                    <div class="box-header"><div class="box-title">Redemption Records</div></div>
+                    <div style="margin-top: 1rem; overflow-x: auto; border-radius: 8px; border: 1px solid var(--border);">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                            <thead style="background: var(--bg-card-alt); border-bottom: 2px solid var(--border);">
+                                <tr>
+                                    <th style="text-align: left; padding: 1rem; font-weight: 600;">เบอร์/ชื่อ</th>
+                                    <th style="text-align: left; padding: 1rem; font-weight: 600;">รางวัล</th>
+                                    <th style="text-align: center; padding: 1rem; font-weight: 600;">แต้มที่ใช้</th>
+                                    <th style="text-align: center; padding: 1rem; font-weight: 600;">เวลาแลก</th>
+                                    <th style="text-align: center; padding: 1rem; font-weight: 600;">สถานะ</th>
+                                    <th style="text-align: center; padding: 1rem; font-weight: 600;">QR Code</th>
+                                    <th style="text-align: center; padding: 1rem; font-weight: 600;">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="redemptions-table" style="text-align: center;">
+                                <tr style="text-align: center; border-top: 1px solid var(--border);">
+                                    <td colspan="7" style="padding: 2rem; color: var(--text-muted);">
+                                        <i class="fas fa-spinner fa-spin"></i> กำลังโหลด...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Scan QR Page -->
+            <div id="page-scan-qr" class="page-content">
+                <h1 class="page-title"><i class="fas fa-qrcode"></i> Scan / Verify QR Code</h1>
+                
+                <div class="dashboard-row">
+                    <div class="white-box" style="flex: 1; min-width: 45%;">
+                        <div class="box-header"><div class="box-title">Scan QR Code</div></div>
+                        <div style="margin-top: 1.5rem; text-align: center;">
+                            <button class="btn btn-check" onclick="startQRScan()" style="width: 100%; margin-bottom: 1rem; padding: 1rem;">
+                                <i class="fas fa-camera"></i> Start Camera Scan
+                            </button>
+                            <div id="qr-video-container" style="display: none; margin-bottom: 1rem; border-radius: 8px; overflow: hidden;">
+                                <video id="qr-video" style="width: 100%; max-width: 300px; border-radius: 8px;"></video>
+                            </div>
+                            <div style="margin-top: 1rem; padding: 1rem; background: var(--bg-card-alt); border-radius: 8px; color: var(--text-secondary); font-size: 0.85rem;">
+                                <p>หรือกรอก QR Code ด้วยตนเอง:</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="white-box" style="flex: 1; min-width: 45%;">
+                        <div class="box-header"><div class="box-title">Manual Code Entry</div></div>
+                        <div style="margin-top: 1.5rem;">
+                            <input type="text" id="qr-code-input" placeholder="Paste or type QR code here..." style="width:100%; padding:0.7rem 0.9rem; border:1px solid var(--border); background: var(--bg-card); border-radius:6px; margin-bottom:1rem; font-size: 0.9rem; color: var(--text-primary);" onkeypress="if(event.key === 'Enter') verifyQRCode()">
+                            <button class="btn btn-check" onclick="verifyQRCode()" style="width: 100%; padding: 0.7rem;">
+                                <i class="fas fa-check-circle"></i> Verify QR
+                            </button>
+                        </div>
+                        
+                        <div id="qr-result" style="margin-top: 2rem; display: none; padding: 1.5rem; border-radius: 8px; border: 2px solid var(--border);">
+                            <div id="qr-result-status" style="font-size: 1.2rem; font-weight: 600; margin-bottom: 1rem;"></div>
+                            <div id="qr-result-message" style="font-size: 0.95rem; margin-bottom: 1rem;"></div>
+                            <div id="qr-result-details" style="font-size: 0.9rem; color: var(--text-secondary);"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="white-box" style="margin-top: 2rem;">
+                    <div class="box-header"><div class="box-title">QR Code Statistics</div></div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1.5rem;">
+                        <div style="padding: 1rem; background: var(--bg-card-alt); border-radius: 8px; text-align: center;">
+                            <div style="font-size: 2rem; font-weight: bold; color: var(--blue); margin-bottom: 0.5rem;" id="stat-total-qr">-</div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary);">Total QR Codes</div>
+                        </div>
+                        <div style="padding: 1rem; background: var(--bg-card-alt); border-radius: 8px; text-align: center;">
+                            <div style="font-size: 2rem; font-weight: bold; color: var(--green); margin-bottom: 0.5rem;" id="stat-available-qr">-</div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary);">Available QR</div>
+                        </div>
+                        <div style="padding: 1rem; background: var(--bg-card-alt); border-radius: 8px; text-align: center;">
+                            <div style="font-size: 2rem; font-weight: bold; color: var(--red); margin-bottom: 0.5rem;" id="stat-used-qr">-</div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary);">Used QR</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Promo Code Management Page -->
+            <div id="page-promo-codes" class="page-content">
+                <h1 class="page-title"><i class="fas fa-code"></i> Promo Code Manager (จัดการโค้ดส่วนลด)</h1>
+                
+                <div class="white-box">
+                    <div class="box-header" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                        <div class="box-title"><i class="fas fa-upload"></i> อัพโหลดโค้ดสำหรับแคมเปญ</div>
+                    </div>
+                    
+                    <!-- Reward Selection -->
+                    <div style="margin-top: 1.5rem; padding: 1.5rem; background: var(--bg-card-alt); border-radius: 12px; border: 1px solid var(--border);">
+                        <h5 style="margin: 0 0 1rem 0; font-size: 0.95rem; font-weight: 600; color: var(--text-primary);">ขั้นที่ 1: เลือกรางวัล *</h5>
+                        <div>
+                            <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">🎁 เลือกรางวัล</label>
+                            <select id="promo-reward-select" style="width:100%; padding:0.7rem 0.9rem; border:1px solid var(--border); background: var(--bg-card); border-radius:6px; font-size: 0.9rem; color: var(--text-primary); outline: none; transition: border-color 0.2s, box-shadow 0.2s;" onfocus="this.style.borderColor='var(--blue)'; this.style.boxShadow='0 0 0 3px rgba(74,108,247,0.1)'" onblur="this.style.borderColor='var(--border)'; this.style.boxShadow=''" onchange="showRewardDetails(); loadRewardUploadHistory(this.value)">
+                                <option value="">-- เลือกรางวัล --</option>
+                            </select>
+                        </div>
+                        <div id="promo-reward-info" style="margin-top: 1rem; padding: 1rem; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border); display: none;">
+                            <div id="reward-details-content"></div>
+                        </div>
+                        <div style="margin-top: 1rem; padding: 1rem; background: var(--bg-card); border-radius: 8px; border-left: 4px solid var(--blue); color: var(--text-secondary); font-size: 0.85rem;">
+                            <i class="fas fa-lightbulb"></i> โค้ดที่อัพโหลดจะถูกผูกกับรางวัลที่เลือก จำนวนโค้ดในระบบจะอัพเดทอัตโนมัติจากไฟล์ที่อัพโหลด
+                        </div>
+                    </div>
+
+                    <!-- Upload history for selected reward -->
+                    <div id="promo-upload-history" style="margin-top: 1.5rem; display: none; padding: 1rem; background: var(--bg-card-alt); border-radius: 10px; border: 1px solid var(--border);">
+                        <h5 style="margin: 0 0 0.75rem 0; font-size: 0.9rem; font-weight: 600; color: var(--text-primary);"><i class="fas fa-history"></i> ประวัติการอัพโหลดโค้ดสำหรับรางวัลนี้</h5>
+                        <div id="promo-upload-history-content" style="font-size: 0.85rem; color: var(--text-secondary);"></div>
+                    </div>
+                    
+                    <!-- File Upload - CSV only -->
+                    <div style="margin-top: 2rem; padding: 1.5rem; background: var(--bg-card-alt); border-radius: 12px; border: 2px dashed var(--border);">
+                        <h5 style="margin: 0 0 1rem 0; font-size: 0.95rem; font-weight: 600; color: var(--text-primary);">ขั้นที่ 2: อัพโหลดไฟล์โค้ด (CSV)</h5>
+                        <div style="text-align:center;">
+                            <p style="color:var(--text-secondary); margin-bottom:0.75rem;">
+                                <i class="fas fa-file-csv" style="font-size:2rem; color:var(--blue); margin-bottom:0.4rem; display:block;"></i>
+                                อัพโหลด CSV — ง่าย รวดเร็ว รองรับโค้ดจำนวนมาก
+                            </p>
+                            <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:0.75rem; text-align:left; background:var(--bg-card); padding:0.75rem; border-radius:6px;">
+                                <strong>Format ไฟล์ CSV:</strong><br>
+                                Header row: <code>code,description,expiry_date</code><br>
+                                ตัวอย่าง: <code>PROMO001,ส่วนลด 50 บาท,2026-12-31</code><br>
+                                <em style="color:var(--text-muted);">* description และ expiry_date ไม่บังคับ</em>
+                            </p>
+                            <button id="promo-csv-template-btn" style="margin-bottom:0.75rem; padding:0.4rem 1rem; border-radius:6px; border:1px solid var(--blue); background:transparent; color:var(--blue); font-size:0.85rem; cursor:pointer;">
+                                <i class="fas fa-download"></i> ดาวน์โหลด Template CSV
+                            </button>
+                            <input type="file" id="promo-csv-upload" accept=".csv" style="width:100%; padding:0.7rem 0.9rem; border:1px solid var(--border); background:var(--bg-card); border-radius:6px; margin-bottom:1rem; cursor:pointer;">
+                            <button class="btn btn-check" id="promo-csv-upload-btn" style="width:100%;">
+                                <i class="fas fa-cloud-upload-alt"></i> อัพโหลดโค้ดเข้าแคมเปญ
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="promo-upload-result" style="margin-top: 1rem; display: none; padding: 1rem; border-radius: 8px;">
+                        <div id="promo-upload-message" style="margin-bottom: 0.5rem;"></div>
+                        <div id="promo-upload-details" style="font-size: 0.85rem; color: var(--text-secondary);"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Promo Code Verifier Page -->
+            <div id="page-promo-verifier" class="page-content">
+                <h1 class="page-title"><i class="fas fa-search"></i> ตรวจสอบโค้ดส่วนลด</h1>
+                
+                <div class="white-box">
+                    <div class="box-header"><div class="box-title"><i class="fas fa-bullhorn"></i> เลือกแคมเปญที่ต้องการตรวจสอบ</div></div>
+                    <div style="margin-top: 1rem;">
+                        <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">เลือกรางวัล</label>
+                        <select id="verifier-reward-select" style="width:100%; padding:0.7rem 0.9rem; border:1px solid var(--border); background: var(--bg-card); border-radius:6px; font-size: 0.9rem; color: var(--text-primary); outline: none;" onchange="loadVerifierRewardCodes(this.value)">
+                            <option value="">-- เลือกรางวัล --</option>
+                        </select>
+                    </div>
+                    <!-- Campaign detail info -->
+                    <div id="verifier-campaign-detail" style="display:none; margin-top: 1rem; padding: 1rem; background: var(--bg-card-alt); border-radius: 8px; border: 1px solid var(--border);">
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; font-size: 0.85rem;">
+                            <div>
+                                <span style="color: var(--text-secondary);">รางวัล:</span>
+                                <span id="vcd-reward-name" style="font-weight: 600; color: var(--text-primary); margin-left: 0.4rem;"></span>
+                            </div>
+                            <div>
+                                <span style="color: var(--text-secondary);">เริ่ม:</span>
+                                <span id="vcd-start" style="font-weight: 600; color: var(--text-primary); margin-left: 0.4rem;"></span>
+                            </div>
+                            <div>
+                                <span style="color: var(--text-secondary);">สิ้นสุด:</span>
+                                <span id="vcd-end" style="font-weight: 600; color: var(--text-primary); margin-left: 0.4rem;"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="white-box" style="margin-top: 2rem;">
+                    <div class="box-header" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                        <div class="box-title"><i class="fas fa-list"></i> รายการโค้ดทั้งหมด</div>
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                            <input type="text" id="verifier-search" placeholder="ค้นหาโค้ด..." style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem; width: 200px;">
+                            <select id="verifier-status-filter" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem;">
+                                <option value="">ทั้งหมด</option>
+                                <option value="available">พร้อมใช้</option>
+                                <option value="used">ใช้แล้ว</option>
+                                <option value="expired">หมดอายุ</option>
+                            </select>
+                            <div style="display: flex; align-items: center; gap: 0.3rem;">
+                                <label style="font-size: 0.82rem; color: var(--text-secondary); white-space:nowrap;">วันที่แลก:</label>
+                                <input type="date" id="verifier-used-from" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem;">
+                                <span style="color: var(--text-secondary); font-size: 0.85rem;">ถึง</span>
+                                <input type="date" id="verifier-used-to" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem;">
+                            </div>
+                            <button class="btn btn-check" onclick="applyVerifierFilters()" style="padding: 0.5rem 1rem;"><i class="fas fa-search"></i> ค้นหา</button>
+                            <button class="btn btn-ghost" onclick="resetVerifierFilters()" style="padding: 0.5rem 1rem; font-size: 0.85rem;"><i class="fas fa-undo"></i> รีเซ็ต</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Stats Container -->
+                    <div id="verifier-stats" style="margin-top: 1.5rem;"></div>
+                    
+                    <!-- Codes Table Grouped by Batch -->
+                    <div id="verifier-batches-container" style="margin-top: 1.5rem;">
+                        <div style="padding: 3rem; text-align: center; color: var(--text-muted);">
+                            <i class="fas fa-mouse-pointer" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
+                            เลือกแคมเปญด้านบนเพื่อดูรายการโค้ด
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="page-fallback" class="page-content" style="text-align:center; padding: 100px;">
+                <i class="fas fa-hard-hat" style="font-size: 4rem; color:#dddfeb"></i>
+                <h2 style="margin-top:1rem">หน้านี้กำลังดึงข้อมูล...</h2>
+                <p>ระบบกำลังเชื่อมต่อฐานข้อมูลส่วน <span id="fallback-name"></span></p>
+                <button class="btn btn-check" onclick="navTo('home', document.querySelector('.nav-item'))" style="margin-top:1rem">กลับหน้าแรก</button>
+            </div>
+
+        </div>
+    </main>
+    </div>
+
+    <div id="post-detail-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="post-detail-title">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2 id="post-detail-title">รายละเอียดโพสต์</h2>
+                <button id="post-detail-close" class="btn btn-ghost" type="button">ปิด</button>
+            </div>
+            <div id="post-detail-body" class="modal-body">
+                <div class="empty-row">กำลังโหลดข้อมูล...</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="user-detail-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="user-detail-title">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2 id="user-detail-title">ข้อมูลผู้ใช้งาน</h2>
+                <button id="user-detail-close" class="btn btn-ghost" type="button">ปิด</button>
+            </div>
+            <div id="user-detail-body" class="modal-body">
+                <div class="empty-row">กำลังโหลดข้อมูล...</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="action-dialog-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="action-dialog-title">
+        <div class="modal-card action-dialog-card">
+            <div class="modal-header">
+                <h2 id="action-dialog-title">ยืนยันการดำเนินการ</h2>
+                <button id="action-dialog-close" class="btn btn-ghost" type="button">ปิด</button>
+            </div>
+            <div class="modal-body">
+                <div id="action-dialog-message" class="detail-content">-</div>
+                <div class="action-dialog-actions">
+                    <button id="action-dialog-cancel" class="btn btn-ghost" type="button">ยกเลิก</button>
+                    <button id="action-dialog-confirm" class="btn btn-del" type="button">ยืนยัน</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Code Detail Modal -->
+    <div id="qr-detail-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="qr-detail-title">
+        <div class="modal-card" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 id="qr-detail-title">QR Code Detail</h2>
+                <button id="qr-detail-close" class="btn btn-ghost" type="button">ปิด</button>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <div id="qr-code-container" style="margin: 1.5rem 0; padding: 1.5rem; background: var(--bg-card-alt); border-radius: 12px; display: inline-block;"></div>
+                <div id="qr-detail-info" style="margin-top: 1.5rem; text-align: left; font-size: 0.9rem; line-height: 1.8;">
+                    <!-- Populated by JS -->
+                </div>
+                <div class="action-dialog-actions" style="margin-top: 1.5rem;">
+                    <button id="qr-detail-close-btn" class="btn btn-ghost" type="button" onclick="closeQRDetailModal()">ปิด</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js" defer></script>
+    <script src="qr_admin_functions.js" defer></script>
+    <script>
+    (function() {
+        var THEME_KEY = "elderspace_theme";
+        var btn = document.getElementById("theme-toggle-btn");
+        var icon = btn ? btn.querySelector("i") : null;
+        function applyTheme(theme) {
+            document.documentElement.setAttribute("data-theme", theme);
+            localStorage.setItem(THEME_KEY, theme);
+            if (icon) {
+                icon.className = theme === "light" ? "fas fa-sun" : "fas fa-moon";
+                btn.title = theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode";
+            }
+        }
+        var saved = localStorage.getItem(THEME_KEY) || "dark";
+        applyTheme(saved);
+        if (btn) btn.addEventListener("click", function() {
+            var cur = document.documentElement.getAttribute("data-theme") || "dark";
+            applyTheme(cur === "dark" ? "light" : "dark");
+        });
+    })();
+    </script>
+
+    <!-- Points History Modal -->
+    <div id="points-history-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2><i class="fas fa-history"></i> ประวัติแต้ม</h2>
+                <button class="btn-ghost" onclick="closePointsHistoryModal()" style="border: none; background: none; cursor: pointer; padding: 0; width: auto;">
+                    <i class="fas fa-times" style="font-size: 1.2rem;"></i>
+                </button>
+            </div>
+            <div class="modal-body" id="points-history-list" style="min-height: 200px;">
+                <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 1.5rem;"></i>
+                    <p style="margin-top: 1rem;">กำลังโหลด...</p>
+                </div>
+            </div>
+            <div style="padding: 1rem 1.25rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 0.5rem;">
+                <button class="btn btn-ghost" onclick="closePointsHistoryModal()"><i class="fas fa-times"></i> ปิด</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
