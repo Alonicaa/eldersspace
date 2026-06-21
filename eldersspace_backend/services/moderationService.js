@@ -17,12 +17,12 @@ let moderationColumnsReady = false;
 let moderationColumnsPromise = null;
 
 async function ensureColumn(conn, tableName, columnName, ddl) {
-  const [rows] = await conn.query(
+  const { rows } = await conn.query(
     `SELECT COUNT(*) AS total
      FROM information_schema.columns
-     WHERE table_schema = DATABASE()
-       AND table_name = ?
-       AND column_name = ?`,
+     WHERE table_schema = current_schema()
+       AND table_name = $1
+       AND column_name = $2`,
     [tableName, columnName]
   );
 
@@ -82,10 +82,10 @@ async function ensureModerationColumns(conn) {
 async function getUserModerationByPhone(conn, phone) {
   await ensureModerationColumns(conn);
 
-  const [rows] = await conn.query(
+  const { rows } = await conn.query(
     `SELECT user_id, phone_number, full_name, is_blocked, blocked_reason, warning_note, blocked_at
      FROM users
-     WHERE phone_number = ?
+     WHERE phone_number = $1
      LIMIT 1`,
     [phone]
   );

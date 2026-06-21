@@ -26,12 +26,12 @@ function getAdminAuthSecret() {
 }
 
 async function tableHasColumn(conn, tableName, columnName) {
-  const [rows] = await conn.query(
+  const { rows } = await conn.query(
     `SELECT COUNT(*) AS total
      FROM information_schema.columns
-     WHERE table_schema = DATABASE()
-       AND table_name = ?
-       AND column_name = ?`,
+     WHERE table_schema = current_database()
+       AND table_name = $1
+       AND column_name = $2`,
     [tableName, columnName]
   );
 
@@ -46,7 +46,7 @@ function buildAdminToken(payload) {
     exp: payload.exp,
     secret: getAdminAuthSecret()
   });
-  
+
   const payloadEncoded = base64UrlEncode(JSON.stringify(payload));
   const signature = crypto
     .createHmac('sha256', getAdminAuthSecret())
@@ -63,7 +63,7 @@ function buildAdminToken(payload) {
 
 function verifyAdminToken(token) {
   console.log('[verifyAdminToken] Input token:', token ? token.substring(0, 50) + '...' : 'NO_TOKEN');
-  
+
   if (!token || typeof token !== 'string' || !token.includes('.')) {
     console.log('[verifyAdminToken] Format check failed', {
       hasToken: !!token,
@@ -102,17 +102,17 @@ function verifyAdminToken(token) {
       now: Date.now(),
       isExpired: payload?.exp ? Number(payload.exp) < Date.now() : 'no-exp'
     });
-    
+
     if (!payload || payload.role !== 'admin') {
       console.log('[verifyAdminToken] Role check failed');
       return null;
     }
-    
+
     if (!payload.exp || Number(payload.exp) < Date.now()) {
       console.log('[verifyAdminToken] Token expired');
       return null;
     }
-    
+
     console.log('[verifyAdminToken] ✅ Token valid!');
     return payload;
   } catch (error) {
@@ -124,10 +124,10 @@ function verifyAdminToken(token) {
 exports.verifyAdminToken = verifyAdminToken;
 
 async function getAdminByPhone(conn, phoneNumber) {
-  const [users] = await conn.query(
+  const { rows: users } = await conn.query(
     `SELECT user_id, full_name, phone_number, role
      FROM users
-     WHERE phone_number = ?
+     WHERE phone_number = $1
      LIMIT 1`,
     [phoneNumber]
   );
@@ -136,17 +136,17 @@ async function getAdminByPhone(conn, phoneNumber) {
     console.log(`[DEBUG] Admin not found for phone: ${phoneNumber}`);
     return null;
   }
-  
+
   const user = users[0];
   const userRole = String(user.role || '').toLowerCase().trim();
-  
+
   console.log(`[DEBUG] Found user with phone ${phoneNumber}, role: "${userRole}" (raw: "${user.role}")`);
-  
+
   if (userRole !== 'admin') {
     console.log(`[DEBUG] User role is not admin: "${userRole}"`);
     return null;
   }
-  
+
   return user;
 }
 
@@ -158,14 +158,14 @@ function buildAdminLoginResponse(user) {
     role: 'admin',
     exp: Date.now() + (8 * 60 * 60 * 1000)
   };
-  
+
   console.log('[buildAdminLoginResponse] Building response for:', {
     user_id: user.user_id,
     phone_number: user.phone_number,
     full_name: user.full_name,
     exp_time: new Date(tokenPayload.exp).toISOString()
   });
-  
+
   const token = buildAdminToken(tokenPayload);
 
   return {
@@ -182,17 +182,17 @@ function buildAdminLoginResponse(user) {
 exports.requestAdminOtp = async (req, res) => {
   const { phone_number } = req.body;
   console.log(`[DEBUG] requestAdminOtp called with phone: ${phone_number}`);
-  
+
   if (!phone_number) {
     console.log(`[DEBUG] Missing phone_number in request body`);
     return res.status(400).json({ error: 'phone_number is required' });
   }
 
-  const conn = await pool.getConnection();
+  const conn = await pool.connect();
   try {
     await ensureSecurityLogsTable(conn);
     const admin = await getAdminByPhone(conn, phone_number);
-    
+
     if (!admin) {
       console.log(`[DEBUG] Admin lookup failed for phone: ${phone_number}`);
       await logSecurityEvent(conn, {
@@ -207,11 +207,11 @@ exports.requestAdminOtp = async (req, res) => {
     }
 
     console.log(`[DEBUG] Admin found, generating OTP for user_id: ${admin.user_id}`);
-    
+
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     await conn.query(
       `INSERT INTO otp_verification (user_id, otp_code, expired_at)
-       VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 5 MINUTE))`,
+       VALUES ($1, $2, NOW() + INTERVAL '5 minutes')`,
       [admin.user_id, otp]
     );
 
@@ -227,7 +227,7 @@ exports.requestAdminOtp = async (req, res) => {
 
     // Send OTP via SMS
     const smsResult = await smsService.sendOtp(phone_number, otp);
-    
+
     if (smsResult.success) {
       const response = {
         message: 'Admin OTP sent via SMS',
@@ -261,7 +261,7 @@ exports.verifyAdminOtp = async (req, res) => {
     return res.status(400).json({ error: 'phone_number and otp_code are required' });
   }
 
-  const conn = await pool.getConnection();
+  const conn = await pool.connect();
   try {
     await ensureSecurityLogsTable(conn);
     const admin = await getAdminByPhone(conn, phone_number);
@@ -277,11 +277,11 @@ exports.verifyAdminOtp = async (req, res) => {
       return res.status(403).json({ error: 'Forbidden: admin role required' });
     }
 
-    const [otpRows] = await conn.query(
+    const { rows: otpRows } = await conn.query(
       `SELECT otp_id
        FROM otp_verification
-       WHERE user_id = ?
-         AND otp_code = ?
+       WHERE user_id = $1
+         AND otp_code = $2
          AND expired_at > NOW()
        ORDER BY created_at DESC
        LIMIT 1`,
@@ -300,11 +300,11 @@ exports.verifyAdminOtp = async (req, res) => {
       return res.status(400).json({ error: 'Invalid or expired OTP' });
     }
 
-    await conn.query('UPDATE users SET last_login_at = NOW() WHERE user_id = ?', [admin.user_id]);
+    await conn.query('UPDATE users SET last_login_at = NOW() WHERE user_id = $1', [admin.user_id]);
 
     const hasOtpVerified = await tableHasColumn(conn, 'otp_verification', 'is_verified');
     if (hasOtpVerified) {
-      await conn.query('UPDATE otp_verification SET is_verified = 1 WHERE otp_id = ?', [otpRows[0].otp_id]);
+      await conn.query('UPDATE otp_verification SET is_verified = 1 WHERE otp_id = $1', [otpRows[0].otp_id]);
     }
 
     conn.release();
@@ -330,7 +330,7 @@ exports.verifyAdminOtp = async (req, res) => {
 // ขอ OTP
 exports.requestOtp = async (req, res) => {
   const { phone_number } = req.body;
-  
+
   if (!phone_number) {
     return res.status(400).json({ error: "phone_number is required" });
   }
@@ -338,17 +338,17 @@ exports.requestOtp = async (req, res) => {
   console.log("Request OTP for:", phone_number);
 
   try {
-    const conn = await pool.getConnection();
+    const conn = await pool.connect();
     await ensureSecurityLogsTable(conn);
 
-    let [user] = await conn.query(
-      "SELECT * FROM users WHERE phone_number = ?",
+    const { rows: user } = await conn.query(
+      "SELECT * FROM users WHERE phone_number = $1",
       [phone_number]
     );
 
     if (user.length === 0) {
       await conn.query(
-        "INSERT INTO users (phone_number, role, is_verified) VALUES (?, ?, ?)",
+        "INSERT INTO users (phone_number, role, is_verified) VALUES ($1, $2, $3)",
         [phone_number, 'elder', false]
       );
     }
@@ -357,12 +357,12 @@ exports.requestOtp = async (req, res) => {
 
     await conn.query(
       `INSERT INTO otp_verification (user_id, otp_code, expired_at)
-       VALUES ((SELECT user_id FROM users WHERE phone_number = ?), ?, DATE_ADD(NOW(), INTERVAL 5 MINUTE))`,
+       VALUES ((SELECT user_id FROM users WHERE phone_number = $1), $2, NOW() + INTERVAL '5 minutes')`,
       [phone_number, otp]
     );
 
-    const [userRows] = await conn.query(
-      'SELECT user_id, full_name, phone_number FROM users WHERE phone_number = ? LIMIT 1',
+    const { rows: userRows } = await conn.query(
+      'SELECT user_id, full_name, phone_number FROM users WHERE phone_number = $1 LIMIT 1',
       [phone_number]
     );
 
@@ -378,11 +378,11 @@ exports.requestOtp = async (req, res) => {
 
     // Send OTP via SMS instead of returning in response
     const smsResult = await smsService.sendOtp(phone_number, otp);
-    
+
     if (smsResult.success) {
       const response = {
-        message: "OTP sent via SMS", 
-        isDevelopment: smsResult.isDevelopment 
+        message: "OTP sent via SMS",
+        isDevelopment: smsResult.isDevelopment
       };
 
       if (smsResult.isDevelopment) {
@@ -392,7 +392,7 @@ exports.requestOtp = async (req, res) => {
       res.json(response);
       console.log("OTP sent successfully for:", phone_number);
     } else {
-      res.status(500).json({ 
+      res.status(500).json({
         error: 'Failed to send OTP via SMS',
         details: smsResult.error
       });
@@ -407,10 +407,10 @@ exports.getUserByPhone = async (req, res) => {
   const { phone } = req.params;
 
   try {
-    const conn = await pool.getConnection();
+    const conn = await pool.connect();
 
-    const [user] = await conn.query(
-      "SELECT full_name FROM users WHERE phone_number = ?",
+    const { rows: user } = await conn.query(
+      "SELECT full_name FROM users WHERE phone_number = $1",
       [phone]
     );
 
@@ -430,15 +430,15 @@ exports.getUserProfile = async (req, res) => {
   const { phone } = req.params;
 
   try {
-    const conn = await pool.getConnection();
+    const conn = await pool.connect();
 
-    const [user] = await conn.query(
+    const { rows: user } = await conn.query(
       `SELECT u.user_id, u.full_name, u.profile_picture, u.about_me, p.address, p.interests,
         (SELECT COUNT(*) FROM followers WHERE following_id = u.user_id) as followers,
         (SELECT COUNT(*) FROM followers WHERE follower_id  = u.user_id) as following
        FROM users u
        LEFT JOIN profiles p ON u.user_id = p.user_id
-       WHERE u.phone_number = ?`,
+       WHERE u.phone_number = $1`,
       [phone]
     );
 
@@ -472,11 +472,11 @@ exports.verifyOtp = async (req, res) => {
   }
 
   try {
-    const conn = await pool.getConnection();
+    const conn = await pool.connect();
     await ensureSecurityLogsTable(conn);
 
-    const [user] = await conn.query(
-      "SELECT * FROM users WHERE phone_number = ?",
+    const { rows: user } = await conn.query(
+      "SELECT * FROM users WHERE phone_number = $1",
       [phone_number]
     );
 
@@ -492,10 +492,10 @@ exports.verifyOtp = async (req, res) => {
       return res.status(400).json({ error: "User not found" });
     }
 
-    const [otp] = await conn.query(
+    const { rows: otp } = await conn.query(
       `SELECT * FROM otp_verification
-       WHERE user_id = ?
-       AND otp_code = ?
+       WHERE user_id = $1
+       AND otp_code = $2
        AND expired_at > NOW()
        ORDER BY created_at DESC LIMIT 1`,
       [user[0].user_id, otp_code]
@@ -515,13 +515,13 @@ exports.verifyOtp = async (req, res) => {
 
     // ✅ อัปเดต user เป็น verified
     await conn.query(
-      "UPDATE users SET is_verified = 1, last_login_at = NOW() WHERE user_id = ?",
+      "UPDATE users SET is_verified = 1, last_login_at = NOW() WHERE user_id = $1",
       [user[0].user_id]
     );
 
     // ✅ mark otp ว่าใช้แล้ว
     await conn.query(
-      "UPDATE otp_verification SET is_verified = 1 WHERE otp_id = ?",
+      "UPDATE otp_verification SET is_verified = 1 WHERE otp_id = $1",
       [otp[0].otp_id]
     );
 
@@ -555,10 +555,10 @@ exports.setName = async (req, res) => {
   const { phone_number, full_name } = req.body;
 
   try {
-    const conn = await pool.getConnection();
+    const conn = await pool.connect();
 
     await conn.query(
-      "UPDATE users SET full_name = ? WHERE phone_number = ?",
+      "UPDATE users SET full_name = $1 WHERE phone_number = $2",
       [full_name, phone_number]
     );
 
@@ -580,22 +580,22 @@ exports.adminLogin = async (req, res) => {
   }
 
   try {
-    const conn = await pool.getConnection();
+    const conn = await pool.connect();
     await ensureSecurityLogsTable(conn);
     const hasPasswordColumn = await tableHasColumn(conn, 'users', 'password');
 
-    const [users] = hasPasswordColumn
+    const { rows: users } = hasPasswordColumn
       ? await conn.query(
         `SELECT user_id, full_name, phone_number, role, password
          FROM users
-         WHERE phone_number = ?
+         WHERE phone_number = $1
          LIMIT 1`,
         [phone_number]
       )
       : await conn.query(
         `SELECT user_id, full_name, phone_number, role
          FROM users
-         WHERE phone_number = ?
+         WHERE phone_number = $1
          LIMIT 1`,
         [phone_number]
       );
@@ -652,7 +652,7 @@ exports.adminLogin = async (req, res) => {
       return res.status(403).json({ error: 'Forbidden: admin role required' });
     }
 
-    await conn.query('UPDATE users SET last_login_at = NOW() WHERE user_id = ?', [user.user_id]);
+    await conn.query('UPDATE users SET last_login_at = NOW() WHERE user_id = $1', [user.user_id]);
     await logSecurityEvent(conn, {
       eventType: SECURITY_EVENT_TYPES.ADMIN_LOGIN_SUCCESS,
       actorName: user.full_name || 'Admin',

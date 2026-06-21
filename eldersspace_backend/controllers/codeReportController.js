@@ -21,14 +21,14 @@ exports.submitReport = async (req, res) => {
     const validTypes = ['not_working', 'wrong_reward', 'already_expired', 'other'];
     const type = validTypes.includes(issue_type) ? issue_type : 'other';
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
     // Verify the promo code belongs to this user
-    const [rows] = await conn.query(
+    const { rows } = await conn.query(
       `SELECT p.promo_code_id, p.reward_id, r.reward_name
        FROM promo_codes p
        LEFT JOIN rewards r ON p.reward_id = r.reward_id
-       WHERE p.promo_code_id = ? AND p.used_by_user_id = ? AND p.is_deleted = 0`,
+       WHERE p.promo_code_id = $1 AND p.used_by_user_id = $2 AND p.is_deleted = 0`,
       [promo_code_id, user_id]
     );
 
@@ -39,9 +39,9 @@ exports.submitReport = async (req, res) => {
     const promoRow = rows[0];
 
     // Prevent duplicate open reports for the same code
-    const [existing] = await conn.query(
+    const { rows: existing } = await conn.query(
       `SELECT report_id FROM user_code_reports
-       WHERE promo_code_id = ? AND user_id = ? AND status IN ('pending','investigating') AND is_deleted = 0`,
+       WHERE promo_code_id = $1 AND user_id = $2 AND status IN ('pending','investigating') AND is_deleted = 0`,
       [promo_code_id, user_id]
     );
 
@@ -49,25 +49,27 @@ exports.submitReport = async (req, res) => {
       return res.status(409).json({ error: 'คุณได้แจ้งปัญหาโค้ดนี้ไว้แล้ว กรุณารอการตรวจสอบ' });
     }
 
-    const [result] = await conn.query(
+    const result = await conn.query(
       `INSERT INTO user_code_reports
          (user_id, phone_number, promo_code_id, reward_id, reward_name, issue_type, description)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING report_id`,
       [user_id, phone_number, promo_code_id, promoRow.reward_id, promoRow.reward_name, type, description || null]
     );
+    const newReportId = result.rows[0].report_id;
 
     // Audit log
     await conn.query(
       `INSERT INTO promo_code_logs (promo_code_id, code, action, user_id, phone_number, status, details)
-       SELECT ?, code, 'user_report', ?, ?, 'success', ?
-       FROM promo_codes WHERE promo_code_id = ?`,
-      [promo_code_id, user_id, phone_number, JSON.stringify({ report_id: result.insertId, issue_type: type }), promo_code_id]
+       SELECT $1, code, 'user_report', $2, $3, 'success', $4
+       FROM promo_codes WHERE promo_code_id = $5`,
+      [promo_code_id, user_id, phone_number, JSON.stringify({ report_id: newReportId, issue_type: type }), promo_code_id]
     );
 
     return res.json({
       success: true,
       message: 'แจ้งปัญหาสำเร็จ ทีมงานจะตรวจสอบและติดต่อกลับ',
-      report_id: result.insertId
+      report_id: newReportId
     });
   } catch (error) {
     console.error('Submit code report error:', error);
@@ -85,9 +87,9 @@ exports.getUserReports = async (req, res) => {
     if (!user_id) return res.status(400).json({ error: 'user_id is required' });
 
     const offset = (Number(page) - 1) * Number(limit);
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
-    const [reports] = await conn.query(
+    const { rows: reports } = await conn.query(
       `SELECT
          r.report_id,
          r.reward_name,
@@ -101,9 +103,9 @@ exports.getUserReports = async (req, res) => {
          pc.used_at AS redeemed_at
        FROM user_code_reports r
        LEFT JOIN promo_codes pc ON r.promo_code_id = pc.promo_code_id
-       WHERE r.user_id = ? AND r.is_deleted = 0
+       WHERE r.user_id = $1 AND r.is_deleted = 0
        ORDER BY r.created_at DESC
-       LIMIT ? OFFSET ?`,
+       LIMIT $2 OFFSET $3`,
       [user_id, parseInt(limit), offset]
     );
 
@@ -125,15 +127,16 @@ exports.adminGetReports = async (req, res) => {
     const { status, reward_id, page = 1, limit = 50 } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
 
+    let paramIdx = 1;
     let where = 'r.is_deleted = 0';
     const params = [];
 
-    if (status) { where += ' AND r.status = ?'; params.push(status); }
-    if (reward_id) { where += ' AND r.reward_id = ?'; params.push(reward_id); }
+    if (status) { where += ` AND r.status = $${paramIdx++}`; params.push(status); }
+    if (reward_id) { where += ` AND r.reward_id = $${paramIdx++}`; params.push(reward_id); }
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
-    const [reports] = await conn.query(
+    const { rows: reports } = await conn.query(
       `SELECT
          r.report_id,
          r.user_id,
@@ -151,17 +154,17 @@ exports.adminGetReports = async (req, res) => {
          pc.used_at AS redeemed_at,
          pc.is_used,
          -- Admin sees Code ID and masked code only, never the full code
-         CONCAT('CPN-', LPAD(r.promo_code_id, 5, '0')) AS code_id_display
+         CONCAT('CPN-', LPAD(r.promo_code_id::text, 5, '0')) AS code_id_display
        FROM user_code_reports r
        LEFT JOIN users u ON r.user_id = u.user_id
        LEFT JOIN promo_codes pc ON r.promo_code_id = pc.promo_code_id
        WHERE ${where}
        ORDER BY r.created_at DESC
-       LIMIT ? OFFSET ?`,
+       LIMIT $${paramIdx++} OFFSET $${paramIdx++}`,
       [...params, parseInt(limit), offset]
     );
 
-    const [countRes] = await conn.query(
+    const { rows: countRes } = await conn.query(
       `SELECT COUNT(*) AS total FROM user_code_reports r WHERE ${where}`,
       params
     );
@@ -185,13 +188,13 @@ exports.adminGetReports = async (req, res) => {
 exports.adminGetReportDetail = async (req, res) => {
   let conn;
   try {
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
-    const [rows] = await conn.query(
+    const { rows } = await conn.query(
       `SELECT
          r.*,
          u.full_name AS user_name,
-         CONCAT('CPN-', LPAD(r.promo_code_id, 5, '0')) AS code_id_display,
+         CONCAT('CPN-', LPAD(r.promo_code_id::text, 5, '0')) AS code_id_display,
          pc.reward_id AS pc_reward_id,
          pc.used_at AS redeemed_at,
          pc.is_used,
@@ -201,17 +204,17 @@ exports.adminGetReportDetail = async (req, res) => {
        LEFT JOIN users u ON r.user_id = u.user_id
        LEFT JOIN promo_codes pc ON r.promo_code_id = pc.promo_code_id
        LEFT JOIN rewards rw ON pc.reward_id = rw.reward_id
-       WHERE r.report_id = ? AND r.is_deleted = 0`,
+       WHERE r.report_id = $1 AND r.is_deleted = 0`,
       [req.params.id]
     );
 
     if (!rows.length) return res.status(404).json({ error: 'Report not found' });
 
     // Fetch audit logs for this code (no full code in response)
-    const [logs] = await conn.query(
+    const { rows: logs } = await conn.query(
       `SELECT action, user_id, phone_number, status, details, created_at
        FROM promo_code_logs
-       WHERE promo_code_id = ?
+       WHERE promo_code_id = $1
        ORDER BY created_at DESC
        LIMIT 20`,
       [rows[0].promo_code_id]
@@ -238,9 +241,9 @@ exports.adminUpdateReportStatus = async (req, res) => {
       return res.status(400).json({ error: `status must be one of: ${validStatuses.join(', ')}` });
     }
 
-    conn = await pool.getConnection();
-    const [rows] = await conn.query(
-      'SELECT report_id, promo_code_id, user_id, phone_number FROM user_code_reports WHERE report_id = ? AND is_deleted = 0',
+    conn = await pool.connect();
+    const { rows } = await conn.query(
+      'SELECT report_id, promo_code_id, user_id, phone_number FROM user_code_reports WHERE report_id = $1 AND is_deleted = 0',
       [req.params.id]
     );
 
@@ -250,16 +253,16 @@ exports.adminUpdateReportStatus = async (req, res) => {
 
     await conn.query(
       `UPDATE user_code_reports
-       SET status = ?, admin_note = ?, resolved_at = ?, updated_at = NOW()
-       WHERE report_id = ?`,
+       SET status = $1, admin_note = $2, resolved_at = $3, updated_at = NOW()
+       WHERE report_id = $4`,
       [status, admin_note || null, resolved_at, req.params.id]
     );
 
     // Audit log
     await conn.query(
       `INSERT INTO promo_code_logs (promo_code_id, code, action, user_id, phone_number, status, details)
-       SELECT ?, code, 'admin_report_update', ?, ?, 'success', ?
-       FROM promo_codes WHERE promo_code_id = ?`,
+       SELECT $1, code, 'admin_report_update', $2, $3, 'success', $4
+       FROM promo_codes WHERE promo_code_id = $5`,
       [
         rows[0].promo_code_id,
         rows[0].user_id,

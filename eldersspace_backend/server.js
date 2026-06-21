@@ -79,7 +79,7 @@ app.use('/uploads/ads',      express.static('uploads/ads'));
 
 app.use('/uploads', express.static('uploads'));
 
-pool.getConnection()
+pool.connect()
   .then(conn => {
     console.log("Database connected successfully");
     conn.release();

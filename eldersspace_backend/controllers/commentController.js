@@ -4,19 +4,15 @@ const { assertUserCanInteract } = require('../services/moderationService');
 async function ensureCommentReportsTable(conn) {
   await conn.query(
     `CREATE TABLE IF NOT EXISTS comment_reports (
-      report_id INT AUTO_INCREMENT PRIMARY KEY,
+      report_id SERIAL PRIMARY KEY,
       comment_id INT NOT NULL,
       reporter_user_id INT NOT NULL,
       reason VARCHAR(100) NULL,
       detail TEXT NULL,
-      status ENUM('pending','reviewed','dismissed') NOT NULL DEFAULT 'pending',
-      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      UNIQUE KEY uniq_comment_reporter (comment_id, reporter_user_id),
-      INDEX idx_comment_reports_comment_id (comment_id),
-      INDEX idx_comment_reports_status_created (status, created_at),
-      CONSTRAINT fk_comment_reports_comment FOREIGN KEY (comment_id) REFERENCES comments(comment_id) ON DELETE CASCADE,
-      CONSTRAINT fk_comment_reports_reporter FOREIGN KEY (reporter_user_id) REFERENCES users(user_id) ON DELETE CASCADE
+      status VARCHAR(20) NOT NULL DEFAULT 'pending',
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE (comment_id, reporter_user_id)
     )`
   );
 }
@@ -27,10 +23,10 @@ exports.getComments = async (req,res)=>{
  let conn;
 
  try {
-   conn = await pool.getConnection();
+   conn = await pool.connect();
 
    const backendUrl = process.env.BACKEND_URL || 'http://10.0.2.2:3000';
-   const [comments] = await conn.query(
+   const { rows: comments } = await conn.query(
 `SELECT
  c.comment_id,
  c.post_id,
@@ -45,11 +41,11 @@ exports.getComments = async (req,res)=>{
  u.phone_number as user_phone,
  CASE
    WHEN u.profile_picture IS NULL OR u.profile_picture='' THEN NULL
-   ELSE CONCAT(?,'/uploads/',u.profile_picture)
+   ELSE $1 || '/uploads/' || u.profile_picture
  END as profile_picture_url
 FROM comments c
 JOIN users u ON c.user_id=u.user_id
-WHERE c.post_id=?
+WHERE c.post_id=$2
   AND c.is_deleted=0
 ORDER BY c.created_at ASC`,
 [backendUrl, postId]
@@ -78,15 +74,15 @@ exports.addComment = async (req,res)=>{
  }
 
  try {
-  conn = await pool.getConnection();
+  conn = await pool.connect();
 
   const guard = await assertUserCanInteract(conn, phone);
   if (!guard.allowed) {
    return res.status(guard.statusCode).json(guard.payload);
   }
 
-  const [user] = await conn.query(
-   "SELECT user_id FROM users WHERE phone_number=?",
+  const { rows: user } = await conn.query(
+   "SELECT user_id FROM users WHERE phone_number=$1",
    [phone]
   );
 
@@ -103,10 +99,10 @@ exports.addComment = async (req,res)=>{
    return res.status(400).json({ error: 'Invalid parent_id' });
    }
 
-   const [parentComment] = await conn.query(
+   const { rows: parentComment } = await conn.query(
    `SELECT comment_id,post_id,is_deleted,user_id
     FROM comments
-    WHERE comment_id=?`,
+    WHERE comment_id=$1`,
    [parentId]
    );
 
@@ -123,14 +119,14 @@ exports.addComment = async (req,res)=>{
    }
   }
 
-  const [insertRes] = await conn.query(
+  const { rows: insertRes } = await conn.query(
    `INSERT INTO comments(post_id,user_id,content,parent_id)
-   VALUES(?,?,?,?)`,
+   VALUES($1,$2,$3,$4) RETURNING comment_id`,
    [postId,actorId,content.trim(),parentId]
   );
 
-  const [post] = await conn.query(
-   "SELECT user_id FROM posts WHERE post_id=?",
+  const { rows: post } = await conn.query(
+   "SELECT user_id FROM posts WHERE post_id=$1",
    [postId]
   );
 
@@ -141,8 +137,8 @@ exports.addComment = async (req,res)=>{
   }
 
   if (parentId) {
-   const [parentComment] = await conn.query(
-   "SELECT user_id FROM comments WHERE comment_id=?",
+   const { rows: parentComment } = await conn.query(
+   "SELECT user_id FROM comments WHERE comment_id=$1",
    [parentId]
    );
    if (parentComment.length) {
@@ -155,14 +151,14 @@ exports.addComment = async (req,res)=>{
    const notificationType = parentId ? 'reply' : 'comment';
    await conn.query(
    `INSERT INTO notifications(user_id,actor_id,post_id,type)
-    VALUES(?,?,?,?)`,
+    VALUES($1,$2,$3,$4)`,
    [targetUserId,actorId,postId,notificationType]
    );
   }
 
   res.json({
    message:"comment added",
-   comment_id: Number(insertRes.insertId),
+   comment_id: Number(insertRes[0].comment_id),
   });
  } catch (err) {
   console.error(err);
@@ -182,10 +178,10 @@ exports.updateComment = async (req, res) => {
  }
 
  try {
-  conn = await pool.getConnection();
+  conn = await pool.connect();
 
-  const [user] = await conn.query(
-   'SELECT user_id FROM users WHERE phone_number=?',
+  const { rows: user } = await conn.query(
+   'SELECT user_id FROM users WHERE phone_number=$1',
    [phone]
   );
 
@@ -194,8 +190,8 @@ exports.updateComment = async (req, res) => {
   }
 
   const actorId = Number(user[0].user_id);
-  const [comments] = await conn.query(
-   'SELECT comment_id,user_id,is_deleted FROM comments WHERE comment_id=?',
+  const { rows: comments } = await conn.query(
+   'SELECT comment_id,user_id,is_deleted FROM comments WHERE comment_id=$1',
    [commentId]
   );
 
@@ -215,8 +211,8 @@ exports.updateComment = async (req, res) => {
 
   await conn.query(
    `UPDATE comments
-   SET content=?, updated_at=NOW()
-   WHERE comment_id=?`,
+   SET content=$1, updated_at=NOW()
+   WHERE comment_id=$2`,
    [content.trim(),commentId]
   );
 
@@ -235,10 +231,10 @@ exports.deleteComment = async (req, res) => {
  let conn;
 
  try {
-  conn = await pool.getConnection();
+  conn = await pool.connect();
 
-  const [user] = await conn.query(
-   'SELECT user_id FROM users WHERE phone_number=?',
+  const { rows: user } = await conn.query(
+   'SELECT user_id FROM users WHERE phone_number=$1',
    [phone]
   );
 
@@ -247,8 +243,8 @@ exports.deleteComment = async (req, res) => {
   }
 
   const actorId = Number(user[0].user_id);
-  const [comments] = await conn.query(
-   'SELECT comment_id,user_id,is_deleted FROM comments WHERE comment_id=?',
+  const { rows: comments } = await conn.query(
+   'SELECT comment_id,user_id,is_deleted FROM comments WHERE comment_id=$1',
    [commentId]
   );
 
@@ -271,7 +267,7 @@ exports.deleteComment = async (req, res) => {
     SET is_deleted=1,
       deleted_at=NOW(),
       updated_at=NOW()
-   WHERE comment_id=?`,
+   WHERE comment_id=$1`,
    [commentId]
   );
 
@@ -290,12 +286,12 @@ exports.reportComment = async (req, res) => {
  let conn;
 
  try {
-  conn = await pool.getConnection();
+  conn = await pool.connect();
 
   await ensureCommentReportsTable(conn);
 
-  const [user] = await conn.query(
-   'SELECT user_id FROM users WHERE phone_number=?',
+  const { rows: user } = await conn.query(
+   'SELECT user_id FROM users WHERE phone_number=$1',
    [phone]
   );
 
@@ -305,8 +301,8 @@ exports.reportComment = async (req, res) => {
 
   const reporterUserId = Number(user[0].user_id);
 
-  const [comments] = await conn.query(
-   'SELECT comment_id FROM comments WHERE comment_id=?',
+  const { rows: comments } = await conn.query(
+   'SELECT comment_id FROM comments WHERE comment_id=$1',
    [commentId]
   );
 
@@ -317,12 +313,12 @@ exports.reportComment = async (req, res) => {
   try {
    await conn.query(
     `INSERT INTO comment_reports (comment_id, reporter_user_id, reason, detail)
-     VALUES (?, ?, ?, ?)`,
+     VALUES ($1, $2, $3, $4)`,
     [commentId, reporterUserId, reason || null, detail || null]
    );
   } catch (dbErr) {
    // Handle unique constraint violation (user already reported this comment)
-   if (dbErr.code === 'ER_DUP_ENTRY') {
+   if (dbErr.code === '23505') {
     return res.status(400).json({ error: 'You have already reported this comment' });
    }
    throw dbErr;

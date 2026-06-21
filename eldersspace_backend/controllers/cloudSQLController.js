@@ -1,5 +1,5 @@
-// ========== New API Endpoints for Cloud SQL Data ==========
-const pool = require('../config/db'); // ✅ เชื่อมกับ Cloud SQL pool
+// ========== API Endpoints (Cloud SQL replaced by Supabase/pg) ==========
+const pool = require('../config/db');
 
 /**
  * GET /api/admin/users/blocked
@@ -8,9 +8,9 @@ const pool = require('../config/db'); // ✅ เชื่อมกับ Cloud S
 async function getBlockedUsers(req, res) {
   let conn;
   try {
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
-    const [blockedUsers] = await conn.query(
+    const result = await conn.query(
       `SELECT
         user_id,
         full_name,
@@ -29,8 +29,8 @@ async function getBlockedUsers(req, res) {
 
     return res.json({
       success: true,
-      total: blockedUsers.length,
-      users: blockedUsers
+      total: result.rows.length,
+      users: result.rows
     });
   } catch (error) {
     console.error('Failed to get blocked users:', error);
@@ -47,25 +47,23 @@ async function getBlockedUsers(req, res) {
 async function getReportedPosts(req, res) {
   let conn;
   try {
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
     await conn.query(
       `CREATE TABLE IF NOT EXISTS post_reports (
-        report_id INT AUTO_INCREMENT PRIMARY KEY,
+        report_id SERIAL PRIMARY KEY,
         post_id INT NOT NULL,
         reporter_user_id INT NOT NULL,
         reason VARCHAR(100) NULL,
         detail TEXT NULL,
-        status ENUM('pending','reviewed','dismissed') NOT NULL DEFAULT 'pending',
-        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        UNIQUE KEY uniq_post_reporter (post_id, reporter_user_id),
-        INDEX idx_post_reports_post_id (post_id),
-        INDEX idx_post_reports_status_created (status, created_at)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (post_id, reporter_user_id)
+      )`
     );
 
-    const [reportedPosts] = await conn.query(
+    const result = await conn.query(
       `SELECT
         p.post_id,
         p.content,
@@ -80,15 +78,15 @@ async function getReportedPosts(req, res) {
       JOIN users u ON u.user_id = p.user_id
       LEFT JOIN post_reports pr ON pr.post_id = p.post_id
       WHERE pr.report_id IS NOT NULL AND p.is_deleted = 0
-      GROUP BY p.post_id
+      GROUP BY p.post_id, p.content, p.created_at, u.full_name, u.phone_number
       ORDER BY pending_count DESC, p.created_at DESC
       LIMIT 100`
     );
 
     return res.json({
       success: true,
-      total: reportedPosts.length,
-      posts: reportedPosts.map(post => ({
+      total: result.rows.length,
+      posts: result.rows.map(post => ({
         post_id: Number(post.post_id),
         content: post.content,
         author: post.full_name,
@@ -115,16 +113,16 @@ async function getReportedPosts(req, res) {
 async function getCampaigns(req, res) {
   let conn;
   try {
-    conn = await pool.getConnection();
+    conn = await pool.connect();
     const { reward_id } = req.query;
 
     // Check if promo_campaigns table exists
-    const [tableCheck] = await conn.query(
+    const tableCheck = await conn.query(
       `SELECT COUNT(*) as total FROM information_schema.tables
-       WHERE table_schema = DATABASE() AND table_name = 'promo_campaigns'`
+       WHERE table_schema = current_schema() AND table_name = 'promo_campaigns'`
     );
 
-    if (Number(tableCheck[0]?.total || 0) === 0) {
+    if (Number(tableCheck.rows[0]?.total || 0) === 0) {
       return res.json({ success: true, total: 0, data: [] });
     }
 
@@ -135,20 +133,21 @@ async function getCampaigns(req, res) {
       FROM promo_campaigns
       WHERE 1=1`;
     const params = [];
+    let pi = 1;
 
     if (reward_id) {
-      query += ' AND reward_id = ?';
+      query += ` AND reward_id = $${pi++}`;
       params.push(reward_id);
     }
 
     query += ' ORDER BY created_at DESC LIMIT 1000';
 
-    const [campaigns] = await conn.query(query, params);
+    const campaigns = await conn.query(query, params);
 
     // For each campaign, fetch its codes and group into batches
     const campaignsWithBatches = await Promise.all(
-      campaigns.map(async (campaign) => {
-        const [codes] = await conn.query(
+      campaigns.rows.map(async (campaign) => {
+        const codes = await conn.query(
           `SELECT promo_code_id, code, description, expiry_date, is_used, used_at,
                   batch_upload_id, uploaded_at,
                   CASE
@@ -157,13 +156,13 @@ async function getCampaigns(req, res) {
                     ELSE 'available'
                   END AS status
            FROM promo_codes
-           WHERE campaign_id = ?
+           WHERE campaign_id = $1
            ORDER BY uploaded_at DESC, created_at ASC`,
           [campaign.campaign_id]
         );
 
         const batchMap = {};
-        codes.forEach(code => {
+        codes.rows.forEach(code => {
           const batchKey = code.batch_upload_id ||
             (code.uploaded_at ? new Date(code.uploaded_at).toISOString().split('T')[0] : 'default');
           if (!batchMap[batchKey]) {

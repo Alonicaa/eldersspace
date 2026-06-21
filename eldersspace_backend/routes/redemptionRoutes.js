@@ -30,67 +30,72 @@ router.get('/redemptions', async (req, res) => {
     `;
 
     const params = [];
+    let pi = 1;
 
     if (search) {
-      query += ` AND (rh.phone_number LIKE ? OR u.full_name LIKE ? OR rh.reward_name LIKE ?)`;
+      query += ` AND (rh.phone_number LIKE $${pi} OR u.full_name LIKE $${pi + 1} OR rh.reward_name LIKE $${pi + 2})`;
       const searchTerm = `%${search}%`;
       params.push(searchTerm, searchTerm, searchTerm);
+      pi += 3;
     }
 
     if (status) {
-      query += ` AND rh.redemption_status = ?`;
+      query += ` AND rh.redemption_status = $${pi++}`;
       params.push(status);
     }
 
     if (reward_id) {
-      query += ` AND rh.reward_id = ?`;
+      query += ` AND rh.reward_id = $${pi++}`;
       params.push(reward_id);
     }
 
     if (date_from) {
-      query += ` AND DATE(rh.redeemed_at) >= ?`;
+      query += ` AND CURRENT_DATE >= $${pi++}`;
       params.push(date_from);
     }
 
     if (date_to) {
-      query += ` AND DATE(rh.redeemed_at) <= ?`;
+      query += ` AND CURRENT_DATE <= $${pi++}`;
       params.push(date_to);
     }
 
-    query += ` ORDER BY rh.redeemed_at DESC LIMIT ? OFFSET ?`;
+    query += ` ORDER BY rh.redeemed_at DESC LIMIT $${pi++} OFFSET $${pi++}`;
     params.push(parseInt(limit), offset);
 
-    conn = await pool.getConnection();
-    const [redemptions] = await conn.query(query, params);
+    conn = await pool.connect();
+    const redemptionsResult = await conn.query(query, params);
+    const redemptions = redemptionsResult.rows;
 
     // Get total count
     let countQuery = `SELECT COUNT(*) as total FROM reward_redemption_history rh LEFT JOIN users u ON rh.user_id = u.user_id WHERE 1=1`;
     const countParams = [];
+    let cpi = 1;
 
     if (search) {
-      countQuery += ` AND (rh.phone_number LIKE ? OR u.full_name LIKE ? OR rh.reward_name LIKE ?)`;
+      countQuery += ` AND (rh.phone_number LIKE $${cpi} OR u.full_name LIKE $${cpi + 1} OR rh.reward_name LIKE $${cpi + 2})`;
       const searchTerm = `%${search}%`;
       countParams.push(searchTerm, searchTerm, searchTerm);
+      cpi += 3;
     }
     if (status) {
-      countQuery += ` AND rh.redemption_status = ?`;
+      countQuery += ` AND rh.redemption_status = $${cpi++}`;
       countParams.push(status);
     }
     if (reward_id) {
-      countQuery += ` AND rh.reward_id = ?`;
+      countQuery += ` AND rh.reward_id = $${cpi++}`;
       countParams.push(reward_id);
     }
     if (date_from) {
-      countQuery += ` AND DATE(rh.redeemed_at) >= ?`;
+      countQuery += ` AND CURRENT_DATE >= $${cpi++}`;
       countParams.push(date_from);
     }
     if (date_to) {
-      countQuery += ` AND DATE(rh.redeemed_at) <= ?`;
+      countQuery += ` AND CURRENT_DATE <= $${cpi++}`;
       countParams.push(date_to);
     }
 
-    const [totalResult] = await conn.query(countQuery, countParams);
-    const totalCount = Number(totalResult[0]?.total || 0);
+    const totalResult = await conn.query(countQuery, countParams);
+    const totalCount = Number(totalResult.rows[0]?.total || 0);
 
     res.json({
       status: 'success',
@@ -114,25 +119,25 @@ router.get('/redemptions', async (req, res) => {
 router.get('/redemptions/:id', async (req, res) => {
   let conn;
   try {
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
-    const [redemption] = await conn.query(`
+    const redemption = await conn.query(`
       SELECT
         rh.*,
         u.full_name as user_name,
         u.phone_number as user_phone
       FROM reward_redemption_history rh
       LEFT JOIN users u ON rh.user_id = u.user_id
-      WHERE rh.redemption_id = ?
+      WHERE rh.redemption_id = $1
     `, [req.params.id]);
 
-    if (!redemption.length) {
+    if (!redemption.rows.length) {
       return res.status(404).json({ status: 'error', message: 'Redemption not found' });
     }
 
     res.json({
       status: 'success',
-      data: redemption[0]
+      data: redemption.rows[0]
     });
   } catch (err) {
     console.error('Error fetching redemption:', err);
@@ -152,18 +157,18 @@ router.post('/qr/verify', async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'QR code is required' });
     }
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
     // Check redemption by qr_code field
-    const [redemption] = await conn.query(`
+    const redemption = await conn.query(`
       SELECT rh.*, u.full_name as user_name
       FROM reward_redemption_history rh
       LEFT JOIN users u ON rh.user_id = u.user_id
-      WHERE rh.qr_code = ?
+      WHERE rh.qr_code = $1
       LIMIT 1
     `, [code]);
 
-    if (!redemption.length) {
+    if (!redemption.rows.length) {
       return res.json({
         status: 'invalid',
         message: 'QR code not found',
@@ -171,7 +176,7 @@ router.post('/qr/verify', async (req, res) => {
       });
     }
 
-    const record = redemption[0];
+    const record = redemption.rows[0];
     const now = new Date();
 
     if (record.expires_at && new Date(record.expires_at) < now) {
@@ -214,20 +219,20 @@ router.post('/qr/verify', async (req, res) => {
 router.post('/redemptions/:id/mark-used', async (req, res) => {
   let conn;
   try {
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
-    const [redemption] = await conn.query(`
-      SELECT * FROM reward_redemption_history WHERE redemption_id = ?
+    const redemption = await conn.query(`
+      SELECT * FROM reward_redemption_history WHERE redemption_id = $1
     `, [req.params.id]);
 
-    if (!redemption.length) {
+    if (!redemption.rows.length) {
       return res.status(404).json({ status: 'error', message: 'Redemption not found' });
     }
 
     await conn.query(`
       UPDATE reward_redemption_history
       SET redemption_status = 'used', used_at = NOW(), updated_at = NOW()
-      WHERE redemption_id = ?
+      WHERE redemption_id = $1
     `, [req.params.id]);
 
     res.json({
@@ -248,20 +253,20 @@ router.post('/redemptions/:id/cancel', async (req, res) => {
   let conn;
   try {
     const { reason } = req.body;
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
-    const [redemption] = await conn.query(`
-      SELECT * FROM reward_redemption_history WHERE redemption_id = ?
+    const redemption = await conn.query(`
+      SELECT * FROM reward_redemption_history WHERE redemption_id = $1
     `, [req.params.id]);
 
-    if (!redemption.length) {
+    if (!redemption.rows.length) {
       return res.status(404).json({ status: 'error', message: 'Redemption not found' });
     }
 
     await conn.query(`
       UPDATE reward_redemption_history
       SET redemption_status = 'cancelled', used_at = NOW(), updated_at = NOW()
-      WHERE redemption_id = ?
+      WHERE redemption_id = $1
     `, [req.params.id]);
 
     res.json({
@@ -281,9 +286,9 @@ router.post('/redemptions/:id/cancel', async (req, res) => {
 router.get('/qr/stats', async (req, res) => {
   let conn;
   try {
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
-    const [stats] = await conn.query(`
+    const statsResult = await conn.query(`
       SELECT
         COUNT(*) as total_redemptions,
         SUM(CASE WHEN redemption_status = 'used' THEN 1 ELSE 0 END) as used_redemptions,
@@ -292,6 +297,7 @@ router.get('/qr/stats', async (req, res) => {
         SUM(CASE WHEN expires_at < NOW() AND redemption_status != 'used' THEN 1 ELSE 0 END) as expired_redemptions
       FROM reward_redemption_history
     `);
+    const stats = statsResult.rows;
 
     res.json({
       status: 'success',
@@ -319,25 +325,25 @@ router.get('/qr/stats', async (req, res) => {
 router.get('/rewards/stats/:id', async (req, res) => {
   let conn;
   try {
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
-    const [reward] = await conn.query(`
+    const reward = await conn.query(`
       SELECT
         r.*,
         (SELECT COUNT(*) FROM reward_redemption_history WHERE reward_id = r.reward_id) as total_redeemed,
         (SELECT COUNT(*) FROM reward_redemption_history WHERE reward_id = r.reward_id AND redemption_status = 'used') as actually_used,
         (SELECT COUNT(*) FROM reward_redemption_history WHERE reward_id = r.reward_id AND redemption_status = 'pending') as pending_redemptions
       FROM rewards r
-      WHERE r.reward_id = ?
+      WHERE r.reward_id = $1
     `, [req.params.id]);
 
-    if (!reward.length) {
+    if (!reward.rows.length) {
       return res.status(404).json({ status: 'error', message: 'Reward not found' });
     }
 
     res.json({
       status: 'success',
-      data: reward[0]
+      data: reward.rows[0]
     });
   } catch (err) {
     console.error('Error fetching reward stats:', err);

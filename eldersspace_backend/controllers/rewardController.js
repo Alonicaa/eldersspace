@@ -21,45 +21,45 @@ async function ensureRewardSettingsColumns(conn) {
   const columnsToEnsure = [
     {
       name: 'usage_reward_daily_limit_count',
-      ddl: 'ADD COLUMN usage_reward_daily_limit_count INT NOT NULL DEFAULT 2 AFTER session_bonus_points',
+      ddl: 'ADD COLUMN usage_reward_daily_limit_count INT NOT NULL DEFAULT 2',
     },
     {
       name: 'streak_milestone_days',
-      ddl: 'ADD COLUMN streak_milestone_days INT NOT NULL DEFAULT 30 AFTER streak_milestone_bonus',
+      ddl: 'ADD COLUMN streak_milestone_days INT NOT NULL DEFAULT 30',
     },
     {
       name: 'profile_completion_points',
-      ddl: 'ADD COLUMN profile_completion_points INT NOT NULL DEFAULT 50 AFTER streak_milestone_days',
+      ddl: 'ADD COLUMN profile_completion_points INT NOT NULL DEFAULT 50',
     },
     {
       name: 'post_activity_points',
-      ddl: 'ADD COLUMN post_activity_points INT NOT NULL DEFAULT 10 AFTER profile_completion_points',
+      ddl: 'ADD COLUMN post_activity_points INT NOT NULL DEFAULT 10',
     },
     {
       name: 'post_activity_required_posts',
-      ddl: 'ADD COLUMN post_activity_required_posts INT NOT NULL DEFAULT 2 AFTER post_activity_points',
+      ddl: 'ADD COLUMN post_activity_required_posts INT NOT NULL DEFAULT 2',
     },
     {
       name: 'comment_activity_points',
-      ddl: 'ADD COLUMN comment_activity_points INT NOT NULL DEFAULT 2 AFTER post_activity_required_posts',
+      ddl: 'ADD COLUMN comment_activity_points INT NOT NULL DEFAULT 2',
     },
     {
       name: 'comment_activity_daily_limit_count',
-      ddl: 'ADD COLUMN comment_activity_daily_limit_count INT NOT NULL DEFAULT 5 AFTER comment_activity_points',
+      ddl: 'ADD COLUMN comment_activity_daily_limit_count INT NOT NULL DEFAULT 5',
     },
     {
       name: 'share_activity_points',
-      ddl: 'ADD COLUMN share_activity_points INT NOT NULL DEFAULT 10 AFTER comment_activity_daily_limit_count',
+      ddl: 'ADD COLUMN share_activity_points INT NOT NULL DEFAULT 10',
     },
   ];
 
   for (const col of columnsToEnsure) {
-    const [rows] = await conn.query(
+    const { rows } = await conn.query(
       `SELECT COUNT(*) AS total
        FROM INFORMATION_SCHEMA.COLUMNS
-       WHERE TABLE_SCHEMA = DATABASE()
+       WHERE table_schema = current_database()
          AND TABLE_NAME = 'reward_settings'
-         AND COLUMN_NAME = ?`,
+         AND COLUMN_NAME = $1`,
       [col.name]
     );
 
@@ -72,7 +72,7 @@ async function ensureRewardSettingsColumns(conn) {
 async function getAppUsageRule(conn) {
   await ensureRewardSettingsColumns(conn);
 
-  const [settings] = await conn.query(
+  const { rows: settings } = await conn.query(
     `SELECT session_bonus_threshold, session_bonus_points, usage_reward_daily_limit_count
      FROM reward_settings WHERE setting_id = 1 LIMIT 1`
   );
@@ -112,7 +112,7 @@ async function getAppUsageRule(conn) {
 async function getActivityRewardRules(conn) {
   await ensureRewardSettingsColumns(conn);
 
-  const [settings] = await conn.query(
+  const { rows: settings } = await conn.query(
     `SELECT
       profile_completion_points,
       post_activity_points,
@@ -173,26 +173,25 @@ async function getActivityRewardRules(conn) {
 async function ensureShareActivityRewardsTable(conn) {
   await conn.query(
     `CREATE TABLE IF NOT EXISTS share_activity_rewards (
-      id INT AUTO_INCREMENT PRIMARY KEY,
+      id SERIAL PRIMARY KEY,
       user_id INT NOT NULL,
       phone_number VARCHAR(20),
       reward_date DATE NOT NULL,
       shared_post_id INT NOT NULL,
       points_awarded INT NOT NULL DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE KEY uniq_user_shared_post (user_id, shared_post_id),
-      INDEX idx_share_activity_user_date (user_id, reward_date),
+      UNIQUE (user_id, shared_post_id),
       CONSTRAINT fk_share_activity_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
       CONSTRAINT fk_share_activity_post FOREIGN KEY (shared_post_id) REFERENCES posts(post_id) ON DELETE CASCADE
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
+    )`
   );
 }
 
 async function getRewardsSchema(conn) {
-  const [columns] = await conn.query(
+  const { rows: columns } = await conn.query(
     `SELECT COLUMN_NAME
      FROM INFORMATION_SCHEMA.COLUMNS
-     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'rewards'`
+     WHERE table_schema = current_database() AND TABLE_NAME = 'rewards'`
   );
 
   const colSet = new Set(columns.map((c) => c.COLUMN_NAME));
@@ -214,10 +213,10 @@ async function getRewardsSchema(conn) {
 }
 
 async function getUserRewardsSchema(conn) {
-  const [columns] = await conn.query(
+  const { rows: columns } = await conn.query(
     `SELECT COLUMN_NAME
      FROM INFORMATION_SCHEMA.COLUMNS
-     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'user_rewards'`
+     WHERE table_schema = current_database() AND TABLE_NAME = 'user_rewards'`
   );
 
   const colSet = new Set(columns.map((c) => c.COLUMN_NAME));
@@ -243,10 +242,10 @@ function toBangkokDateString(value) {
 
 // helper — ดึงวันที่ปัจจุบันและเมื่อวานตาม timezone Bangkok (+07:00)
 async function getBangkokDates(conn) {
-  const [rows] = await conn.query(`
+  const { rows } = await conn.query(`
     SELECT
-      DATE(NOW())                      AS today,
-      DATE(NOW() - INTERVAL 1 DAY)    AS yesterday
+      CURRENT_DATE                              AS today,
+      (CURRENT_DATE - INTERVAL '1 day')         AS yesterday
   `);
   return {
     today: toBangkokDateString(rows[0].today),
@@ -255,12 +254,12 @@ async function getBangkokDates(conn) {
 }
 
 async function getTodayAppUsageAwardedPoints(conn, userId, today) {
-  const [rows] = await conn.query(
+  const { rows } = await conn.query(
     `SELECT COALESCE(SUM(points), 0) AS total
      FROM points_transactions
-     WHERE user_id = ?
+     WHERE user_id = $1
        AND source_type = 'app_time'
-       AND DATE(created_at) = ?`,
+       AND DATE(created_at) = $2`,
     [userId, today]
   );
 
@@ -269,16 +268,16 @@ async function getTodayAppUsageAwardedPoints(conn, userId, today) {
 
 // รวมนาทีทั้งหมดที่ใช้งานแอพในวันนี้ (ทุก session รวมกัน)
 async function getTodayTotalElapsedMinutes(conn, userId, today) {
-  const [rows] = await conn.query(
+  const { rows } = await conn.query(
     `SELECT COALESCE(SUM(
        CASE
-         WHEN ended_at IS NOT NULL THEN IFNULL(duration_minutes, 0)
-         ELSE TIMESTAMPDIFF(MINUTE, started_at, NOW())
+         WHEN ended_at IS NOT NULL THEN COALESCE(duration_minutes, 0)
+         ELSE EXTRACT(EPOCH FROM (NOW() - started_at)) / 60
        END
      ), 0) AS today_total
      FROM app_sessions
-     WHERE user_id = ?
-       AND DATE(started_at) = ?`,
+     WHERE user_id = $1
+       AND DATE(started_at) = $2`,
     [userId, today]
   );
   return Number(rows[0]?.today_total || 0);
@@ -326,14 +325,14 @@ exports.dailyCheckin = async (req, res) => {
   const { phone_number } = req.body;
   if (!phone_number) return res.status(400).json({ error: 'phone_number required' });
 
-  const conn = await pool.getConnection();
+  const conn = await pool.connect();
   try {
-    await conn.beginTransaction();
+    await conn.query('BEGIN');
 
     const { today, yesterday } = await getBangkokDates(conn);
 
     // Fetch reward settings for daily_login_bonus
-    const [rewardSettings] = await conn.query(
+    const { rows: rewardSettings } = await conn.query(
       'SELECT daily_login_bonus, daily_login_bonus_3x_threshold, daily_login_bonus_3x_multiplier, streak_milestone_days, streak_milestone_bonus FROM reward_settings WHERE setting_id = 1'
     );
     const dailyLoginBonus = rewardSettings.length ? Number(rewardSettings[0].daily_login_bonus || 5) : 5;
@@ -343,12 +342,12 @@ exports.dailyCheckin = async (req, res) => {
     const streakMilestoneBonus = rewardSettings.length ? Number(rewardSettings[0].streak_milestone_bonus || 2) : 2;
 
     // FOR UPDATE — lock row กันกด race condition พร้อมกัน
-    const [users] = await conn.query(
-      'SELECT user_id, login_streak, last_checkin_date, total_points FROM users WHERE phone_number = ? FOR UPDATE',
+    const { rows: users } = await conn.query(
+      'SELECT user_id, login_streak, last_checkin_date, total_points FROM users WHERE phone_number = $1 FOR UPDATE',
       [phone_number]
     );
     if (!users.length) {
-      await conn.rollback(); conn.release();
+      await conn.query('ROLLBACK'); conn.release();
       return res.status(404).json({ error: 'User not found' });
     }
 
@@ -358,7 +357,7 @@ exports.dailyCheckin = async (req, res) => {
 
     // ตรวจซ้ำหลัง lock — กันกรณี request พร้อมกัน 2 ตัว
     if (lastDate === today) {
-      await conn.rollback(); conn.release();
+      await conn.query('ROLLBACK'); conn.release();
       return res.json({
         already_checked: true,
         message: 'เช็คอินวันนี้แล้ว',
@@ -382,26 +381,26 @@ exports.dailyCheckin = async (req, res) => {
     // อัปเดต user
     await conn.query(
       `UPDATE users
-       SET login_streak = ?, last_checkin_date = ?, total_points = total_points + ?, last_login_at = NOW()
-       WHERE user_id = ?`,
+       SET login_streak = $1, last_checkin_date = $2, total_points = total_points + $3, last_login_at = NOW()
+       WHERE user_id = $4`,
       [newStreak, today, totalAwarded, userId]
     );
 
     // บันทึก transaction แต้มล็อคอิน
     await conn.query(
-      `INSERT INTO points_transactions (user_id, source_type, points, type) VALUES (?, 'daily_checkin', ?, 'earn')`,
+      `INSERT INTO points_transactions (user_id, source_type, points, type) VALUES ($1, 'daily_checkin', $2, 'earn')`,
       [userId, basePoints]
     );
 
     // บันทึก bonus (ถ้ามี)
     if (bonusAwarded > 0) {
       await conn.query(
-        `INSERT INTO points_transactions (user_id, source_type, points, type) VALUES (?, ?, ?, 'earn')`,
+        `INSERT INTO points_transactions (user_id, source_type, points, type) VALUES ($1, $2, $3, 'earn')`,
         [userId, `streak_bonus_${newStreak}`, bonusAwarded]
       );
     }
 
-    await conn.commit();
+    await conn.query('COMMIT');
 
     // Apply bonus events (ทำหลังจาก commit เพื่อหลีกเลี่ยง lock table)
     const loginBonusAwarded = await applyActiveBonusEvents(userId, 'login_bonus');
@@ -409,9 +408,9 @@ exports.dailyCheckin = async (req, res) => {
     conn.release();
 
     // ดึง updated user points
-    const updatedConn = await pool.getConnection();
-    const [updatedUser] = await updatedConn.query(
-      'SELECT total_points FROM users WHERE user_id = ?',
+    const updatedConn = await pool.connect();
+    const { rows: updatedUser } = await updatedConn.query(
+      'SELECT total_points FROM users WHERE user_id = $1',
       [userId]
     );
     updatedConn.release();
@@ -431,7 +430,7 @@ exports.dailyCheckin = async (req, res) => {
         : `✅ เช็คอินสำเร็จ! +${basePoints} แต้ม (Streak: ${newStreak} วัน)`,
     });
   } catch (err) {
-    await conn.rollback();
+    await conn.query('ROLLBACK');
     conn.release();
     console.error('dailyCheckin error:', err);
     res.status(500).json({ error: err.message });
@@ -445,10 +444,10 @@ exports.startSession = async (req, res) => {
   const { phone_number } = req.body;
   if (!phone_number) return res.status(400).json({ error: 'phone_number required' });
 
-  const conn = await pool.getConnection();
+  const conn = await pool.connect();
   try {
-    const [users] = await conn.query(
-      'SELECT user_id FROM users WHERE phone_number = ?', [phone_number]
+    const { rows: users } = await conn.query(
+      'SELECT user_id FROM users WHERE phone_number = $1', [phone_number]
     );
     if (!users.length) { conn.release(); return res.status(404).json({ error: 'User not found' }); }
     const userId = users[0].user_id;
@@ -458,13 +457,13 @@ exports.startSession = async (req, res) => {
     // ปิด session ที่ค้างอยู่ก่อน — cap ที่ 4 ชั่วโมงเพื่อป้องกัน session ค้างจาก app crash
     await conn.query(
       `UPDATE app_sessions SET ended_at = NOW(),
-         duration_minutes = LEAST(TIMESTAMPDIFF(MINUTE, started_at, NOW()), 240)
-       WHERE user_id = ? AND ended_at IS NULL`,
+         duration_minutes = LEAST(EXTRACT(EPOCH FROM (NOW() - started_at)) / 60, 240)
+       WHERE user_id = $1 AND ended_at IS NULL`,
       [userId]
     );
 
-    const [result] = await conn.query(
-      'INSERT INTO app_sessions (user_id) VALUES (?)', [userId]
+    const result = await conn.query(
+      'INSERT INTO app_sessions (user_id) VALUES ($1) RETURNING session_id', [userId]
     );
 
     // รวมนาทีที่ใช้งานทั้งวันนี้ (sessions ก่อนหน้า) ส่งกลับให้ Flutter ใช้ init timer
@@ -472,7 +471,7 @@ exports.startSession = async (req, res) => {
 
     conn.release();
     res.json({
-      session_id: Number(result.insertId),
+      session_id: Number(result.rows[0].session_id),
       started: true,
       today_elapsed_minutes: todayElapsedMinutes,
     });
@@ -492,25 +491,25 @@ exports.endSession = async (req, res) => {
     return res.status(400).json({ error: 'phone_number and session_id required' });
   }
 
-  const conn = await pool.getConnection();
+  const conn = await pool.connect();
   try {
     const usageRule = await getAppUsageRule(conn);
 
-    const [users] = await conn.query(
-      'SELECT user_id, total_points FROM users WHERE phone_number = ?', [phone_number]
+    const { rows: users } = await conn.query(
+      'SELECT user_id, total_points FROM users WHERE phone_number = $1', [phone_number]
     );
     if (!users.length) { conn.release(); return res.status(404).json({ error: 'User not found' }); }
     const userId = users[0].user_id;
 
     await conn.query(
       `UPDATE app_sessions
-       SET ended_at = NOW(), duration_minutes = TIMESTAMPDIFF(MINUTE, started_at, NOW())
-       WHERE session_id = ? AND user_id = ? AND ended_at IS NULL`,
+       SET ended_at = NOW(), duration_minutes = EXTRACT(EPOCH FROM (NOW() - started_at)) / 60
+       WHERE session_id = $1 AND user_id = $2 AND ended_at IS NULL`,
       [session_id, userId]
     );
 
-    const [sessions] = await conn.query(
-      'SELECT duration_minutes, points_awarded FROM app_sessions WHERE session_id = ?',
+    const { rows: sessions } = await conn.query(
+      'SELECT duration_minutes, points_awarded FROM app_sessions WHERE session_id = $1',
       [session_id]
     );
     if (!sessions.length) { conn.release(); return res.json({ points_awarded: 0 }); }
@@ -536,15 +535,15 @@ exports.endSession = async (req, res) => {
 
     if (newPoints > 0) {
       await conn.query(
-        'UPDATE app_sessions SET points_awarded = ? WHERE session_id = ?',
+        'UPDATE app_sessions SET points_awarded = $1 WHERE session_id = $2',
         [newSessionTotal, session_id]
       );
       await conn.query(
-        `UPDATE users SET total_points = total_points + ? WHERE user_id = ?`,
+        `UPDATE users SET total_points = total_points + $1 WHERE user_id = $2`,
         [newPoints, userId]
       );
       await conn.query(
-        `INSERT INTO points_transactions (user_id, source_type, points, type) VALUES (?, 'app_time', ?, 'earn')`,
+        `INSERT INTO points_transactions (user_id, source_type, points, type) VALUES ($1, 'app_time', $2, 'earn')`,
         [userId, newPoints]
       );
     }
@@ -562,7 +561,7 @@ exports.endSession = async (req, res) => {
         max_rewards_per_day: usageRule.maxRewardsPerDay,
         max_points_per_day: usageRule.maxDailyPoints,
       },
-      message: newPoints > 0 
+      message: newPoints > 0
         ? `⏱️ ใช้งานครบตามเงื่อนไข ได้รับ +${newPoints} แต้ม!`
         : null,
     });
@@ -582,19 +581,19 @@ exports.sessionHeartbeat = async (req, res) => {
     return res.status(400).json({ error: 'phone_number and session_id required' });
   }
 
-  const conn = await pool.getConnection();
+  const conn = await pool.connect();
   try {
     const usageRule = await getAppUsageRule(conn);
 
-    const [users] = await conn.query(
-      'SELECT user_id, total_points FROM users WHERE phone_number = ?', [phone_number]
+    const { rows: users } = await conn.query(
+      'SELECT user_id, total_points FROM users WHERE phone_number = $1', [phone_number]
     );
     if (!users.length) { conn.release(); return res.status(404).json({ error: 'User not found' }); }
     const userId = users[0].user_id;
 
-    const [sessions] = await conn.query(
-      `SELECT TIMESTAMPDIFF(MINUTE, started_at, NOW()) as elapsed, points_awarded
-       FROM app_sessions WHERE session_id = ? AND user_id = ? AND ended_at IS NULL`,
+    const { rows: sessions } = await conn.query(
+      `SELECT EXTRACT(EPOCH FROM (NOW() - started_at)) / 60 as elapsed, points_awarded
+       FROM app_sessions WHERE session_id = $1 AND user_id = $2 AND ended_at IS NULL`,
       [session_id, userId]
     );
     if (!sessions.length) { conn.release(); return res.json({ active: false }); }
@@ -619,21 +618,21 @@ exports.sessionHeartbeat = async (req, res) => {
 
     if (newPoints > 0) {
       await conn.query(
-        'UPDATE app_sessions SET points_awarded = ? WHERE session_id = ?',
+        'UPDATE app_sessions SET points_awarded = $1 WHERE session_id = $2',
         [newSessionTotal, session_id]
       );
       await conn.query(
-        `UPDATE users SET total_points = total_points + ? WHERE user_id = ?`,
+        `UPDATE users SET total_points = total_points + $1 WHERE user_id = $2`,
         [newPoints, userId]
       );
       await conn.query(
-        `INSERT INTO points_transactions (user_id, source_type, points, type) VALUES (?, 'app_time', ?, 'earn')`,
+        `INSERT INTO points_transactions (user_id, source_type, points, type) VALUES ($1, 'app_time', $2, 'earn')`,
         [userId, newPoints]
       );
     }
 
-    const [updatedUser] = await conn.query(
-      'SELECT total_points FROM users WHERE user_id = ?', [userId]
+    const { rows: updatedUser } = await conn.query(
+      'SELECT total_points FROM users WHERE user_id = $1', [userId]
     );
     conn.release();
 
@@ -663,13 +662,13 @@ exports.sessionHeartbeat = async (req, res) => {
 // ============================================================
 exports.getRewardSummary = async (req, res) => {
   const { phone } = req.params;
-  const conn = await pool.getConnection();
+  const conn = await pool.connect();
   try {
     const usageRule = await getAppUsageRule(conn);
     const { today } = await getBangkokDates(conn);
 
     // Fetch reward settings for daily_login_bonus
-    const [rewardSettings] = await conn.query(
+    const { rows: rewardSettings } = await conn.query(
       'SELECT daily_login_bonus, daily_login_bonus_3x_threshold, daily_login_bonus_3x_multiplier, streak_milestone_days, streak_milestone_bonus FROM reward_settings WHERE setting_id = 1'
     );
     const dailyLoginBonus = rewardSettings.length ? Number(rewardSettings[0].daily_login_bonus || 5) : 5;
@@ -678,23 +677,23 @@ exports.getRewardSummary = async (req, res) => {
     const streakMilestoneDay = rewardSettings.length ? Number(rewardSettings[0].streak_milestone_days || 30) : 30;
     const streakMilestoneBonus = rewardSettings.length ? Number(rewardSettings[0].streak_milestone_bonus || 2) : 2;
 
-    const [users] = await conn.query(
-      `SELECT user_id, login_streak, last_checkin_date, total_points FROM users WHERE phone_number = ?`,
+    const { rows: users } = await conn.query(
+      `SELECT user_id, login_streak, last_checkin_date, total_points FROM users WHERE phone_number = $1`,
       [phone]
     );
     if (!users.length) { conn.release(); return res.status(404).json({ error: 'User not found' }); }
     const user = users[0];
     const userId = user.user_id;
 
-    const [history] = await conn.query(
+    const { rows: history } = await conn.query(
       `SELECT source_type, points, type, created_at FROM points_transactions
-       WHERE user_id = ? ORDER BY created_at DESC LIMIT 10`,
+       WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10`,
       [userId]
     );
 
-    const [activeSession] = await conn.query(
-      `SELECT session_id, TIMESTAMPDIFF(MINUTE, started_at, NOW()) as elapsed, points_awarded
-       FROM app_sessions WHERE user_id = ? AND ended_at IS NULL LIMIT 1`,
+    const { rows: activeSession } = await conn.query(
+      `SELECT session_id, EXTRACT(EPOCH FROM (NOW() - started_at)) / 60 as elapsed, points_awarded
+       FROM app_sessions WHERE user_id = $1 AND ended_at IS NULL LIMIT 1`,
       [userId]
     );
     const todayUsageAwardedPoints = await getTodayAppUsageAwardedPoints(
@@ -708,7 +707,7 @@ exports.getRewardSummary = async (req, res) => {
 
     const streak = Number(user.login_streak);
     const nextMilestone = Math.ceil((streak + 1) / streakMilestoneDay) * streakMilestoneDay;
-    
+
     // Calculate daily_points with multiplier for display
     let dailyPointsDisplay = dailyLoginBonus;
     if (streak >= streakThreshold) {
@@ -761,7 +760,7 @@ exports.getRewardSummary = async (req, res) => {
 // ============================================================
 exports.getAvailableRewards = async (req, res) => {
   const { phone } = req.params;
-  const conn = await pool.getConnection();
+  const conn = await pool.connect();
   try {
     const rewardSchema = await getRewardsSchema(conn);
     const userRewardSchema = await getUserRewardsSchema(conn);
@@ -771,8 +770,8 @@ exports.getAvailableRewards = async (req, res) => {
     }
 
     // ดึง user_id และ total_points
-    const [users] = await conn.query(
-      `SELECT user_id, total_points FROM users WHERE phone_number = ?`,
+    const { rows: users } = await conn.query(
+      `SELECT user_id, total_points FROM users WHERE phone_number = $1`,
       [phone]
     );
     if (!users.length) {
@@ -792,9 +791,9 @@ exports.getAvailableRewards = async (req, res) => {
       rewardSchema.hasUsageInstructions ? 'usage_instructions' : 'NULL AS usage_instructions',
     ];
     const expiryFilter = rewardSchema.hasExpiryDate
-      ? 'AND (expiry_date IS NULL OR expiry_date >= CURDATE())'
+      ? 'AND (expiry_date IS NULL OR expiry_date >= CURRENT_DATE)'
       : '';
-    const [rewards] = await conn.query(
+    const { rows: rewards } = await conn.query(
       `SELECT reward_id, reward_name,
               ${rewardSchema.pointsColumn} AS points_required,
               ${optionalFields.join(', ')}
@@ -810,13 +809,13 @@ exports.getAvailableRewards = async (req, res) => {
       userRewardSchema.hasRedeemedAt ? 'redeemed_at' : 'NULL AS redeemed_at',
       userRewardSchema.hasQuantity ? 'quantity' : '1 AS quantity',
     ].join(', ');
-    const [redeemed] = await conn.query(
+    const { rows: redeemed } = await conn.query(
       `SELECT ${redeemedSelect}
        FROM user_rewards
-       WHERE user_id = ?`,
+       WHERE user_id = $1`,
       [userId]
     );
-    
+
     const redeemedMap = {};
     redeemed.forEach(r => {
       redeemedMap[r.reward_id] = {
@@ -862,19 +861,19 @@ async function generateQRCode(conn, userId, rewardId, phoneNumber, pointsRedeeme
   const timestamp = Date.now();
   const random = crypto.randomBytes(8).toString('hex').toUpperCase();
   const qrCode = `QR${timestamp}${random}`;
-  
+
   // Set expiry to 60 minutes from now
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
-  
+
   // Insert into database
-  const [result] = await conn.query(
+  const result = await conn.query(
     `INSERT INTO qr_codes (code, user_id, reward_id, phone_number, points_redeemed, expires_at)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING qr_id`,
     [qrCode, userId, rewardId, phoneNumber, pointsRedeemed, expiresAt]
   );
 
   return {
-    qr_id: result.insertId,
+    qr_id: result.rows[0].qr_id,
     qr_code: qrCode,
     expires_at: expiresAt,
     expires_in_minutes: 60
@@ -888,7 +887,7 @@ async function logQRAction(conn, qrId, qrCode, userId, phoneNumber, action, stat
   try {
     await conn.query(
       `INSERT INTO qr_code_logs (qr_id, qr_code, user_id, phone_number, action, status, error_message, ip_address, user_agent)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [qrId, qrCode, userId, phoneNumber, action, status, errorMsg, ipAddr, userAgent]
     );
   } catch (err) {
@@ -902,8 +901,8 @@ async function logQRAction(conn, qrId, qrCode, userId, phoneNumber, action, stat
 // ============================================================
 async function updateRedemptionHistory(conn, userId, phoneNumber, rewardId, rewardName, pointsRedeemed, qrCode, status, timestamp = null, overrideExpiresAt = null) {
   try {
-    const [qrCodes] = await conn.query(
-      `SELECT expires_at FROM qr_codes WHERE code = ? LIMIT 1`,
+    const { rows: qrCodes } = await conn.query(
+      `SELECT expires_at FROM qr_codes WHERE code = $1 LIMIT 1`,
       [qrCode]
     );
 
@@ -911,22 +910,22 @@ async function updateRedemptionHistory(conn, userId, phoneNumber, rewardId, rewa
     const expiresAt = overrideExpiresAt ?? (qrCodes.length ? qrCodes[0].expires_at : new Date(Date.now() + 60 * 60 * 1000));
 
     // Check if this QR code already exists in redemption history
-    const [existing] = await conn.query(
-      `SELECT redemption_id FROM reward_redemption_history WHERE qr_code = ? LIMIT 1`,
+    const { rows: existing } = await conn.query(
+      `SELECT redemption_id FROM reward_redemption_history WHERE qr_code = $1 LIMIT 1`,
       [qrCode]
     );
-    
+
     if (existing.length) {
       // Update existing record
-      const updateQuery = `UPDATE reward_redemption_history SET redemption_status = ?, updated_at = NOW() ${timestamp ? ', scanned_at = ?' : ''} WHERE qr_code = ?`;
-      const params = timestamp ? [status, timestamp, qrCode] : [status, qrCode];
+      const updateQuery = `UPDATE reward_redemption_history SET redemption_status = $1, updated_at = NOW() ${timestamp ? ', scanned_at = $3' : ''} WHERE qr_code = $2`;
+      const params = timestamp ? [status, qrCode, timestamp] : [status, qrCode];
       await conn.query(updateQuery, params);
       console.log(`✓ Updated redemption history for QR: ${qrCode}`);
     } else {
       // Insert new record
       await conn.query(
         `INSERT INTO reward_redemption_history (user_id, phone_number, reward_id, reward_name, points_redeemed, qr_code, redemption_status, redeemed_at, expires_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8)`,
         [userId, phoneNumber, rewardId, rewardName, pointsRedeemed, qrCode, status, expiresAt]
       );
       console.log(`✓ Created redemption history for QR: ${qrCode}`);
@@ -947,25 +946,25 @@ exports.redeemReward = async (req, res) => {
     return res.status(400).json({ error: 'phone_number and reward_id required' });
   }
 
-  const conn = await pool.getConnection();
+  const conn = await pool.connect();
   try {
-    await conn.beginTransaction();
+    await conn.query('BEGIN');
 
     const rewardSchema = await getRewardsSchema(conn);
     const userRewardSchema = await getUserRewardsSchema(conn);
     if (!rewardSchema.pointsColumn) {
-      await conn.rollback();
+      await conn.query('ROLLBACK');
       conn.release();
       return res.status(500).json({ error: 'Rewards points column not found in DB schema' });
     }
 
     // ดึง user + lock row
-    const [users] = await conn.query(
-      `SELECT user_id, total_points FROM users WHERE phone_number = ? FOR UPDATE`,
+    const { rows: users } = await conn.query(
+      `SELECT user_id, total_points FROM users WHERE phone_number = $1 FOR UPDATE`,
       [phone_number]
     );
     if (!users.length) {
-      await conn.rollback();
+      await conn.query('ROLLBACK');
       conn.release();
       return res.status(404).json({ error: 'User not found' });
     }
@@ -974,13 +973,13 @@ exports.redeemReward = async (req, res) => {
     const userPoints = Number(users[0].total_points);
 
     // ดึงข้อมูลรางวัล + lock row
-    const [rewards] = await conn.query(
+    const { rows: rewards } = await conn.query(
       `SELECT reward_id, reward_name, ${rewardSchema.pointsColumn} AS points_required
-       FROM rewards WHERE reward_id = ? AND is_deleted = 0 FOR UPDATE`,
+       FROM rewards WHERE reward_id = $1 AND is_deleted = 0 FOR UPDATE`,
       [reward_id]
     );
     if (!rewards.length) {
-      await conn.rollback();
+      await conn.query('ROLLBACK');
       conn.release();
       return res.status(404).json({ error: 'Reward not found' });
     }
@@ -990,9 +989,9 @@ exports.redeemReward = async (req, res) => {
 
     // ตรวจสอบแต้มพอหรือไม่
     if (userPoints < pointsRequired) {
-      await conn.rollback();
+      await conn.query('ROLLBACK');
       conn.release();
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Insufficient points',
         user_points: userPoints,
         points_required: pointsRequired,
@@ -1001,24 +1000,24 @@ exports.redeemReward = async (req, res) => {
     }
 
     // ตรวจสอบว่าแลกแล้วหรือยัง (บาง reward ตั้งใจให้แลกได้แค่ครั้งเดียว)
-    const [existing] = await conn.query(
-      `SELECT user_reward_id FROM user_rewards WHERE user_id = ? AND reward_id = ?`,
+    const { rows: existing } = await conn.query(
+      `SELECT user_reward_id FROM user_rewards WHERE user_id = $1 AND reward_id = $2`,
       [userId, reward_id]
     );
-    
+
     // กำหนดนโยบาย: ให้แลกได้หลายครั้ง แต่บันทึกครั้งนี้
     // ถ้าต้องการแลกครั้งเดียว ให้เปลี่ยนเป็น return error
 
     // หัก แต้ม
     await conn.query(
-      `UPDATE users SET total_points = total_points - ? WHERE user_id = ?`,
+      `UPDATE users SET total_points = total_points - $1 WHERE user_id = $2`,
       [pointsRequired, userId]
     );
 
     // บันทึก transaction
     await conn.query(
-      `INSERT INTO points_transactions (user_id, source_type, points, type) 
-       VALUES (?, ?, ?, 'redeem')`,
+      `INSERT INTO points_transactions (user_id, source_type, points, type)
+       VALUES ($1, $2, $3, 'redeem')`,
       [userId, `reward_${reward_id}`, pointsRequired]
     );
 
@@ -1027,15 +1026,15 @@ exports.redeemReward = async (req, res) => {
       if (userRewardSchema.hasQuantity) {
         // อัพเดต quantity ถ้าแลกมาก่อน
         await conn.query(
-          `UPDATE user_rewards SET quantity = quantity + 1, redeemed_at = NOW() 
-           WHERE user_id = ? AND reward_id = ?`,
+          `UPDATE user_rewards SET quantity = quantity + 1, redeemed_at = NOW()
+           WHERE user_id = $1 AND reward_id = $2`,
           [userId, reward_id]
         );
       } else if (userRewardSchema.hasRedeemedAt) {
         // schema เดิมที่ไม่มี quantity ให้แค่อัปเดตเวลาล่าสุด
         await conn.query(
           `UPDATE user_rewards SET redeemed_at = NOW()
-           WHERE user_id = ? AND reward_id = ?`,
+           WHERE user_id = $1 AND reward_id = $2`,
           [userId, reward_id]
         );
       }
@@ -1043,38 +1042,38 @@ exports.redeemReward = async (req, res) => {
       // เพิ่มรางวัลใหม่ (รองรับทั้ง schema มี/ไม่มี quantity)
       if (userRewardSchema.hasQuantity) {
         await conn.query(
-          `INSERT INTO user_rewards (user_id, reward_id, quantity, redeemed_at) 
-           VALUES (?, ?, 1, NOW())`,
+          `INSERT INTO user_rewards (user_id, reward_id, quantity, redeemed_at)
+           VALUES ($1, $2, 1, NOW())`,
           [userId, reward_id]
         );
       } else if (userRewardSchema.hasRedeemedAt) {
         await conn.query(
           `INSERT INTO user_rewards (user_id, reward_id, redeemed_at)
-           VALUES (?, ?, NOW())`,
+           VALUES ($1, $2, NOW())`,
           [userId, reward_id]
         );
       } else {
         await conn.query(
           `INSERT INTO user_rewards (user_id, reward_id)
-           VALUES (?, ?)`,
+           VALUES ($1, $2)`,
           [userId, reward_id]
         );
       }
     }
 
     // Get available promo code from uploaded CSV codes (instead of generating new code)
-    const [promoCodeResult] = await conn.query(
+    const { rows: promoCodeResult } = await conn.query(
       `SELECT promo_code_id, code, description, expiry_date
        FROM promo_codes
-       WHERE reward_id = ? AND is_used = FALSE
+       WHERE reward_id = $1 AND is_used = FALSE
        ORDER BY created_at ASC LIMIT 1`,
       [reward_id]
     );
 
     if (!promoCodeResult.length) {
-      await conn.rollback();
+      await conn.query('ROLLBACK');
       conn.release();
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'ไม่มีโค้ดส่วนลดที่พร้อมใช้สำหรับรางวัลนี้ กรุณาติดต่อแอดมิน',
         reward_name: reward.reward_name
       });
@@ -1084,8 +1083,8 @@ exports.redeemReward = async (req, res) => {
 
     // Mark promo code as used
     await conn.query(
-      `UPDATE promo_codes SET is_used = TRUE, used_by_user_id = ?, used_by_phone = ?, used_at = NOW()
-       WHERE promo_code_id = ?`,
+      `UPDATE promo_codes SET is_used = TRUE, used_by_user_id = $1, used_by_phone = $2, used_at = NOW()
+       WHERE promo_code_id = $3`,
       [userId, phone_number, promoCode.promo_code_id]
     );
 
@@ -1096,22 +1095,22 @@ exports.redeemReward = async (req, res) => {
     // Update redemption history with promo code (ส่ง promoCodeExpiry เพื่อให้ expires_at ถูกต้อง)
     await updateRedemptionHistory(conn, userId, phone_number, reward_id, reward.reward_name, pointsRequired, redemptionCode, 'pending', null, promoCodeExpiry);
 
-    await conn.commit();
+    await conn.query('COMMIT');
     conn.release();
 
     // บันทึก notification โดยอ้าง redemption_id จาก reward_redemption_history
     try {
-      const notifConn = await pool.getConnection();
-      const [redemptions] = await notifConn.query(
+      const notifConn = await pool.connect();
+      const { rows: redemptions } = await notifConn.query(
         `SELECT redemption_id FROM reward_redemption_history
-         WHERE qr_code = ? AND user_id = ? LIMIT 1`,
+         WHERE qr_code = $1 AND user_id = $2 LIMIT 1`,
         [redemptionCode, userId]
       );
       const redemptionId = redemptions.length ? redemptions[0].redemption_id : null;
 
       await notifConn.query(
         `INSERT INTO notifications (user_id, actor_id, type, content, redemption_id, created_at)
-         VALUES (?, ?, 'reward_redemption', ?, ?, NOW())`,
+         VALUES ($1, $2, 'reward_redemption', $3, $4, NOW())`,
         [
           userId,
           userId,
@@ -1141,7 +1140,7 @@ exports.redeemReward = async (req, res) => {
 
     res.json(responseData);
   } catch (err) {
-    await conn.rollback();
+    await conn.query('ROLLBACK');
     conn.release();
     console.error('redeemReward error:', err);
     res.status(500).json({ error: err.message });
@@ -1158,10 +1157,10 @@ exports.getRedemptionRecord = async (req, res) => {
     return res.status(400).json({ error: 'phone_number and qr_code required' });
   }
 
-  const conn = await pool.getConnection();
+  const conn = await pool.connect();
   try {
     // ดึง redemption record ล่าสุดที่ตรงกับ phone + QR code
-    const [records] = await conn.query(
+    const { rows: records } = await conn.query(
       `SELECT
         redemption_id,
         user_id,
@@ -1178,7 +1177,7 @@ exports.getRedemptionRecord = async (req, res) => {
         created_at,
         updated_at
        FROM reward_redemption_history
-       WHERE phone_number = ? AND qr_code = ?
+       WHERE phone_number = $1 AND qr_code = $2
        ORDER BY created_at DESC
        LIMIT 1`,
       [phone, qrCode]
@@ -1189,10 +1188,10 @@ exports.getRedemptionRecord = async (req, res) => {
     if (records.length) {
       const record = records[0];
       // Fetch usage_instructions from rewards table
-      const rewardsConn = await pool.getConnection();
+      const rewardsConn = await pool.connect();
       try {
-        const [rewardData] = await rewardsConn.query(
-          `SELECT usage_instructions FROM rewards WHERE reward_id = ? LIMIT 1`,
+        const { rows: rewardData } = await rewardsConn.query(
+          `SELECT usage_instructions FROM rewards WHERE reward_id = $1 LIMIT 1`,
           [record.reward_id]
         );
         record.usage_instructions = rewardData.length ? rewardData[0].usage_instructions : null;
@@ -1204,7 +1203,7 @@ exports.getRedemptionRecord = async (req, res) => {
       }
       return res.json({ success: true, data: record });
     } else {
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: 'Redemption record not found',
         success: false
       });
@@ -1226,11 +1225,11 @@ exports.verifyQRCode = async (req, res) => {
     return res.status(400).json({ error: 'qr_code required' });
   }
 
-  const conn = await pool.getConnection();
+  const conn = await pool.connect();
   try {
     // ดึงข้อมูล QR code
-    const [qrRecords] = await conn.query(
-      `SELECT * FROM qr_codes WHERE code = ? LIMIT 1`,
+    const { rows: qrRecords } = await conn.query(
+      `SELECT * FROM qr_codes WHERE code = $1 LIMIT 1`,
       [qr_code]
     );
 
@@ -1267,8 +1266,8 @@ exports.verifyQRCode = async (req, res) => {
     }
 
     // ดึงข้อมูลรางวัล
-    const [rewards] = await conn.query(
-      `SELECT reward_id, reward_name FROM rewards WHERE reward_id = ?`,
+    const { rows: rewards } = await conn.query(
+      `SELECT reward_id, reward_name FROM rewards WHERE reward_id = $1`,
       [qr.reward_id]
     );
 
@@ -1314,18 +1313,18 @@ exports.useQRCode = async (req, res) => {
     return res.status(400).json({ error: 'qr_code required' });
   }
 
-  const conn = await pool.getConnection();
+  const conn = await pool.connect();
   try {
-    await conn.beginTransaction();
+    await conn.query('BEGIN');
 
     // ดึงข้อมูล QR code + lock row
-    const [qrRecords] = await conn.query(
-      `SELECT * FROM qr_codes WHERE code = ? FOR UPDATE`,
+    const { rows: qrRecords } = await conn.query(
+      `SELECT * FROM qr_codes WHERE code = $1 FOR UPDATE`,
       [qr_code]
     );
 
     if (!qrRecords.length) {
-      await conn.rollback();
+      await conn.query('ROLLBACK');
       await logQRAction(conn, null, qr_code, null, null, 'use', 'invalid', 'QR code not found');
       conn.release();
       return res.status(404).json({ error: 'QR code not found' });
@@ -1338,7 +1337,7 @@ exports.useQRCode = async (req, res) => {
     const expiresAt = new Date(qr.expires_at);
 
     if (now > expiresAt) {
-      await conn.rollback();
+      await conn.query('ROLLBACK');
       await logQRAction(conn, qr.qr_id, qr_code, qr.user_id, qr.phone_number, 'use', 'expired', 'QR code has expired');
       conn.release();
       return res.status(400).json({ error: 'QR code expired' });
@@ -1346,7 +1345,7 @@ exports.useQRCode = async (req, res) => {
 
     // ตรวจสอบว่าใช้แล้วหรือไม่
     if (qr.is_used) {
-      await conn.rollback();
+      await conn.query('ROLLBACK');
       await logQRAction(conn, qr.qr_id, qr_code, qr.user_id, qr.phone_number, 'use', 'already_used', 'QR code already used');
       conn.release();
       return res.status(400).json({ error: 'QR code already used' });
@@ -1354,29 +1353,29 @@ exports.useQRCode = async (req, res) => {
 
     // Mark as used
     await conn.query(
-      `UPDATE qr_codes SET is_used = TRUE, used_at = NOW() WHERE qr_id = ?`,
+      `UPDATE qr_codes SET is_used = TRUE, used_at = NOW() WHERE qr_id = $1`,
       [qr.qr_id]
     );
 
     // บันทึก transaction
     await conn.query(
-      `INSERT INTO points_transactions (user_id, source_type, points, type) 
-       VALUES (?, ?, ?, 'redemption_used')`,
+      `INSERT INTO points_transactions (user_id, source_type, points, type)
+       VALUES ($1, $2, $3, 'redemption_used')`,
       [qr.user_id, `qr_${qr.qr_id}`, -qr.points_redeemed]
     );
 
     // Log successful use
     await logQRAction(conn, qr.qr_id, qr_code, qr.user_id, qr.phone_number, 'use', 'success');
-    
+
     // Get reward name and update redemption history
-    const [rewards] = await conn.query(
-      `SELECT reward_name FROM rewards WHERE reward_id = ?`,
+    const { rows: rewards } = await conn.query(
+      `SELECT reward_name FROM rewards WHERE reward_id = $1`,
       [qr.reward_id]
     );
     const rewardName = rewards.length ? rewards[0].reward_name : 'Unknown Reward';
     await updateRedemptionHistory(conn, qr.user_id, qr.phone_number, qr.reward_id, rewardName, qr.points_redeemed, qr_code, 'used', now);
 
-    await conn.commit();
+    await conn.query('COMMIT');
     conn.release();
 
     res.json({
@@ -1386,7 +1385,7 @@ exports.useQRCode = async (req, res) => {
       used_at: new Date()
     });
   } catch (err) {
-    await conn.rollback();
+    await conn.query('ROLLBACK');
     conn.release();
     console.error('useQRCode error:', err);
     res.status(500).json({ error: err.message });
@@ -1400,17 +1399,17 @@ exports.useQRCode = async (req, res) => {
 async function applyActiveBonusEvents(userId, bonusType = 'login_bonus') {
   let conn;
   try {
-    conn = await pool.getConnection();
+    conn = await pool.connect();
     const { today } = await getBangkokDates(conn);
 
     // Find all active events matching the type
-    const [events] = await conn.query(
+    const { rows: events } = await conn.query(
       `SELECT event_id, points_awarded, bonus_type, max_points_per_user
        FROM bonus_events
        WHERE is_active = 1
-         AND event_type = ?
-         AND start_date <= ?
-         AND end_date >= ?`,
+         AND event_type = $1
+         AND start_date <= $2
+         AND end_date >= $3`,
       [bonusType, today, today]
     );
 
@@ -1423,16 +1422,16 @@ async function applyActiveBonusEvents(userId, bonusType = 'login_bonus') {
 
       // Check if user already got this bonus (for one_time events)
       if (event.bonus_type === 'one_time') {
-        const [existing] = await conn.query(
-          'SELECT record_id FROM user_event_bonus WHERE user_id = ? AND event_id = ?',
+        const { rows: existing } = await conn.query(
+          'SELECT record_id FROM user_event_bonus WHERE user_id = $1 AND event_id = $2',
           [userId, eventId]
         );
         if (existing.length > 0) continue; // Skip, already awarded
       } else if (event.bonus_type === 'recurring_daily') {
         // Check if user got bonus today (for daily events)
-        const [existing] = await conn.query(
+        const { rows: existing } = await conn.query(
           `SELECT record_id FROM user_event_bonus
-           WHERE user_id = ? AND event_id = ? AND DATE(awarded_at) = ?`,
+           WHERE user_id = $1 AND event_id = $2 AND DATE(awarded_at) = $3`,
           [userId, eventId, today]
         );
         if (existing.length > 0) continue; // Skip, already awarded today
@@ -1440,10 +1439,10 @@ async function applyActiveBonusEvents(userId, bonusType = 'login_bonus') {
 
       // Check max_points_per_user limit
       if (maxPointsPerUser) {
-        const [totalAwarded] = await conn.query(
+        const { rows: totalAwarded } = await conn.query(
           `SELECT COALESCE(SUM(points_awarded), 0) as total
            FROM user_event_bonus
-           WHERE user_id = ? AND event_id = ?`,
+           WHERE user_id = $1 AND event_id = $2`,
           [userId, eventId]
         );
         if (Number(totalAwarded[0].total) >= maxPointsPerUser) {
@@ -1453,21 +1452,21 @@ async function applyActiveBonusEvents(userId, bonusType = 'login_bonus') {
 
       // Award points
       await conn.query(
-        'UPDATE users SET total_points = total_points + ? WHERE user_id = ?',
+        'UPDATE users SET total_points = total_points + $1 WHERE user_id = $2',
         [pointsAwarded, userId]
       );
 
       // Record the award
       await conn.query(
-        `INSERT INTO user_event_bonus (user_id, event_id, points_awarded) 
-         VALUES (?, ?, ?)`,
+        `INSERT INTO user_event_bonus (user_id, event_id, points_awarded)
+         VALUES ($1, $2, $3)`,
         [userId, eventId, pointsAwarded]
       );
 
       // Log transaction
       await conn.query(
-        `INSERT INTO points_transactions (user_id, source_type, points, type) 
-         VALUES (?, ?, ?, 'earn')`,
+        `INSERT INTO points_transactions (user_id, source_type, points, type)
+         VALUES ($1, $2, $3, 'earn')`,
         [userId, `bonus_event_${eventId}`, pointsAwarded]
       );
 
@@ -1489,11 +1488,11 @@ async function applyActiveBonusEvents(userId, bonusType = 'login_bonus') {
  */
 exports.checkAndApplyBonusEvents = async (req, res) => {
   const { phone } = req.params;
-  const conn = await pool.getConnection();
+  const conn = await pool.connect();
 
   try {
-    const [users] = await conn.query(
-      'SELECT user_id FROM users WHERE phone_number = ?',
+    const { rows: users } = await conn.query(
+      'SELECT user_id FROM users WHERE phone_number = $1',
       [phone]
     );
 
@@ -1517,9 +1516,9 @@ exports.checkAndApplyBonusEvents = async (req, res) => {
 
     const totalBonusAwarded = loginBonusAwarded + usageBonusAwarded + specialBonusAwarded;
 
-    const updatedConn = await pool.getConnection();
-    const [updatedUser] = await updatedConn.query(
-      'SELECT total_points FROM users WHERE user_id = ?',
+    const updatedConn = await pool.connect();
+    const { rows: updatedUser } = await updatedConn.query(
+      'SELECT total_points FROM users WHERE user_id = $1',
       [userId]
     );
     updatedConn.release();
@@ -1531,7 +1530,7 @@ exports.checkAndApplyBonusEvents = async (req, res) => {
       usage_bonus: usageBonusAwarded,
       special_bonus: specialBonusAwarded,
       total_points: updatedUser.length ? Number(updatedUser[0].total_points) : 0,
-      message: totalBonusAwarded > 0 
+      message: totalBonusAwarded > 0
         ? `🎁 ได้รับโบนัส +${totalBonusAwarded} แต้มจากอีเว้น!`
         : 'ไม่มีโบนัสที่รอคอยในขณะนี้'
     });
@@ -1548,10 +1547,10 @@ exports.checkAndApplyBonusEvents = async (req, res) => {
 exports.getRewardSettings = async (req, res) => {
   let conn;
   try {
-    conn = await pool.getConnection();
+    conn = await pool.connect();
     const usageRule = await getAppUsageRule(conn);
     const activityRules = await getActivityRewardRules(conn);
-    const [settings] = await conn.query(
+    const { rows: settings } = await conn.query(
       'SELECT * FROM reward_settings WHERE setting_id = 1'
     );
 
@@ -1597,8 +1596,8 @@ exports.getRewardSettings = async (req, res) => {
 exports.getBonusEvents = async (req, res) => {
   let conn;
   try {
-    conn = await pool.getConnection();
-    const [events] = await conn.query(
+    conn = await pool.connect();
+    const { rows: events } = await conn.query(
       `SELECT * FROM bonus_events ORDER BY created_at DESC`
     );
 
@@ -1637,14 +1636,14 @@ exports.getBonusEvents = async (req, res) => {
  */
 exports.checkProfileCompletion = async (req, res) => {
   const { phone } = req.params;
-  const conn = await pool.getConnection();
+  const conn = await pool.connect();
 
   try {
     const activityRules = await getActivityRewardRules(conn);
 
-    const [users] = await conn.query(
+    const { rows: users } = await conn.query(
       `SELECT user_id, profile_completion_rewarded, full_name, about_me, phone_number
-       FROM users WHERE phone_number = ?`,
+       FROM users WHERE phone_number = $1`,
       [phone]
     );
 
@@ -1676,14 +1675,14 @@ exports.checkProfileCompletion = async (req, res) => {
     }
 
     await conn.query(
-      `UPDATE users SET total_points = total_points + ?, profile_completion_rewarded = TRUE
-       WHERE user_id = ?`,
+      `UPDATE users SET total_points = total_points + $1, profile_completion_rewarded = TRUE
+       WHERE user_id = $2`,
       [activityRules.profileCompletionPoints, user.user_id]
     );
 
     await conn.query(
       `INSERT INTO points_transactions (user_id, source_type, points, type)
-       VALUES (?, 'profile_completion', ?, 'earn')`,
+       VALUES ($1, 'profile_completion', $2, 'earn')`,
       [user.user_id, activityRules.profileCompletionPoints]
     );
 
@@ -1707,14 +1706,14 @@ exports.checkProfileCompletion = async (req, res) => {
  */
 exports.checkPostActivity = async (req, res) => {
   const { phone } = req.params;
-  const conn = await pool.getConnection();
+  const conn = await pool.connect();
 
   try {
     const { today } = await getBangkokDates(conn);
     const activityRules = await getActivityRewardRules(conn);
 
-    const [users] = await conn.query(
-      'SELECT user_id FROM users WHERE phone_number = ?',
+    const { rows: users } = await conn.query(
+      'SELECT user_id FROM users WHERE phone_number = $1',
       [phone]
     );
 
@@ -1725,13 +1724,13 @@ exports.checkPostActivity = async (req, res) => {
 
     const userId = users[0].user_id;
 
-    const [posts] = await conn.query(
+    const { rows: posts } = await conn.query(
       `SELECT COUNT(DISTINCT p.post_id) as post_count
        FROM posts p
        INNER JOIN post_images pi ON pi.post_id = p.post_id
-       WHERE p.user_id = ?
+       WHERE p.user_id = $1
          AND p.is_deleted = 0
-         AND DATE(p.created_at) = ?`,
+         AND DATE(p.created_at) = $2`,
       [userId, today]
     );
 
@@ -1746,9 +1745,9 @@ exports.checkPostActivity = async (req, res) => {
       });
     }
 
-    const [reward] = await conn.query(
+    const { rows: reward } = await conn.query(
       `SELECT id FROM post_activity_rewards
-       WHERE user_id = ? AND reward_date = ? LIMIT 1`,
+       WHERE user_id = $1 AND reward_date = $2 LIMIT 1`,
       [userId, today]
     );
 
@@ -1762,19 +1761,19 @@ exports.checkPostActivity = async (req, res) => {
     }
 
     await conn.query(
-      `UPDATE users SET total_points = total_points + ? WHERE user_id = ?`,
+      `UPDATE users SET total_points = total_points + $1 WHERE user_id = $2`,
       [activityRules.postActivityPoints, userId]
     );
 
     await conn.query(
       `INSERT INTO post_activity_rewards (user_id, phone_number, reward_date, post_count, points_awarded)
-       VALUES (?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5)`,
       [userId, phone, today, postCount, activityRules.postActivityPoints]
     );
 
     await conn.query(
       `INSERT INTO points_transactions (user_id, source_type, points, type)
-       VALUES (?, 'post_activity', ?, 'earn')`,
+       VALUES ($1, 'post_activity', $2, 'earn')`,
       [userId, activityRules.postActivityPoints]
     );
 
@@ -1798,14 +1797,14 @@ exports.checkPostActivity = async (req, res) => {
  */
 exports.checkCommentActivity = async (req, res) => {
   const { phone } = req.params;
-  const conn = await pool.getConnection();
+  const conn = await pool.connect();
 
   try {
     const { today } = await getBangkokDates(conn);
     const activityRules = await getActivityRewardRules(conn);
 
-    const [users] = await conn.query(
-      'SELECT user_id FROM users WHERE phone_number = ?',
+    const { rows: users } = await conn.query(
+      'SELECT user_id FROM users WHERE phone_number = $1',
       [phone]
     );
 
@@ -1816,9 +1815,9 @@ exports.checkCommentActivity = async (req, res) => {
 
     const userId = users[0].user_id;
 
-    const [reward] = await conn.query(
+    const { rows: reward } = await conn.query(
       `SELECT comment_count, points_awarded FROM comment_activity_rewards
-       WHERE user_id = ? AND reward_date = ? LIMIT 1`,
+       WHERE user_id = $1 AND reward_date = $2 LIMIT 1`,
       [userId, today]
     );
 
@@ -1837,9 +1836,9 @@ exports.checkCommentActivity = async (req, res) => {
       }
     }
 
-    const [comments] = await conn.query(
+    const { rows: comments } = await conn.query(
       `SELECT COUNT(*) as new_count FROM comments
-       WHERE user_id = ? AND is_deleted = 0 AND DATE(created_at) = ?`,
+       WHERE user_id = $1 AND is_deleted = 0 AND DATE(created_at) = $2`,
       [userId, today]
     );
 
@@ -1860,28 +1859,28 @@ exports.checkCommentActivity = async (req, res) => {
     const pointsToAdd = commentsToReward * activityRules.commentActivityPoints;
 
     await conn.query(
-      `UPDATE users SET total_points = total_points + ? WHERE user_id = ?`,
+      `UPDATE users SET total_points = total_points + $1 WHERE user_id = $2`,
       [pointsToAdd, userId]
     );
 
     if (reward.length > 0) {
       await conn.query(
         `UPDATE comment_activity_rewards
-         SET comment_count = ?, points_awarded = points_awarded + ?
-         WHERE user_id = ? AND reward_date = ?`,
+         SET comment_count = $1, points_awarded = points_awarded + $2
+         WHERE user_id = $3 AND reward_date = $4`,
         [commentAwarded + commentsToReward, pointsToAdd, userId, today]
       );
     } else {
       await conn.query(
         `INSERT INTO comment_activity_rewards (user_id, phone_number, reward_date, comment_count, points_awarded)
-         VALUES (?, ?, ?, ?, ?)`,
+         VALUES ($1, $2, $3, $4, $5)`,
         [userId, phone, today, commentsToReward, pointsToAdd]
       );
     }
 
     await conn.query(
       `INSERT INTO points_transactions (user_id, source_type, points, type)
-       VALUES (?, 'comment_activity', ?, 'earn')`,
+       VALUES ($1, 'comment_activity', $2, 'earn')`,
       [userId, pointsToAdd]
     );
 
@@ -1909,7 +1908,7 @@ exports.checkCommentActivity = async (req, res) => {
 exports.checkShareActivity = async (req, res) => {
   const { phone } = req.params;
   const sharedPostId = Number(req.body?.shared_post_id || 0);
-  const conn = await pool.getConnection();
+  const conn = await pool.connect();
 
   try {
     if (!Number.isFinite(sharedPostId) || sharedPostId <= 0) {
@@ -1921,8 +1920,8 @@ exports.checkShareActivity = async (req, res) => {
     const activityRules = await getActivityRewardRules(conn);
     await ensureShareActivityRewardsTable(conn);
 
-    const [users] = await conn.query(
-      'SELECT user_id FROM users WHERE phone_number = ?',
+    const { rows: users } = await conn.query(
+      'SELECT user_id FROM users WHERE phone_number = $1',
       [phone]
     );
 
@@ -1933,8 +1932,8 @@ exports.checkShareActivity = async (req, res) => {
 
     const userId = Number(users[0].user_id);
 
-    const [posts] = await conn.query(
-      'SELECT user_id FROM posts WHERE post_id = ? AND is_deleted = 0 LIMIT 1',
+    const { rows: posts } = await conn.query(
+      'SELECT user_id FROM posts WHERE post_id = $1 AND is_deleted = 0 LIMIT 1',
       [sharedPostId]
     );
     if (!posts.length) {
@@ -1951,10 +1950,10 @@ exports.checkShareActivity = async (req, res) => {
       });
     }
 
-    const [hasShared] = await conn.query(
+    const { rows: hasShared } = await conn.query(
       `SELECT post_id
        FROM posts
-       WHERE user_id = ? AND shared_post_id = ? AND is_deleted = 0
+       WHERE user_id = $1 AND shared_post_id = $2 AND is_deleted = 0
        ORDER BY created_at DESC
        LIMIT 1`,
       [userId, sharedPostId]
@@ -1968,8 +1967,8 @@ exports.checkShareActivity = async (req, res) => {
       });
     }
 
-    const [alreadyRewarded] = await conn.query(
-      'SELECT id FROM share_activity_rewards WHERE user_id = ? AND shared_post_id = ? LIMIT 1',
+    const { rows: alreadyRewarded } = await conn.query(
+      'SELECT id FROM share_activity_rewards WHERE user_id = $1 AND shared_post_id = $2 LIMIT 1',
       [userId, sharedPostId]
     );
 
@@ -1983,19 +1982,19 @@ exports.checkShareActivity = async (req, res) => {
     }
 
     await conn.query(
-      'UPDATE users SET total_points = total_points + ? WHERE user_id = ?',
+      'UPDATE users SET total_points = total_points + $1 WHERE user_id = $2',
       [activityRules.shareActivityPoints, userId]
     );
 
     await conn.query(
       `INSERT INTO share_activity_rewards (user_id, phone_number, reward_date, shared_post_id, points_awarded)
-       VALUES (?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5)`,
       [userId, phone, today, sharedPostId, activityRules.shareActivityPoints]
     );
 
     await conn.query(
       `INSERT INTO points_transactions (user_id, source_type, points, type)
-       VALUES (?, 'share_activity', ?, 'earn')`,
+       VALUES ($1, 'share_activity', $2, 'earn')`,
       [userId, activityRules.shareActivityPoints]
     );
 

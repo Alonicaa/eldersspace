@@ -4,10 +4,10 @@ exports.getNotifications = async (req, res) => {
   const { phone } = req.params;
 
   try {
-    const conn = await pool.getConnection();
+    const conn = await pool.connect();
 
-    const [user] = await conn.query(
-      'SELECT user_id, phone_number FROM users WHERE phone_number=? LIMIT 1',
+    const { rows: user } = await conn.query(
+      'SELECT user_id, phone_number FROM users WHERE phone_number=$1 LIMIT 1',
       [phone]
     );
 
@@ -16,7 +16,7 @@ exports.getNotifications = async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const [notifications] = await conn.query(
+    const { rows: notifications } = await conn.query(
       `SELECT
          n.*,
          u.full_name,
@@ -31,7 +31,7 @@ exports.getNotifications = async (req, res) => {
        JOIN users u  ON n.actor_id = u.user_id
        JOIN users me ON me.user_id  = n.user_id
        LEFT JOIN reward_redemption_history rrh ON rrh.redemption_id = n.redemption_id
-       WHERE me.phone_number = ?
+       WHERE me.phone_number = $1
        ORDER BY n.created_at DESC`,
       [phone]
     );
@@ -48,11 +48,11 @@ exports.createRewardNotification = async (req, res) => {
   const { phone_number, reward_name, qr_code, expires_at, points_used } = req.body;
 
   try {
-    const conn = await pool.getConnection();
+    const conn = await pool.connect();
 
     // Get user_id from phone_number
-    const [user] = await conn.query(
-      'SELECT user_id FROM users WHERE phone_number = ? LIMIT 1',
+    const { rows: user } = await conn.query(
+      'SELECT user_id FROM users WHERE phone_number = $1 LIMIT 1',
       [phone_number]
     );
 
@@ -74,9 +74,10 @@ exports.createRewardNotification = async (req, res) => {
       type: 'reward_redemption'
     });
 
-    const [result] = await conn.query(
+    const { rows: result } = await conn.query(
       `INSERT INTO notifications (user_id, actor_id, type, content, created_at)
-       VALUES (?, ?, ?, ?, NOW())`,
+       VALUES ($1, $2, $3, $4, NOW())
+       RETURNING notification_id`,
       [
         userId,
         userId,
@@ -92,7 +93,7 @@ exports.createRewardNotification = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Reward notification created',
-      notification_id: result.insertId,
+      notification_id: result[0].notification_id,
       reward_name,
       qr_code,
       expires_at,

@@ -52,10 +52,10 @@ exports.uploadAvatar = multer({ storage }).single('avatar');
 exports.registerUser = async (req, res) => {
   const { full_name, phone_number, password } = req.body;
   try {
-    const conn = await pool.getConnection();
+    const conn = await pool.connect();
     await conn.query(
       `INSERT INTO users (full_name, phone_number, password, role, is_verified)
-       VALUES (?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5)`,
       [full_name, phone_number, password, 'elder', false]
     );
     conn.release();
@@ -70,9 +70,9 @@ exports.updateProfilePicture = async (req, res) => {
   const { phone_number } = req.params;
   if (!req.file) return res.status(400).json({ error: 'No image file provided' });
   try {
-    const conn = await pool.getConnection();
-    const [user] = await conn.query(
-      'SELECT user_id, profile_picture FROM users WHERE phone_number = ?',
+    const conn = await pool.connect();
+    const { rows: user } = await conn.query(
+      'SELECT user_id, profile_picture FROM users WHERE phone_number = $1',
       [phone_number]
     );
     if (user.length === 0) { conn.release(); return res.status(404).json({ error: 'User not found' }); }
@@ -82,7 +82,7 @@ exports.updateProfilePicture = async (req, res) => {
       path.posix.join(AVATAR_DIR, safePhone, req.file.filename)
     );
 
-    await conn.query('UPDATE users SET profile_picture = ? WHERE user_id = ?', [storedPath, user[0].user_id]);
+    await conn.query('UPDATE users SET profile_picture = $1 WHERE user_id = $2', [storedPath, user[0].user_id]);
 
     // Remove old avatar when user uploads a replacement image.
     const oldStoredPath = normalizeStoredPath(user[0].profile_picture);
@@ -108,8 +108,8 @@ exports.updateProfilePicture = async (req, res) => {
 exports.getProfilePicture = async (req, res) => {
   const { phone_number } = req.params;
   try {
-    const conn = await pool.getConnection();
-    const [user] = await conn.query('SELECT profile_picture FROM users WHERE phone_number = ?', [phone_number]);
+    const conn = await pool.connect();
+    const { rows: user } = await conn.query('SELECT profile_picture FROM users WHERE phone_number = $1', [phone_number]);
     conn.release();
     if (user.length === 0) return res.status(404).json({ error: 'User not found' });
     const pic = normalizeStoredPath(user[0].profile_picture);
@@ -127,11 +127,11 @@ exports.updateName = async (req, res) => {
   const { phone_number } = req.params;
   const { full_name } = req.body;
   try {
-    const conn = await pool.getConnection();
-    const [user] = await conn.query('SELECT user_id, full_name FROM users WHERE phone_number = ?', [phone_number]);
+    const conn = await pool.connect();
+    const { rows: user } = await conn.query('SELECT user_id, full_name FROM users WHERE phone_number = $1', [phone_number]);
     if (user.length === 0) { conn.release(); return res.status(404).json({ error: 'User not found' }); }
-    await conn.query('UPDATE users SET full_name = ? WHERE phone_number = ?', [full_name, phone_number]);
-    await conn.query(`INSERT INTO user_activity_logs (user_id, action_type, old_value, new_value) VALUES (?, ?, ?, ?)`,
+    await conn.query('UPDATE users SET full_name = $1 WHERE phone_number = $2', [full_name, phone_number]);
+    await conn.query(`INSERT INTO user_activity_logs (user_id, action_type, old_value, new_value) VALUES ($1, $2, $3, $4)`,
       [user[0].user_id, 'CHANGE_NAME', user[0].full_name, full_name]);
     conn.release();
     res.json({ message: 'Name updated and logged' });
@@ -145,10 +145,10 @@ exports.updateAboutMe = async (req, res) => {
   const { phone_number } = req.params;
   const { about_me } = req.body;
   try {
-    const conn = await pool.getConnection();
-    const [user] = await conn.query('SELECT user_id FROM users WHERE phone_number = ?', [phone_number]);
+    const conn = await pool.connect();
+    const { rows: user } = await conn.query('SELECT user_id FROM users WHERE phone_number = $1', [phone_number]);
     if (user.length === 0) { conn.release(); return res.status(404).json({ error: 'User not found' }); }
-    await conn.query('UPDATE users SET about_me = ? WHERE phone_number = ?', [about_me || null, phone_number]);
+    await conn.query('UPDATE users SET about_me = $1 WHERE phone_number = $2', [about_me || null, phone_number]);
     conn.release();
     res.json({ message: 'About me updated', about_me: about_me || null });
   } catch (err) {
@@ -160,8 +160,8 @@ exports.updateAboutMe = async (req, res) => {
 exports.getAboutMe = async (req, res) => {
   const { phone_number } = req.params;
   try {
-    const conn = await pool.getConnection();
-    const [user] = await conn.query('SELECT about_me FROM users WHERE phone_number = ?', [phone_number]);
+    const conn = await pool.connect();
+    const { rows: user } = await conn.query('SELECT about_me FROM users WHERE phone_number = $1', [phone_number]);
     conn.release();
     if (user.length === 0) return res.status(404).json({ error: 'User not found' });
     res.json({ about_me: user[0].about_me || null });
@@ -175,12 +175,12 @@ exports.followUser = async (req, res) => {
   const { phone_number } = req.params;
   const { follower_phone } = req.body;
   try {
-    const conn = await pool.getConnection();
-    const [target]   = await conn.query('SELECT user_id FROM users WHERE phone_number = ?', [phone_number]);
-    const [follower] = await conn.query('SELECT user_id FROM users WHERE phone_number = ?', [follower_phone]);
+    const conn = await pool.connect();
+    const { rows: target }   = await conn.query('SELECT user_id FROM users WHERE phone_number = $1', [phone_number]);
+    const { rows: follower } = await conn.query('SELECT user_id FROM users WHERE phone_number = $1', [follower_phone]);
     if (!target.length || !follower.length) { conn.release(); return res.status(404).json({ error: 'User not found' }); }
     if (target[0].user_id === follower[0].user_id) { conn.release(); return res.status(400).json({ error: 'Cannot follow yourself' }); }
-    await conn.query('INSERT IGNORE INTO followers (follower_id, following_id) VALUES (?, ?)', [follower[0].user_id, target[0].user_id]);
+    await conn.query('INSERT INTO followers (follower_id, following_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [follower[0].user_id, target[0].user_id]);
     conn.release();
     res.json({ message: 'Followed successfully' });
   } catch (err) {
@@ -193,11 +193,11 @@ exports.unfollowUser = async (req, res) => {
   const { phone_number } = req.params;
   const { follower_phone } = req.body;
   try {
-    const conn = await pool.getConnection();
-    const [target]   = await conn.query('SELECT user_id FROM users WHERE phone_number = ?', [phone_number]);
-    const [follower] = await conn.query('SELECT user_id FROM users WHERE phone_number = ?', [follower_phone]);
+    const conn = await pool.connect();
+    const { rows: target }   = await conn.query('SELECT user_id FROM users WHERE phone_number = $1', [phone_number]);
+    const { rows: follower } = await conn.query('SELECT user_id FROM users WHERE phone_number = $1', [follower_phone]);
     if (!target.length || !follower.length) { conn.release(); return res.status(404).json({ error: 'User not found' }); }
-    await conn.query('DELETE FROM followers WHERE follower_id = ? AND following_id = ?', [follower[0].user_id, target[0].user_id]);
+    await conn.query('DELETE FROM followers WHERE follower_id = $1 AND following_id = $2', [follower[0].user_id, target[0].user_id]);
     conn.release();
     res.json({ message: 'Unfollowed successfully' });
   } catch (err) {
@@ -210,11 +210,11 @@ exports.checkFollowStatus = async (req, res) => {
   const { phone_number } = req.params;
   const { viewer_phone } = req.query;
   try {
-    const conn = await pool.getConnection();
-    const [target] = await conn.query('SELECT user_id FROM users WHERE phone_number = ?', [phone_number]);
-    const [viewer] = await conn.query('SELECT user_id FROM users WHERE phone_number = ?', [viewer_phone]);
+    const conn = await pool.connect();
+    const { rows: target } = await conn.query('SELECT user_id FROM users WHERE phone_number = $1', [phone_number]);
+    const { rows: viewer } = await conn.query('SELECT user_id FROM users WHERE phone_number = $1', [viewer_phone]);
     if (!target.length || !viewer.length) { conn.release(); return res.json({ is_following: false }); }
-    const [row] = await conn.query('SELECT id FROM followers WHERE follower_id = ? AND following_id = ?', [viewer[0].user_id, target[0].user_id]);
+    const { rows: row } = await conn.query('SELECT id FROM followers WHERE follower_id = $1 AND following_id = $2', [viewer[0].user_id, target[0].user_id]);
     conn.release();
     res.json({ is_following: row.length > 0 });
   } catch (err) {
@@ -226,15 +226,15 @@ exports.checkFollowStatus = async (req, res) => {
 exports.getFollowStats = async (req, res) => {
   const { phone_number } = req.params;
   try {
-    const conn = await pool.getConnection();
-    const [user] = await conn.query('SELECT user_id FROM users WHERE phone_number = ?', [phone_number]);
+    const conn = await pool.connect();
+    const { rows: user } = await conn.query('SELECT user_id FROM users WHERE phone_number = $1', [phone_number]);
     if (!user.length) { conn.release(); return res.status(404).json({ error: 'User not found' }); }
-    const [[followerRow]] = await conn.query('SELECT COUNT(*) as total FROM followers WHERE following_id = ?', [user[0].user_id]);
-    const [[followingRow]] = await conn.query('SELECT COUNT(*) as total FROM followers WHERE follower_id  = ?', [user[0].user_id]);
+    const { rows: followerRows } = await conn.query('SELECT COUNT(*) as total FROM followers WHERE following_id = $1', [user[0].user_id]);
+    const { rows: followingRows } = await conn.query('SELECT COUNT(*) as total FROM followers WHERE follower_id  = $1', [user[0].user_id]);
     conn.release();
     res.json({
-      followers: Number(followerRow.total || 0),
-      following: Number(followingRow.total || 0),
+      followers: Number(followerRows[0].total || 0),
+      following: Number(followingRows[0].total || 0),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -244,11 +244,11 @@ exports.getFollowStats = async (req, res) => {
 exports.getFollowers = async (req, res) => {
   const { phone_number } = req.params;
   try {
-    const conn = await pool.getConnection();
-    const [users] = await conn.query(
+    const conn = await pool.connect();
+    const { rows: users } = await conn.query(
       `SELECT u.full_name, u.phone_number, u.profile_picture
        FROM followers f JOIN users u ON f.follower_id=u.user_id JOIN users me ON me.user_id=f.following_id
-       WHERE me.phone_number=?`, [phone_number]);
+       WHERE me.phone_number=$1`, [phone_number]);
     conn.release();
     res.json(users.map(u => ({ ...u, profile_picture_url: u.profile_picture ? `${BACKEND_URL}/uploads/` + u.profile_picture : null })));
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -257,11 +257,11 @@ exports.getFollowers = async (req, res) => {
 exports.getFollowing = async (req, res) => {
   const { phone_number } = req.params;
   try {
-    const conn = await pool.getConnection();
-    const [users] = await conn.query(
+    const conn = await pool.connect();
+    const { rows: users } = await conn.query(
       `SELECT u.full_name, u.phone_number, u.profile_picture
        FROM followers f JOIN users u ON f.following_id=u.user_id JOIN users me ON me.user_id=f.follower_id
-       WHERE me.phone_number=?`, [phone_number]);
+       WHERE me.phone_number=$1`, [phone_number]);
     conn.release();
     res.json(users.map(u => ({ ...u, profile_picture_url: u.profile_picture ? `${BACKEND_URL}/uploads/` + u.profile_picture : null })));
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -273,17 +273,17 @@ exports.getUserPosts = async (req, res) => {
   const viewer = req.query.viewer; // phone of person viewing
 
   try {
-    const conn = await pool.getConnection();
+    const conn = await pool.connect();
 
     // ดึง user_id ของเจ้าของโปรไฟล์
-    const [owner] = await conn.query('SELECT user_id FROM users WHERE phone_number=?', [phone]);
+    const { rows: owner } = await conn.query('SELECT user_id FROM users WHERE phone_number=$1', [phone]);
     if (!owner.length) { conn.release(); return res.json([]); }
     const ownerUserId = Number(owner[0].user_id);
 
     // ดึง user_id ของ viewer (ถ้ามี)
     let viewerUserId = null;
     if (viewer) {
-      const [vr] = await conn.query('SELECT user_id FROM users WHERE phone_number=?', [viewer]);
+      const { rows: vr } = await conn.query('SELECT user_id FROM users WHERE phone_number=$1', [viewer]);
       if (vr.length) viewerUserId = Number(vr[0].user_id);
     }
 
@@ -321,14 +321,14 @@ exports.getUserPosts = async (req, res) => {
       extraSelect = `, (SELECT type FROM post_likes WHERE post_id=p.post_id AND user_id=${viewerUserId}) as user_like`;
     }
 
-    const [posts] = await conn.query(
+    const { rows: posts } = await conn.query(
       `SELECT p.*, u.full_name, u.phone_number, u.profile_picture${extraSelect},
         (SELECT COUNT(*) FROM post_likes WHERE post_id=p.post_id AND type='like')    as likes,
         (SELECT COUNT(*) FROM post_likes WHERE post_id=p.post_id AND type='dislike') as dislikes,
         (SELECT COUNT(*) FROM comments    WHERE post_id=p.post_id AND is_deleted=0)  as comments
        FROM posts p
        JOIN users u ON p.user_id=u.user_id
-       WHERE u.phone_number=?
+       WHERE u.phone_number=$1
          AND p.is_deleted=0
          AND ${visCond}
        ORDER BY p.created_at DESC`,
@@ -336,7 +336,7 @@ exports.getUserPosts = async (req, res) => {
     );
 
     for (let post of posts) {
-      const [imgs] = await conn.query('SELECT image_url FROM post_images WHERE post_id=?', [post.post_id]);
+      const { rows: imgs } = await conn.query('SELECT image_url FROM post_images WHERE post_id=$1', [post.post_id]);
       post.images = imgs.map(i => `${BACKEND_URL}/uploads/` + i.image_url);
       post.profile_picture_url = post.profile_picture
         ? `${BACKEND_URL}/uploads/` + post.profile_picture : null;
@@ -351,12 +351,12 @@ exports.getUserPosts = async (req, res) => {
           if (visited.has(currentId)) break;
           visited.add(currentId);
 
-          const [origRows] = await conn.query(
+          const { rows: origRows } = await conn.query(
             `SELECT p.post_id, p.content, p.created_at, p.shared_post_id,
                     u.full_name, u.phone_number, u.profile_picture
              FROM posts p
              JOIN users u ON p.user_id=u.user_id
-             WHERE p.post_id=?`,
+             WHERE p.post_id=$1`,
             [currentId]
           );
           if (!origRows.length) break;
@@ -370,8 +370,8 @@ exports.getUserPosts = async (req, res) => {
           }
 
           // เจอต้นฉบับแล้ว
-          const [origImgs] = await conn.query(
-            'SELECT image_url FROM post_images WHERE post_id=?', [row.post_id]
+          const { rows: origImgs } = await conn.query(
+            'SELECT image_url FROM post_images WHERE post_id=$1', [row.post_id]
           );
           row.images = origImgs.map(i => `${BACKEND_URL}/uploads/` + i.image_url);
           row.profile_picture_url = row.profile_picture
@@ -404,7 +404,7 @@ exports.getModerationStatus = async (req, res) => {
   let conn;
 
   try {
-    conn = await pool.getConnection();
+    conn = await pool.connect();
     await ensureModerationColumns(conn);
 
     const status = await getUserModerationByPhone(conn, phone_number);
@@ -430,10 +430,10 @@ exports.getModerationStatus = async (req, res) => {
 exports.getProfileDetails = async (req, res) => {
   const { phone_number } = req.params;
   try {
-    const conn = await pool.getConnection();
-    const [user] = await conn.query(
+    const conn = await pool.connect();
+    const { rows: user } = await conn.query(
       `SELECT current_location, hometown, birth_date, relationship_status, family_info, gender, pronouns
-       FROM users WHERE phone_number = ?`,
+       FROM users WHERE phone_number = $1`,
       [phone_number]
     );
     conn.release();
@@ -457,27 +457,27 @@ exports.getProfileDetails = async (req, res) => {
 exports.updateProfileDetails = async (req, res) => {
   const { phone_number } = req.params;
   const { current_location, hometown, birth_date, relationship_status, family_info, gender, pronouns } = req.body;
-  
+
   try {
-    const conn = await pool.getConnection();
-    const [user] = await conn.query('SELECT user_id FROM users WHERE phone_number = ?', [phone_number]);
+    const conn = await pool.connect();
+    const { rows: user } = await conn.query('SELECT user_id FROM users WHERE phone_number = $1', [phone_number]);
     if (user.length === 0) { conn.release(); return res.status(404).json({ error: 'User not found' }); }
 
     await conn.query(
-      `UPDATE users SET 
-        current_location = ?, 
-        hometown = ?, 
-        birth_date = ?, 
-        relationship_status = ?, 
-        family_info = ?, 
-        gender = ?, 
-        pronouns = ? 
-       WHERE phone_number = ?`,
+      `UPDATE users SET
+        current_location = $1,
+        hometown = $2,
+        birth_date = $3,
+        relationship_status = $4,
+        family_info = $5,
+        gender = $6,
+        pronouns = $7
+       WHERE phone_number = $8`,
       [current_location, hometown, birth_date, relationship_status, family_info, gender, pronouns, phone_number]
     );
-    
+
     conn.release();
-    res.json({ 
+    res.json({
       message: 'Profile details updated',
       current_location: current_location || null,
       hometown: hometown || null,

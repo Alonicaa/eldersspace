@@ -23,13 +23,13 @@ exports.uploadPromoCodes = async (req, res) => {
       return res.status(400).json({ error: 'Codes array is required and cannot be empty' });
     }
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
     let successCount = 0;
     let errorCount = 0;
     const errors = [];
 
-    await conn.beginTransaction();
+    await conn.query('BEGIN');
 
     for (const codeData of codes) {
       try {
@@ -41,23 +41,23 @@ exports.uploadPromoCodes = async (req, res) => {
           continue;
         }
 
-        const [reward] = await conn.query(
-          'SELECT reward_id FROM rewards WHERE reward_id = ?',
+        const reward = await conn.query(
+          'SELECT reward_id FROM rewards WHERE reward_id = $1',
           [reward_id]
         );
 
-        if (!reward.length) {
+        if (!reward.rows.length) {
           errorCount++;
           errors.push({ code, error: 'Reward not found' });
           continue;
         }
 
-        const [existing] = await conn.query(
-          'SELECT promo_code_id FROM promo_codes WHERE code = ?',
+        const existing = await conn.query(
+          'SELECT promo_code_id FROM promo_codes WHERE code = $1',
           [code]
         );
 
-        if (existing.length) {
+        if (existing.rows.length) {
           errorCount++;
           errors.push({ code, error: 'Code already exists' });
           continue;
@@ -65,7 +65,7 @@ exports.uploadPromoCodes = async (req, res) => {
 
         await conn.query(
           `INSERT INTO promo_codes (code, reward_id, description, expiry_date)
-           VALUES (?, ?, ?, ?)`,
+           VALUES ($1, $2, $3, $4)`,
           [code, reward_id, description || null, expiry_date || null]
         );
 
@@ -76,7 +76,7 @@ exports.uploadPromoCodes = async (req, res) => {
       }
     }
 
-    await conn.commit();
+    await conn.query('COMMIT');
 
     return res.json({
       success: true,
@@ -86,7 +86,7 @@ exports.uploadPromoCodes = async (req, res) => {
       errors: errors.length > 0 ? errors : undefined
     });
   } catch (error) {
-    if (conn) await conn.rollback();
+    if (conn) await conn.query('ROLLBACK');
     console.error('Upload promo codes error:', error);
     return res.status(500).json({ error: 'Failed to upload promo codes' });
   } finally {
@@ -172,32 +172,32 @@ exports.uploadPromoCodesFromCsv = async (req, res) => {
       .slice(0, 32);
 
     // Verify reward exists and check for duplicate file upload
-    conn = await pool.getConnection();
-    const [reward] = await conn.query(
-      'SELECT reward_id, reward_name FROM rewards WHERE reward_id = ?',
+    conn = await pool.connect();
+    const reward = await conn.query(
+      'SELECT reward_id, reward_name FROM rewards WHERE reward_id = $1',
       [rewardId]
     );
 
-    if (!reward.length) {
+    if (!reward.rows.length) {
       if (csvFilePath) fs.unlink(csvFilePath, () => {});
       conn.release();
       return res.status(404).json({ error: 'ไม่พบรางวัลที่ระบุ' });
     }
 
     // Check if this exact file was uploaded before for this reward
-    const [dupFile] = await conn.query(
+    const dupFile = await conn.query(
       `SELECT batch_upload_id, uploaded_at
        FROM promo_codes
-       WHERE reward_id = ? AND file_hash = ? AND is_deleted = 0
+       WHERE reward_id = $1 AND file_hash = $2 AND is_deleted = 0
        LIMIT 1`,
       [rewardId, fileHash]
     );
 
-    if (dupFile.length > 0) {
+    if (dupFile.rows.length > 0) {
       if (csvFilePath) fs.unlink(csvFilePath, () => {});
       conn.release();
-      const prevDate = dupFile[0].uploaded_at
-        ? new Date(dupFile[0].uploaded_at).toLocaleDateString('th-TH', {
+      const prevDate = dupFile.rows[0].uploaded_at
+        ? new Date(dupFile.rows[0].uploaded_at).toLocaleDateString('th-TH', {
             year: 'numeric', month: 'short', day: 'numeric',
             hour: '2-digit', minute: '2-digit'
           })
@@ -205,16 +205,16 @@ exports.uploadPromoCodesFromCsv = async (req, res) => {
       return res.status(409).json({
         error: `ไฟล์นี้เคยอัพโหลดไว้แล้วสำหรับรางวัลนี้ (อัพโหลดครั้งก่อน: ${prevDate})`,
         fileAlreadyUploaded: true,
-        previousUploadDate: dupFile[0].uploaded_at
+        previousUploadDate: dupFile.rows[0].uploaded_at
       });
     }
 
     // Pre-fetch existing codes for this reward (for per-code duplicate reporting)
-    const [existingRewardRows] = await conn.query(
-      'SELECT code FROM promo_codes WHERE reward_id = ? AND is_deleted = 0',
+    const existingRewardRows = await conn.query(
+      'SELECT code FROM promo_codes WHERE reward_id = $1 AND is_deleted = 0',
       [rewardId]
     );
-    const existingRewardCodeSet = new Set(existingRewardRows.map(r => r.code));
+    const existingRewardCodeSet = new Set(existingRewardRows.rows.map(r => r.code));
 
     // Insert codes
     let successCount = 0;
@@ -223,7 +223,7 @@ exports.uploadPromoCodesFromCsv = async (req, res) => {
     const errors = [];
     const duplicateCodesInReward = [];
 
-    await conn.beginTransaction();
+    await conn.query('BEGIN');
 
     for (const codeData of codes) {
       try {
@@ -236,11 +236,11 @@ exports.uploadPromoCodesFromCsv = async (req, res) => {
         }
 
         // Check global duplicate (same code text used in a different reward)
-        const [existing] = await conn.query(
-          'SELECT promo_code_id FROM promo_codes WHERE code = ? AND is_deleted = 0',
+        const existing = await conn.query(
+          'SELECT promo_code_id FROM promo_codes WHERE code = $1 AND is_deleted = 0',
           [codeData.code]
         );
-        if (existing.length) {
+        if (existing.rows.length) {
           errorCount++;
           errors.push({ code: codeData.code, error: 'โค้ดนี้มีอยู่แล้วในระบบ (รางวัลอื่น)', type: 'duplicate_other' });
           continue;
@@ -249,7 +249,7 @@ exports.uploadPromoCodesFromCsv = async (req, res) => {
         await conn.query(
           `INSERT INTO promo_codes
              (code, reward_id, description, expiry_date, batch_upload_id, uploaded_at, file_hash)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
           [
             codeData.code, codeData.reward_id, codeData.description,
             codeData.expiry_date, codeData.batch_upload_id, codeData.uploaded_at, fileHash
@@ -263,7 +263,7 @@ exports.uploadPromoCodesFromCsv = async (req, res) => {
       }
     }
 
-    await conn.commit();
+    await conn.query('COMMIT');
     if (csvFilePath) fs.unlink(csvFilePath, () => {});
 
     const insertErrors = errors.filter(e => e.type === 'insert_error');
@@ -276,11 +276,11 @@ exports.uploadPromoCodesFromCsv = async (req, res) => {
       duplicateInRewardCount,
       duplicateCodesInReward: duplicateCodesInReward.length > 0 ? duplicateCodesInReward.slice(0, 50) : undefined,
       totalParsed: codes.length,
-      reward_name: reward[0].reward_name,
+      reward_name: reward.rows[0].reward_name,
       errors: insertErrors.length > 0 ? insertErrors.slice(0, 20) : undefined
     });
   } catch (error) {
-    if (conn) await conn.rollback();
+    if (conn) await conn.query('ROLLBACK');
     if (csvFilePath) fs.unlink(csvFilePath, () => {});
     console.error('Upload CSV promo codes error:', error);
     return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการอัพโหลด CSV: ' + error.message });
@@ -322,7 +322,7 @@ exports.getPromoCodes = async (req, res) => {
     const { search, status, reward_id, used_from, used_to, limit = 100, offset = 0 } = req.query;
     console.log('[getPromoCodes] query', { search, status, reward_id, used_from, used_to, limit, offset });
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
     let query = `
       SELECT
@@ -363,9 +363,10 @@ exports.getPromoCodes = async (req, res) => {
     `;
 
     const params = [];
+    let pi = 1;
 
     if (search) {
-      query += ' AND p.code LIKE ?';
+      query += ` AND p.code LIKE $${pi++}`;
       params.push(`%${search}%`);
     }
 
@@ -378,31 +379,33 @@ exports.getPromoCodes = async (req, res) => {
     }
 
     if (reward_id) {
-      query += ' AND p.reward_id = ?';
+      query += ` AND p.reward_id = $${pi++}`;
       params.push(reward_id);
     }
 
     if (used_from) {
-      query += ' AND p.used_at >= ?';
+      query += ` AND p.used_at >= $${pi++}`;
       params.push(`${used_from} 00:00:00`);
     }
 
     if (used_to) {
-      query += ' AND p.used_at <= ?';
+      query += ` AND p.used_at <= $${pi++}`;
       params.push(`${used_to} 23:59:59`);
     }
 
-    query += ' ORDER BY p.created_at DESC LIMIT ? OFFSET ?';
+    query += ` ORDER BY p.created_at DESC LIMIT $${pi++} OFFSET $${pi++}`;
     params.push(parseInt(limit), parseInt(offset));
 
-    const [codes] = await conn.query(query, params);
-    console.log('[getPromoCodes] rows', Array.isArray(codes) ? codes.length : typeof codes);
+    const codesResult = await conn.query(query, params);
+    const codes = codesResult.rows;
+    console.log('[getPromoCodes] rows', codes.length);
 
     let countQuery = 'SELECT COUNT(*) as total FROM promo_codes WHERE is_deleted = 0';
     const countParams = [];
+    let cpi = 1;
 
     if (search) {
-      countQuery += ' AND code LIKE ?';
+      countQuery += ` AND code LIKE $${cpi++}`;
       countParams.push(`%${search}%`);
     }
 
@@ -415,23 +418,23 @@ exports.getPromoCodes = async (req, res) => {
     }
 
     if (reward_id) {
-      countQuery += ' AND reward_id = ?';
+      countQuery += ` AND reward_id = $${cpi++}`;
       countParams.push(reward_id);
     }
 
     if (used_from) {
-      countQuery += ' AND used_at >= ?';
+      countQuery += ` AND used_at >= $${cpi++}`;
       countParams.push(`${used_from} 00:00:00`);
     }
 
     if (used_to) {
-      countQuery += ' AND used_at <= ?';
+      countQuery += ` AND used_at <= $${cpi++}`;
       countParams.push(`${used_to} 23:59:59`);
     }
 
-    const [countResult] = await conn.query(countQuery, countParams);
-    console.log('[getPromoCodes] count', countResult?.[0]?.total);
-    const total = Number(countResult[0]?.total || 0);
+    const countResult = await conn.query(countQuery, countParams);
+    console.log('[getPromoCodes] count', countResult.rows[0]?.total);
+    const total = Number(countResult.rows[0]?.total || 0);
 
     // Convert BigInt values and mask the full code from admin view
     const codesWithConvertedTypes = codes.map(code => ({
@@ -472,47 +475,47 @@ exports.usePromoCode = async (req, res) => {
       return res.status(400).json({ error: 'Code, user_id, and phone_number are required' });
     }
 
-    conn = await pool.getConnection();
-    await conn.beginTransaction();
+    conn = await pool.connect();
+    await conn.query('BEGIN');
 
-    const [promoCode] = await conn.query(
-      `SELECT * FROM promo_codes WHERE code = ? AND is_deleted = 0 FOR UPDATE`,
+    const promoCode = await conn.query(
+      `SELECT * FROM promo_codes WHERE code = $1 AND is_deleted = 0 FOR UPDATE`,
       [code]
     );
 
-    if (!promoCode.length) {
-      await conn.rollback();
+    if (!promoCode.rows.length) {
+      await conn.query('ROLLBACK');
       conn.release();
       return res.status(404).json({ error: 'Promo code not found' });
     }
 
-    const promo = promoCode[0];
+    const promo = promoCode.rows[0];
 
     if (promo.is_used === 1) {
-      await conn.rollback();
+      await conn.query('ROLLBACK');
       conn.release();
       return res.status(400).json({ error: 'Code already used' });
     }
 
     if (promo.expiry_date && new Date(promo.expiry_date) < new Date()) {
-      await conn.rollback();
+      await conn.query('ROLLBACK');
       conn.release();
       return res.status(400).json({ error: 'Code has expired' });
     }
 
     await conn.query(
-      `UPDATE promo_codes SET is_used = 1, used_by_user_id = ?, used_by_phone = ?, used_at = NOW()
-       WHERE promo_code_id = ?`,
+      `UPDATE promo_codes SET is_used = 1, used_by_user_id = $1, used_by_phone = $2, used_at = NOW()
+       WHERE promo_code_id = $3`,
       [user_id, phone_number, promo.promo_code_id]
     );
 
     await conn.query(
       `INSERT INTO promo_code_logs (promo_code_id, code, action, user_id, phone_number, status, details)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [promo.promo_code_id, code, 'use', user_id, phone_number, 'success', JSON.stringify({ used_at: new Date() })]
     );
 
-    await conn.commit();
+    await conn.query('COMMIT');
     conn.release();
 
     return res.json({
@@ -522,7 +525,7 @@ exports.usePromoCode = async (req, res) => {
     });
   } catch (error) {
     if (conn) {
-      await conn.rollback();
+      await conn.query('ROLLBACK');
       conn.release();
     }
     console.error('Use promo code error:', error);
@@ -540,10 +543,10 @@ exports.deletePromoCodes = async (req, res) => {
       return res.status(400).json({ error: 'Codes array is required' });
     }
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
     for (const code of codes) {
-      await conn.query('UPDATE promo_codes SET is_deleted = 1 WHERE code = ?', [code]);
+      await conn.query('UPDATE promo_codes SET is_deleted = 1 WHERE code = $1', [code]);
     }
 
     conn.release();
@@ -563,7 +566,7 @@ exports.deletePromoCodes = async (req, res) => {
 exports.getPromoStats = async (req, res) => {
   let conn;
   try {
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
     const stats = await conn.query(`
       SELECT
@@ -579,7 +582,7 @@ exports.getPromoStats = async (req, res) => {
 
     return res.json({
       success: true,
-      data: stats[0] || { total: 0, available: 0, used: 0, expired: 0 }
+      data: stats.rows[0] || { total: 0, available: 0, used: 0, expired: 0 }
     });
   } catch (error) {
     console.error('Get promo stats error:', error);
@@ -594,18 +597,18 @@ exports.cleanupExpiredPromoCodes = async (req, res) => {
   try {
     const { older_than_days } = req.body || {};
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
     let where = 'expiry_date < NOW() AND is_used = 0';
     const params = [];
+    let pi = 1;
 
     if (older_than_days && Number(older_than_days) > 0) {
-      where = 'expiry_date < DATE_SUB(NOW(), INTERVAL ? DAY) AND is_used = 0';
-      params.push(parseInt(older_than_days, 10));
+      where = `expiry_date < NOW() - INTERVAL '${parseInt(older_than_days, 10)} days' AND is_used = 0`;
     }
 
-    const [countRes] = await conn.query(`SELECT COUNT(*) AS n FROM promo_codes WHERE ${where} AND is_deleted = 0`, params);
-    const toDelete = Number(countRes[0]?.n || 0);
+    const countRes = await conn.query(`SELECT COUNT(*) AS n FROM promo_codes WHERE ${where} AND is_deleted = 0`, params);
+    const toDelete = Number(countRes.rows[0]?.n || 0);
 
     if (toDelete === 0) {
       conn.release();
@@ -633,59 +636,60 @@ exports.updatePromoCodeStatus = async (req, res) => {
 
     if (!id) return res.status(400).json({ error: 'promo_code id is required' });
 
-    conn = await pool.getConnection();
-    await conn.beginTransaction();
+    conn = await pool.connect();
+    await conn.query('BEGIN');
 
-    const [rows] = await conn.query('SELECT * FROM promo_codes WHERE promo_code_id = ? FOR UPDATE', [id]);
-    if (!rows.length) {
-      await conn.rollback();
+    const rows = await conn.query('SELECT * FROM promo_codes WHERE promo_code_id = $1 FOR UPDATE', [id]);
+    if (!rows.rows.length) {
+      await conn.query('ROLLBACK');
       conn.release();
       return res.status(404).json({ error: 'Promo code not found' });
     }
 
     const updates = [];
     const params = [];
+    let pi = 1;
 
     if (typeof is_used !== 'undefined') {
-      updates.push('is_used = ?');
+      updates.push(`is_used = $${pi++}`);
       params.push(Number(is_used) ? 1 : 0);
     }
 
     if (typeof used_by_user_id !== 'undefined') {
-      updates.push('used_by_user_id = ?');
+      updates.push(`used_by_user_id = $${pi++}`);
       params.push(used_by_user_id || null);
     }
 
     if (typeof used_by_phone !== 'undefined') {
-      updates.push('used_by_phone = ?');
+      updates.push(`used_by_phone = $${pi++}`);
       params.push(used_by_phone || null);
     }
 
     if (typeof used_at !== 'undefined') {
-      updates.push('used_at = ?');
+      updates.push(`used_at = $${pi++}`);
       params.push(used_at || null);
     }
 
     if (updates.length) {
       params.push(id);
-      await conn.query(`UPDATE promo_codes SET ${updates.join(', ')} WHERE promo_code_id = ?`, params);
+      await conn.query(`UPDATE promo_codes SET ${updates.join(', ')} WHERE promo_code_id = $${pi}`, params);
     }
 
     // Add a log entry for audit
     await conn.query(
       `INSERT INTO promo_code_logs (promo_code_id, code, action, user_id, phone_number, status, details)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [rows[0].promo_code_id, rows[0].code, 'admin_update_status', used_by_user_id || null, used_by_phone || null, 'success', JSON.stringify({ note: note || null, changed_by_admin: true })]
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [rows.rows[0].promo_code_id, rows.rows[0].code, 'admin_update_status', used_by_user_id || null, used_by_phone || null, 'success', JSON.stringify({ note: note || null, changed_by_admin: true })]
     );
 
-    await conn.commit();
+    await conn.query('COMMIT');
     conn.release();
 
     return res.json({ success: true, message: 'Promo code status updated' });
   } catch (error) {
     console.error('Update promo code status error:', error);
     if (conn) {
-      await conn.rollback();
+      await conn.query('ROLLBACK');
       conn.release();
     }
     return res.status(500).json({ error: 'Failed to update promo code status' });
@@ -703,65 +707,65 @@ exports.replacePromoCodeForUser = async (req, res) => {
       return res.status(400).json({ error: 'promo_code id, replacement_promo_code_id and user_id are required' });
     }
 
-    conn = await pool.getConnection();
-    await conn.beginTransaction();
+    conn = await pool.connect();
+    await conn.query('BEGIN');
 
     // Lock both rows
-    const [oldRows] = await conn.query('SELECT * FROM promo_codes WHERE promo_code_id = ? FOR UPDATE', [id]);
-    if (!oldRows.length) {
-      await conn.rollback();
+    const oldRows = await conn.query('SELECT * FROM promo_codes WHERE promo_code_id = $1 FOR UPDATE', [id]);
+    if (!oldRows.rows.length) {
+      await conn.query('ROLLBACK');
       conn.release();
       return res.status(404).json({ error: 'Original promo code not found' });
     }
 
-    const [replacementRows] = await conn.query('SELECT * FROM promo_codes WHERE promo_code_id = ? FOR UPDATE', [replacement_promo_code_id]);
-    if (!replacementRows.length) {
-      await conn.rollback();
+    const replacementRows = await conn.query('SELECT * FROM promo_codes WHERE promo_code_id = $1 FOR UPDATE', [replacement_promo_code_id]);
+    if (!replacementRows.rows.length) {
+      await conn.query('ROLLBACK');
       conn.release();
       return res.status(404).json({ error: 'Replacement promo code not found' });
     }
 
-    const replacement = replacementRows[0];
+    const replacement = replacementRows.rows[0];
     if (replacement.is_used === 1) {
-      await conn.rollback();
+      await conn.query('ROLLBACK');
       conn.release();
       return res.status(400).json({ error: 'Replacement promo code is already used' });
     }
 
     if (replacement.expiry_date && new Date(replacement.expiry_date) < new Date()) {
-      await conn.rollback();
+      await conn.query('ROLLBACK');
       conn.release();
       return res.status(400).json({ error: 'Replacement promo code has expired' });
     }
 
     // Assign replacement to user
     await conn.query(
-      `UPDATE promo_codes SET is_used = 1, used_by_user_id = ?, used_by_phone = ?, used_at = NOW() WHERE promo_code_id = ?`,
+      `UPDATE promo_codes SET is_used = 1, used_by_user_id = $1, used_by_phone = $2, used_at = NOW() WHERE promo_code_id = $3`,
       [user_id, phone_number || null, replacement_promo_code_id]
     );
 
     // Log replacement assign
     await conn.query(
       `INSERT INTO promo_code_logs (promo_code_id, code, action, user_id, phone_number, status, details)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [replacement.promo_code_id, replacement.code, 'admin_replace_assign', user_id, phone_number || null, 'success', JSON.stringify({ replaced_old_promo_code_id: id, note: note || null })]
     );
 
     // Log original as replaced (audit)
     await conn.query(
       `INSERT INTO promo_code_logs (promo_code_id, code, action, status, details)
-       VALUES (?, ?, ?, ?, ?)`,
-      [oldRows[0].promo_code_id, oldRows[0].code, 'admin_mark_replaced', 'success', JSON.stringify({ replaced_by_promo_code_id: replacement.promo_code_id, note: note || null })]
+       VALUES ($1, $2, $3, $4, $5)`,
+      [oldRows.rows[0].promo_code_id, oldRows.rows[0].code, 'admin_mark_replaced', 'success', JSON.stringify({ replaced_by_promo_code_id: replacement.promo_code_id, note: note || null })]
     );
 
-    await conn.commit();
+    await conn.query('COMMIT');
     conn.release();
 
     return res.json({ success: true, message: 'Replacement assigned', replacement: { promo_code_id: replacement.promo_code_id, code: maskCode(replacement.code) } });
   } catch (error) {
     console.error('Replace promo code error:', error);
     if (conn) {
-      await conn.rollback();
+      await conn.query('ROLLBACK');
       conn.release();
     }
     return res.status(500).json({ error: 'Failed to replace promo code' });
@@ -771,10 +775,10 @@ exports.replacePromoCodeForUser = async (req, res) => {
 // ─── Internal: assign available promo code when user redeems reward ───────────
 exports.assignPromoCodeForReward = async (conn, rewardId, userId, phoneNumber) => {
   try {
-    const [availableCode] = await conn.query(
+    const availableCode = await conn.query(
       `SELECT promo_code_id, code, reward_id, description, expiry_date
        FROM promo_codes
-       WHERE reward_id = ?
+       WHERE reward_id = $1
          AND is_used = 0
          AND is_deleted = 0
          AND (expiry_date IS NULL OR expiry_date >= NOW())
@@ -784,22 +788,22 @@ exports.assignPromoCodeForReward = async (conn, rewardId, userId, phoneNumber) =
       [rewardId]
     );
 
-    if (!availableCode || availableCode.length === 0) {
+    if (!availableCode.rows || availableCode.rows.length === 0) {
       return null;
     }
 
-    const promoCode = availableCode[0];
+    const promoCode = availableCode.rows[0];
 
     await conn.query(
-      `UPDATE promo_codes 
-       SET is_used = 1, used_by_user_id = ?, used_by_phone = ?, used_at = NOW()
-       WHERE promo_code_id = ?`,
+      `UPDATE promo_codes
+       SET is_used = 1, used_by_user_id = $1, used_by_phone = $2, used_at = NOW()
+       WHERE promo_code_id = $3`,
       [userId, phoneNumber, promoCode.promo_code_id]
     );
 
     await conn.query(
       `INSERT INTO promo_code_logs (promo_code_id, code, action, user_id, phone_number, status, details)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [promoCode.promo_code_id, promoCode.code, 'assign', userId, phoneNumber, 'success', JSON.stringify({ used_at: new Date() })]
     );
 
@@ -820,12 +824,12 @@ exports.assignPromoCodeForReward = async (conn, rewardId, userId, phoneNumber) =
 exports.getAvailablePromoCodeForReward = async (rewardId) => {
   let conn;
   try {
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
-    const [availableCode] = await conn.query(
+    const availableCode = await conn.query(
       `SELECT COUNT(*) as available
        FROM promo_codes
-       WHERE reward_id = ?
+       WHERE reward_id = $1
          AND is_used = 0
          AND is_deleted = 0
          AND (expiry_date IS NULL OR expiry_date >= NOW())`,
@@ -834,7 +838,7 @@ exports.getAvailablePromoCodeForReward = async (rewardId) => {
 
     conn.release();
 
-    return (availableCode[0]?.available || 0) > 0;
+    return (availableCode.rows[0]?.available || 0) > 0;
   } catch (error) {
     console.error('Get available promo code error:', error);
     if (conn) conn.release();
@@ -858,23 +862,24 @@ exports.createPromoCampaign = async (req, res) => {
 
     const maxCodesValue = max_codes && Number(max_codes) > 0 ? Number(max_codes) : null;
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
     // Verify reward exists
-    const [reward] = await conn.query(
-      'SELECT reward_id, reward_name FROM rewards WHERE reward_id = ?',
+    const reward = await conn.query(
+      'SELECT reward_id, reward_name FROM rewards WHERE reward_id = $1',
       [reward_id]
     );
 
-    if (!reward.length) {
+    if (!reward.rows.length) {
       conn.release();
       return res.status(404).json({ error: 'ไม่พบรางวัลที่ระบุ' });
     }
 
     // Create campaign
-    const [result] = await conn.query(
+    const result = await conn.query(
       `INSERT INTO promo_campaigns (reward_id, campaign_name, campaign_start_date, campaign_end_date, description, max_codes)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING campaign_id`,
       [reward_id, campaign_name, campaign_start_date, campaign_end_date, description || null, maxCodesValue]
     );
 
@@ -883,9 +888,9 @@ exports.createPromoCampaign = async (req, res) => {
     return res.json({
       success: true,
       message: 'สร้างแคมเปญสำเร็จ',
-      campaign_id: result.insertId,
+      campaign_id: result.rows[0].campaign_id,
       campaign_name: campaign_name,
-      reward_name: reward[0].reward_name
+      reward_name: reward.rows[0].reward_name
     });
   } catch (error) {
     console.error('Create campaign error:', error);
@@ -900,7 +905,7 @@ exports.getPromoCampaigns = async (req, res) => {
   try {
     const { reward_id } = req.query;
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
     let query = `
       SELECT
@@ -925,20 +930,21 @@ exports.getPromoCampaigns = async (req, res) => {
     `;
 
     const params = [];
+    let pi = 1;
 
     if (reward_id) {
-      query += ' AND c.reward_id = ?';
+      query += ` AND c.reward_id = $${pi++}`;
       params.push(reward_id);
     }
 
-    query += ' GROUP BY c.campaign_id ORDER BY c.campaign_start_date DESC';
+    query += ' GROUP BY c.campaign_id, r.reward_name ORDER BY c.campaign_start_date DESC';
 
-    const [campaigns] = await conn.query(query, params);
+    const campaigns = await conn.query(query, params);
     conn.release();
 
     return res.json({
       success: true,
-      data: campaigns.map(c => {
+      data: campaigns.rows.map(c => {
         const available = Number(c.available_codes || 0);
         const maxCodes = c.max_codes ? Number(c.max_codes) : null;
         const lowStockThreshold = maxCodes ? Math.max(10, Math.ceil(maxCodes * 0.1)) : 10;
@@ -969,25 +975,25 @@ exports.getCampaignDetails = async (req, res) => {
     const { campaign_id } = req.params;
     const { search, status } = req.query;
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
     // Get campaign info
-    const [campaign] = await conn.query(
+    const campaign = await conn.query(
       `SELECT c.*, r.reward_name
        FROM promo_campaigns c
        LEFT JOIN rewards r ON c.reward_id = r.reward_id
-       WHERE c.campaign_id = ?`,
+       WHERE c.campaign_id = $1`,
       [campaign_id]
     );
 
-    if (!campaign.length) {
+    if (!campaign.rows.length) {
       conn.release();
       return res.status(404).json({ error: 'ไม่พบแคมเปญ' });
     }
 
     // Get codes for this campaign
     let query = `
-      SELECT 
+      SELECT
         p.promo_code_id,
         p.code,
         p.reward_id,
@@ -999,19 +1005,20 @@ exports.getCampaignDetails = async (req, res) => {
         p.uploaded_at,
         p.batch_upload_id,
         p.created_at,
-        CASE 
+        CASE
           WHEN p.is_used = 1 THEN 'used'
           WHEN p.expiry_date < NOW() THEN 'expired'
           ELSE 'available'
         END as status
       FROM promo_codes p
-      WHERE p.campaign_id = ? AND p.is_deleted = 0
+      WHERE p.campaign_id = $1 AND p.is_deleted = 0
     `;
 
     const params = [campaign_id];
+    let pi = 2;
 
     if (search) {
-      query += ' AND p.code LIKE ?';
+      query += ` AND p.code LIKE $${pi++}`;
       params.push(`%${search}%`);
     }
 
@@ -1025,7 +1032,8 @@ exports.getCampaignDetails = async (req, res) => {
 
     query += ' ORDER BY p.uploaded_at DESC, p.created_at ASC';
 
-    const [codes] = await conn.query(query, params);
+    const codesResult = await conn.query(query, params);
+    const codes = codesResult.rows;
 
     // Group codes by upload batch
     const batches = {};
@@ -1051,7 +1059,7 @@ exports.getCampaignDetails = async (req, res) => {
 
     return res.json({
       success: true,
-      campaign: campaign[0],
+      campaign: campaign.rows[0],
       total_codes: codes.length,
       batches: maskedBatches
     });
@@ -1080,15 +1088,15 @@ exports.uploadCodesToCampaign = async (req, res) => {
       return res.status(400).json({ error: 'กรุณาระบุ campaign_id' });
     }
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
     // Verify campaign exists
-    const [campaign] = await conn.query(
-      'SELECT campaign_id, reward_id, campaign_name, max_codes FROM promo_campaigns WHERE campaign_id = ?',
+    const campaign = await conn.query(
+      'SELECT campaign_id, reward_id, campaign_name, max_codes FROM promo_campaigns WHERE campaign_id = $1',
       [campaignId]
     );
 
-    if (!campaign.length) {
+    if (!campaign.rows.length) {
       if (csvFilePath) fs.unlink(csvFilePath, () => {});
       conn.release();
       return res.status(404).json({ error: 'ไม่พบแคมเปญ' });
@@ -1134,7 +1142,7 @@ exports.uploadCodesToCampaign = async (req, res) => {
 
       codes.push({
         code,
-        reward_id: campaign[0].reward_id,
+        reward_id: campaign.rows[0].reward_id,
         campaign_id: campaignId,
         description: descIdx !== -1 ? (cols[descIdx] || '').trim() || null : null,
         expiry_date: expiryIdx !== -1 ? (cols[expiryIdx] || '').trim() || null : null,
@@ -1164,13 +1172,13 @@ exports.uploadCodesToCampaign = async (req, res) => {
     }
 
     // Enforce max_codes quota
-    const maxCodes = campaign[0].max_codes ? Number(campaign[0].max_codes) : null;
+    const maxCodes = campaign.rows[0].max_codes ? Number(campaign.rows[0].max_codes) : null;
     if (maxCodes !== null) {
-      const [countRes] = await conn.query(
-        'SELECT COUNT(*) as n FROM promo_codes WHERE campaign_id = ? AND is_deleted = 0',
+      const countRes = await conn.query(
+        'SELECT COUNT(*) as n FROM promo_codes WHERE campaign_id = $1 AND is_deleted = 0',
         [campaignId]
       );
-      const existing = Number(countRes[0]?.n || 0);
+      const existing = Number(countRes.rows[0]?.n || 0);
       const wouldExceed = existing + uniqueCodes.length > maxCodes;
       if (wouldExceed) {
         if (csvFilePath) fs.unlink(csvFilePath, () => {});
@@ -1190,16 +1198,16 @@ exports.uploadCodesToCampaign = async (req, res) => {
     let errorCount = selfDuplicates.length;
     const errors = selfDuplicates.map(code => ({ code, error: 'โค้ดซ้ำกันภายในไฟล์ที่อัพโหลด', type: 'self_duplicate' }));
 
-    await conn.beginTransaction();
+    await conn.query('BEGIN');
 
     for (const codeData of uniqueCodes) {
       try {
-        const [existing] = await conn.query(
-          'SELECT promo_code_id FROM promo_codes WHERE code = ? AND is_deleted = 0',
+        const existing = await conn.query(
+          'SELECT promo_code_id FROM promo_codes WHERE code = $1 AND is_deleted = 0',
           [codeData.code]
         );
 
-        if (existing.length) {
+        if (existing.rows.length) {
           errorCount++;
           errors.push({ code: codeData.code, error: 'โค้ดนี้มีอยู่แล้วในระบบ', type: 'duplicate_global' });
           continue;
@@ -1207,7 +1215,7 @@ exports.uploadCodesToCampaign = async (req, res) => {
 
         await conn.query(
           `INSERT INTO promo_codes (code, reward_id, campaign_id, description, expiry_date, batch_upload_id, uploaded_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
           [codeData.code, codeData.reward_id, codeData.campaign_id, codeData.description, codeData.expiry_date, codeData.batch_upload_id, codeData.uploaded_at]
         );
 
@@ -1218,7 +1226,7 @@ exports.uploadCodesToCampaign = async (req, res) => {
       }
     }
 
-    await conn.commit();
+    await conn.query('COMMIT');
     if (csvFilePath) fs.unlink(csvFilePath, () => {});
 
     conn.release();
@@ -1231,12 +1239,12 @@ exports.uploadCodesToCampaign = async (req, res) => {
       selfDuplicateCount: selfDuplicates.length,
       selfDuplicates: selfDuplicates.length > 0 ? selfDuplicates.slice(0, 20) : undefined,
       totalParsed: codes.length,
-      campaign_name: campaign[0].campaign_name,
+      campaign_name: campaign.rows[0].campaign_name,
       batch_id: batchId,
       errors: errors.length > 0 ? errors.slice(0, 20) : undefined
     });
   } catch (error) {
-    if (conn) await conn.rollback();
+    if (conn) await conn.query('ROLLBACK');
     if (csvFilePath) fs.unlink(csvFilePath, () => {});
     console.error('Upload codes to campaign error:', error);
     return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการอัพโหลดโค้ด' });
@@ -1255,10 +1263,10 @@ exports.searchPromoCodesByCampaign = async (req, res) => {
       return res.status(400).json({ error: 'กรุณาระบุ campaign_id' });
     }
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
     let query = `
-      SELECT 
+      SELECT
         p.promo_code_id,
         p.code,
         p.description,
@@ -1268,41 +1276,42 @@ exports.searchPromoCodesByCampaign = async (req, res) => {
         p.used_at,
         p.uploaded_at,
         p.created_at,
-        CASE 
+        CASE
           WHEN p.is_used = 1 THEN 'used'
           WHEN p.expiry_date < NOW() THEN 'expired'
           ELSE 'available'
         END as status
       FROM promo_codes p
-      WHERE p.campaign_id = ? AND p.is_deleted = 0
+      WHERE p.campaign_id = $1 AND p.is_deleted = 0
     `;
 
     const params = [campaign_id];
+    let pi = 2;
 
     if (search_code) {
-      query += ' AND p.code LIKE ?';
+      query += ` AND p.code LIKE $${pi++}`;
       params.push(`%${search_code}%`);
     }
 
     if (used_from_date) {
-      query += ' AND p.used_at >= ?';
+      query += ` AND p.used_at >= $${pi++}`;
       params.push(used_from_date);
     }
 
     if (used_to_date) {
-      query += ' AND p.used_at <= ?';
+      query += ` AND p.used_at <= $${pi++}`;
       params.push(used_to_date);
     }
 
     query += ' ORDER BY p.used_at DESC, p.code ASC';
 
-    const [codes] = await conn.query(query, params);
+    const codesResult = await conn.query(query, params);
     conn.release();
 
     return res.json({
       success: true,
-      data: codes.map(c => ({ ...c, code: maskCode(c.code) })),
-      total: codes.length
+      data: codesResult.rows.map(c => ({ ...c, code: maskCode(c.code) })),
+      total: codesResult.rows.length
     });
   } catch (error) {
     console.error('Search promo codes error:', error);

@@ -61,11 +61,11 @@ exports.getPromoCodeDetail = async (req, res) => {
         const { promo_code_id } = req.params;
         if (!promo_code_id) return res.status(400).json({ error: 'promo_code_id is required' });
 
-        conn = await pool.getConnection();
+        conn = await pool.connect();
 
         let codeRows;
         try {
-            [codeRows] = await conn.query(`
+            const result = await conn.query(`
                 SELECT
                     p.promo_code_id, p.code, p.reward_id,
                     r.reward_name, r.required_points AS reward_points,
@@ -76,10 +76,11 @@ exports.getPromoCodeDetail = async (req, res) => {
                     p.replacement_for, p.replaced_by, p.issue_reason, p.note
                 FROM promo_codes p
                 LEFT JOIN rewards r ON p.reward_id = r.reward_id
-                WHERE p.promo_code_id = ?
+                WHERE p.promo_code_id = $1
             `, [promo_code_id]);
+            codeRows = result.rows;
         } catch (e) {
-            [codeRows] = await conn.query(`
+            const result = await conn.query(`
                 SELECT
                     p.promo_code_id, p.code, p.reward_id,
                     r.reward_name, r.required_points AS reward_points,
@@ -90,8 +91,9 @@ exports.getPromoCodeDetail = async (req, res) => {
                     NULL AS replacement_for, NULL AS replaced_by, NULL AS issue_reason, NULL AS note
                 FROM promo_codes p
                 LEFT JOIN rewards r ON p.reward_id = r.reward_id
-                WHERE p.promo_code_id = ?
+                WHERE p.promo_code_id = $1
             `, [promo_code_id]);
+            codeRows = result.rows;
         }
 
         if (!codeRows.length) {
@@ -107,22 +109,22 @@ exports.getPromoCodeDetail = async (req, res) => {
         const userId = code.redeemed_by || code.used_by_user_id;
         if (userId) {
             try {
-                const [userRows] = await conn.query(
-                    `SELECT user_id, phone_number, full_name FROM users WHERE user_id = ?`,
+                const userRows = await conn.query(
+                    `SELECT user_id, phone_number, full_name FROM users WHERE user_id = $1`,
                     [userId]
                 );
-                assignedUser = userRows[0] || null;
+                assignedUser = userRows.rows[0] || null;
             } catch (e) {
                 console.warn('[getPromoCodeDetail] user lookup by id failed', e.message);
             }
         }
         if (!assignedUser && code.used_by_phone) {
             try {
-                const [userRows] = await conn.query(
-                    `SELECT user_id, phone_number, full_name FROM users WHERE phone_number = ?`,
+                const userRows = await conn.query(
+                    `SELECT user_id, phone_number, full_name FROM users WHERE phone_number = $1`,
                     [code.used_by_phone]
                 );
-                assignedUser = userRows[0] || null;
+                assignedUser = userRows.rows[0] || null;
             } catch (e) {
                 console.warn('[getPromoCodeDetail] user lookup by phone failed', e.message);
             }
@@ -131,13 +133,14 @@ exports.getPromoCodeDetail = async (req, res) => {
         // Timeline (real events from table, fallback to synthetic)
         let timeline = [];
         try {
-            [timeline] = await conn.query(`
+            const timelineResult = await conn.query(`
                 SELECT event_type, event_title, actor_type, actor_id, actor_name,
                        event_timestamp, event_metadata
                 FROM promo_code_timeline
-                WHERE promo_code_id = ?
+                WHERE promo_code_id = $1
                 ORDER BY event_timestamp ASC
             `, [promo_code_id]);
+            timeline = timelineResult.rows;
         } catch (e) {
             console.warn('[getPromoCodeDetail] timeline query failed', e.message);
         }
@@ -148,14 +151,15 @@ exports.getPromoCodeDetail = async (req, res) => {
         // Audit log
         let auditLog = [];
         try {
-            [auditLog] = await conn.query(`
+            const auditResult = await conn.query(`
                 SELECT audit_log_id, action, old_status, new_status,
                        override_reason, override_reason_custom, admin_id, admin_name,
                        admin_phone, admin_notes, device_ip, action_timestamp
                 FROM manual_override_audit_log
-                WHERE promo_code_id = ?
+                WHERE promo_code_id = $1
                 ORDER BY action_timestamp DESC
             `, [promo_code_id]);
+            auditLog = auditResult.rows;
         } catch (e) {
             console.warn('[getPromoCodeDetail] audit log query failed', e.message);
         }
@@ -190,32 +194,32 @@ exports.confirmCode = async (req, res) => {
             return res.status(400).json({ error: 'promo_code_id and admin credentials required' });
         }
 
-        conn = await pool.getConnection();
-        await conn.beginTransaction();
+        conn = await pool.connect();
+        await conn.query('BEGIN');
 
         try {
-            const [codeRows] = await conn.query(
-                'SELECT * FROM promo_codes WHERE promo_code_id = ? FOR UPDATE',
+            const codeRows = await conn.query(
+                'SELECT * FROM promo_codes WHERE promo_code_id = $1 FOR UPDATE',
                 [promo_code_id]
             );
-            if (!codeRows.length) {
-                await conn.rollback();
+            if (!codeRows.rows.length) {
+                await conn.query('ROLLBACK');
                 return res.status(404).json({ error: 'Promo code not found' });
             }
-            const currentCode = codeRows[0];
+            const currentCode = codeRows.rows[0];
             const oldStatus = computeStatus(currentCode);
 
             try {
                 await conn.query(`
                     UPDATE promo_codes
-                    SET status='redeemed', redeemed_by=?, redeemed_at=NOW(),
+                    SET status='redeemed', redeemed_by=$1, redeemed_at=NOW(),
                         is_used=1, used_at=NOW(),
-                        last_updated_by=?, last_updated_at=NOW()
-                    WHERE promo_code_id=?
+                        last_updated_by=$2, last_updated_at=NOW()
+                    WHERE promo_code_id=$3
                 `, [adminId, adminId, promo_code_id]);
             } catch (e) {
                 await conn.query(
-                    `UPDATE promo_codes SET is_used=1, used_at=NOW() WHERE promo_code_id=?`,
+                    `UPDATE promo_codes SET is_used=1, used_at=NOW() WHERE promo_code_id=$1`,
                     [promo_code_id]
                 );
             }
@@ -225,7 +229,7 @@ exports.confirmCode = async (req, res) => {
                     INSERT INTO manual_override_audit_log
                     (promo_code_id, code, action, old_status, new_status,
                      admin_notes, admin_id, admin_name, admin_phone, device_ip)
-                    VALUES (?, ?, 'confirm', ?, 'redeemed', ?, ?, ?, ?, ?)
+                    VALUES ($1, $2, 'confirm', $3, 'redeemed', $4, $5, $6, $7, $8)
                 `, [promo_code_id, currentCode.code, oldStatus,
                     note || null, adminId, adminName, adminPhone, device_ip || null]);
             } catch (e) { console.warn('[confirmCode] audit log failed', e.message); }
@@ -234,14 +238,14 @@ exports.confirmCode = async (req, res) => {
                 await conn.query(`
                     INSERT INTO promo_code_timeline
                     (promo_code_id, event_type, event_title, actor_type, actor_id, actor_name, event_timestamp, event_metadata)
-                    VALUES (?, 'used', 'ยืนยันการใช้งาน', 'admin', ?, ?, NOW(), ?)
+                    VALUES ($1, 'used', 'ยืนยันการใช้งาน', 'admin', $2, $3, NOW(), $4)
                 `, [promo_code_id, adminId, adminName, JSON.stringify({ note, device_ip })]);
             } catch (e) { console.warn('[confirmCode] timeline failed', e.message); }
 
-            await conn.commit();
+            await conn.query('COMMIT');
             return res.json({ success: true, message: 'Code confirmed successfully', data: { promo_code_id, new_status: 'redeemed' } });
         } catch (err) {
-            await conn.rollback();
+            await conn.query('ROLLBACK');
             throw err;
         }
     } catch (error) {
@@ -269,31 +273,31 @@ exports.cancelCode = async (req, res) => {
             return res.status(400).json({ error: 'promo_code_id and admin credentials required' });
         }
 
-        conn = await pool.getConnection();
-        await conn.beginTransaction();
+        conn = await pool.connect();
+        await conn.query('BEGIN');
 
         try {
-            const [codeRows] = await conn.query(
-                'SELECT * FROM promo_codes WHERE promo_code_id = ? FOR UPDATE',
+            const codeRows = await conn.query(
+                'SELECT * FROM promo_codes WHERE promo_code_id = $1 FOR UPDATE',
                 [promo_code_id]
             );
-            if (!codeRows.length) {
-                await conn.rollback();
+            if (!codeRows.rows.length) {
+                await conn.query('ROLLBACK');
                 return res.status(404).json({ error: 'Promo code not found' });
             }
-            const currentCode = codeRows[0];
+            const currentCode = codeRows.rows[0];
             const oldStatus = computeStatus(currentCode);
 
             try {
                 await conn.query(`
                     UPDATE promo_codes
                     SET status='cancelled', override_flag='cancelled',
-                        last_updated_by=?, last_updated_at=NOW()
-                    WHERE promo_code_id=?
+                        last_updated_by=$1, last_updated_at=NOW()
+                    WHERE promo_code_id=$2
                 `, [adminId, promo_code_id]);
             } catch (e) {
                 await conn.query(
-                    `UPDATE promo_codes SET override_flag='cancelled' WHERE promo_code_id=?`,
+                    `UPDATE promo_codes SET override_flag='cancelled' WHERE promo_code_id=$1`,
                     [promo_code_id]
                 );
             }
@@ -303,7 +307,7 @@ exports.cancelCode = async (req, res) => {
                     INSERT INTO manual_override_audit_log
                     (promo_code_id, code, action, old_status, new_status,
                      admin_notes, admin_id, admin_name, admin_phone, device_ip)
-                    VALUES (?, ?, 'cancel_code', ?, 'cancelled', ?, ?, ?, ?, ?)
+                    VALUES ($1, $2, 'cancel_code', $3, 'cancelled', $4, $5, $6, $7, $8)
                 `, [promo_code_id, currentCode.code, oldStatus,
                     note || null, adminId, adminName, adminPhone, device_ip || null]);
             } catch (e) { console.warn('[cancelCode] audit log failed', e.message); }
@@ -312,14 +316,14 @@ exports.cancelCode = async (req, res) => {
                 await conn.query(`
                     INSERT INTO promo_code_timeline
                     (promo_code_id, event_type, event_title, actor_type, actor_id, actor_name, event_timestamp, event_metadata)
-                    VALUES (?, 'cancelled', 'ยกเลิกโค้ด', 'admin', ?, ?, NOW(), ?)
+                    VALUES ($1, 'cancelled', 'ยกเลิกโค้ด', 'admin', $2, $3, NOW(), $4)
                 `, [promo_code_id, adminId, adminName, JSON.stringify({ note, device_ip })]);
             } catch (e) { console.warn('[cancelCode] timeline failed', e.message); }
 
-            await conn.commit();
+            await conn.query('COMMIT');
             return res.json({ success: true, message: 'Code cancelled successfully', data: { promo_code_id, new_status: 'cancelled' } });
         } catch (err) {
-            await conn.rollback();
+            await conn.query('ROLLBACK');
             throw err;
         }
     } catch (error) {
@@ -348,30 +352,31 @@ exports.replaceCode = async (req, res) => {
             return res.status(400).json({ error: 'promo_code_id and admin credentials required' });
         }
 
-        conn = await pool.getConnection();
-        await conn.beginTransaction();
+        conn = await pool.connect();
+        await conn.query('BEGIN');
 
         try {
-            const [codeRows] = await conn.query(
-                'SELECT * FROM promo_codes WHERE promo_code_id = ? FOR UPDATE',
+            const codeRows = await conn.query(
+                'SELECT * FROM promo_codes WHERE promo_code_id = $1 FOR UPDATE',
                 [promo_code_id]
             );
-            if (!codeRows.length) {
-                await conn.rollback();
+            if (!codeRows.rows.length) {
+                await conn.query('ROLLBACK');
                 return res.status(404).json({ error: 'Promo code not found' });
             }
-            const oldCode = codeRows[0];
+            const oldCode = codeRows.rows[0];
             const oldStatus = computeStatus(oldCode);
             const newCodeValue = generateCode();
 
             // Insert new promo code
             let newCodeId;
             try {
-                const [insertResult] = await conn.query(`
+                const insertResult = await conn.query(`
                     INSERT INTO promo_codes
                     (code, reward_id, campaign_id, description, expiry_date,
                      is_used, created_at, status, replacement_for, issue_reason, note)
-                    VALUES (?, ?, ?, ?, ?, 0, NOW(), 'active', ?, ?, ?)
+                    VALUES ($1, $2, $3, $4, $5, 0, NOW(), 'active', $6, $7, $8)
+                    RETURNING promo_code_id
                 `, [
                     newCodeValue,
                     oldCode.reward_id,
@@ -382,27 +387,28 @@ exports.replaceCode = async (req, res) => {
                     issue_reason || null,
                     note || null
                 ]);
-                newCodeId = insertResult.insertId;
+                newCodeId = insertResult.rows[0].promo_code_id;
             } catch (e) {
                 // Fallback without new columns
-                const [insertResult] = await conn.query(`
+                const insertResult = await conn.query(`
                     INSERT INTO promo_codes (code, reward_id, campaign_id, description, expiry_date, is_used, created_at)
-                    VALUES (?, ?, ?, ?, ?, 0, NOW())
+                    VALUES ($1, $2, $3, $4, $5, 0, NOW())
+                    RETURNING promo_code_id
                 `, [newCodeValue, oldCode.reward_id, oldCode.campaign_id, oldCode.description, oldCode.expiry_date]);
-                newCodeId = insertResult.insertId;
+                newCodeId = insertResult.rows[0].promo_code_id;
             }
 
             // Mark old code as replaced
             try {
                 await conn.query(`
                     UPDATE promo_codes
-                    SET status='replaced', override_flag='replaced', replaced_by=?,
-                        last_updated_by=?, last_updated_at=NOW()
-                    WHERE promo_code_id=?
+                    SET status='replaced', override_flag='replaced', replaced_by=$1,
+                        last_updated_by=$2, last_updated_at=NOW()
+                    WHERE promo_code_id=$3
                 `, [newCodeId, adminId, promo_code_id]);
             } catch (e) {
                 await conn.query(
-                    `UPDATE promo_codes SET override_flag='replaced' WHERE promo_code_id=?`,
+                    `UPDATE promo_codes SET override_flag='replaced' WHERE promo_code_id=$1`,
                     [promo_code_id]
                 );
             }
@@ -413,7 +419,7 @@ exports.replaceCode = async (req, res) => {
                     INSERT INTO manual_override_audit_log
                     (promo_code_id, code, action, old_status, new_status,
                      override_reason, admin_notes, admin_id, admin_name, admin_phone, device_ip)
-                    VALUES (?, ?, 'replace_code', ?, 'replaced', ?, ?, ?, ?, ?, ?)
+                    VALUES ($1, $2, 'replace_code', $3, 'replaced', $4, $5, $6, $7, $8, $9)
                 `, [promo_code_id, oldCode.code, oldStatus, issue_reason || null,
                     note || null, adminId, adminName, adminPhone, device_ip || null]);
 
@@ -421,7 +427,7 @@ exports.replaceCode = async (req, res) => {
                     INSERT INTO manual_override_audit_log
                     (promo_code_id, code, action, old_status, new_status,
                      override_reason, admin_notes, admin_id, admin_name, admin_phone, device_ip)
-                    VALUES (?, ?, 'replace_code', 'active', 'active', ?, ?, ?, ?, ?, ?)
+                    VALUES ($1, $2, 'replace_code', 'active', 'active', $3, $4, $5, $6, $7, $8)
                 `, [newCodeId, newCodeValue, issue_reason || null,
                     `ออกแทน #${promo_code_id}`, adminId, adminName, adminPhone, device_ip || null]);
             } catch (e) { console.warn('[replaceCode] audit log failed', e.message); }
@@ -430,11 +436,11 @@ exports.replaceCode = async (req, res) => {
                 await conn.query(`
                     INSERT INTO promo_code_timeline
                     (promo_code_id, event_type, event_title, actor_type, actor_id, actor_name, event_timestamp, event_metadata)
-                    VALUES (?, 'cancelled', 'ออกโค้ดใหม่แทน', 'admin', ?, ?, NOW(), ?)
+                    VALUES ($1, 'cancelled', 'ออกโค้ดใหม่แทน', 'admin', $2, $3, NOW(), $4)
                 `, [promo_code_id, adminId, adminName, JSON.stringify({ new_code: newCodeValue, new_id: newCodeId, issue_reason })]);
             } catch (e) { console.warn('[replaceCode] timeline failed', e.message); }
 
-            await conn.commit();
+            await conn.query('COMMIT');
             return res.json({
                 success: true,
                 message: 'Code replaced successfully',
@@ -447,7 +453,7 @@ exports.replaceCode = async (req, res) => {
                 }
             });
         } catch (err) {
-            await conn.rollback();
+            await conn.query('ROLLBACK');
             throw err;
         }
     } catch (error) {
@@ -488,33 +494,31 @@ exports.resetCodeStatus = async (req, res) => {
             return res.status(400).json({ error: `Invalid status: ${new_status}` });
         }
 
-        conn = await pool.getConnection();
-        await conn.beginTransaction();
+        conn = await pool.connect();
+        await conn.query('BEGIN');
 
         try {
-            const [codeRows] = await conn.query(
-                'SELECT * FROM promo_codes WHERE promo_code_id = ? FOR UPDATE',
+            const codeRows = await conn.query(
+                'SELECT * FROM promo_codes WHERE promo_code_id = $1 FOR UPDATE',
                 [promo_code_id]
             );
-            if (!codeRows.length) {
-                await conn.rollback();
+            if (!codeRows.rows.length) {
+                await conn.query('ROLLBACK');
                 return res.status(404).json({ error: 'Promo code not found' });
             }
-            const currentCode = codeRows[0];
+            const currentCode = codeRows.rows[0];
             const oldStatus = computeStatus(currentCode);
 
             const setIsUsed = normalizedStatus === 'redeemed' ? 1 : 0;
-            const setUsedAt = normalizedStatus === 'redeemed' ? 'NOW()' : 'NULL';
-            const overrideFlag = normalizedStatus === 'active' ? 'NULL' : `'${normalizedStatus}'`;
 
             try {
                 await conn.query(`
                     UPDATE promo_codes
-                    SET status=?, is_used=?,
+                    SET status=$1, is_used=$2,
                         ${normalizedStatus === 'redeemed' ? 'used_at=NOW(),' : 'used_at=NULL,'}
-                        override_flag=?,
-                        last_updated_by=?, last_updated_at=NOW()
-                    WHERE promo_code_id=?
+                        override_flag=$3,
+                        last_updated_by=$4, last_updated_at=NOW()
+                    WHERE promo_code_id=$5
                 `, [
                     normalizedStatus,
                     setIsUsed,
@@ -524,7 +528,7 @@ exports.resetCodeStatus = async (req, res) => {
                 ]);
             } catch (e) {
                 await conn.query(
-                    `UPDATE promo_codes SET is_used=? WHERE promo_code_id=?`,
+                    `UPDATE promo_codes SET is_used=$1 WHERE promo_code_id=$2`,
                     [setIsUsed, promo_code_id]
                 );
             }
@@ -535,7 +539,7 @@ exports.resetCodeStatus = async (req, res) => {
                     (promo_code_id, code, action, old_status, new_status,
                      override_reason, override_reason_custom, admin_notes,
                      admin_id, admin_name, admin_phone, device_ip)
-                    VALUES (?, ?, 'reset_status', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES ($1, $2, 'reset_status', $3, $4, $5, $6, $7, $8, $9, $10, $11)
                 `, [promo_code_id, currentCode.code, oldStatus, normalizedStatus,
                     override_reason || null, override_reason_custom || null,
                     admin_notes || null, adminId, adminName, adminPhone, device_ip || null]);
@@ -545,20 +549,20 @@ exports.resetCodeStatus = async (req, res) => {
                 await conn.query(`
                     INSERT INTO promo_code_timeline
                     (promo_code_id, event_type, event_title, actor_type, actor_id, actor_name, event_timestamp, event_metadata)
-                    VALUES (?, 'manual_override', ?, 'admin', ?, ?, NOW(), ?)
+                    VALUES ($1, 'manual_override', $2, 'admin', $3, $4, NOW(), $5)
                 `, [promo_code_id, `เปลี่ยนสถานะ → ${normalizedStatus}`,
                     adminId, adminName,
                     JSON.stringify({ from: oldStatus, to: normalizedStatus, reason: override_reason })]);
             } catch (e) { console.warn('[resetCodeStatus] timeline failed', e.message); }
 
-            await conn.commit();
+            await conn.query('COMMIT');
             return res.json({
                 success: true,
                 message: 'Code status updated successfully',
                 data: { promo_code_id, old_status: oldStatus, new_status: normalizedStatus }
             });
         } catch (err) {
-            await conn.rollback();
+            await conn.query('ROLLBACK');
             throw err;
         }
     } catch (error) {
@@ -588,32 +592,34 @@ exports.getAuditLog = async (req, res) => {
     try {
         const { admin_id, action, date_from, date_to, override_reason, search_code, promo_code_id, limit = 100, offset = 0 } = req.query;
 
-        conn = await pool.getConnection();
+        conn = await pool.connect();
         let logs = [], total = 0;
 
         try {
             const params = [];
+            let pi = 1;
             let where = 'WHERE 1=1';
-            if (promo_code_id) { where += ' AND promo_code_id=?'; params.push(promo_code_id); }
-            if (admin_id)      { where += ' AND admin_id=?';      params.push(admin_id); }
-            if (action)        { where += ' AND action=?';        params.push(action); }
-            if (override_reason) { where += ' AND override_reason=?'; params.push(override_reason); }
-            if (search_code)   { where += ' AND code LIKE ?';     params.push(`%${search_code}%`); }
-            if (date_from)     { where += ' AND action_timestamp >= ?'; params.push(`${date_from} 00:00:00`); }
-            if (date_to)       { where += ' AND action_timestamp <= ?'; params.push(`${date_to} 23:59:59`); }
+            if (promo_code_id)   { where += ` AND promo_code_id=$${pi++}`; params.push(promo_code_id); }
+            if (admin_id)        { where += ` AND admin_id=$${pi++}`;      params.push(admin_id); }
+            if (action)          { where += ` AND action=$${pi++}`;        params.push(action); }
+            if (override_reason) { where += ` AND override_reason=$${pi++}`; params.push(override_reason); }
+            if (search_code)     { where += ` AND code LIKE $${pi++}`;     params.push(`%${search_code}%`); }
+            if (date_from)       { where += ` AND action_timestamp >= $${pi++}`; params.push(`${date_from} 00:00:00`); }
+            if (date_to)         { where += ` AND action_timestamp <= $${pi++}`; params.push(`${date_to} 23:59:59`); }
 
-            const [[countRow]] = await conn.query(`SELECT COUNT(*) as total FROM manual_override_audit_log ${where}`, params);
-            total = Number(countRow?.total || 0);
+            const countResult = await conn.query(`SELECT COUNT(*) as total FROM manual_override_audit_log ${where}`, params);
+            total = Number(countResult.rows[0]?.total || 0);
 
             const dataParams = [...params, parseInt(limit), parseInt(offset)];
-            [logs] = await conn.query(
+            const logsResult = await conn.query(
                 `SELECT audit_log_id, promo_code_id, code, action, old_status, new_status,
                         override_reason, override_reason_custom, admin_id, admin_name, admin_phone,
                         branch_id, branch_name, admin_notes, device_ip, action_timestamp, is_critical
                  FROM manual_override_audit_log ${where}
-                 ORDER BY action_timestamp DESC LIMIT ? OFFSET ?`,
+                 ORDER BY action_timestamp DESC LIMIT $${pi++} OFFSET $${pi++}`,
                 dataParams
             );
+            logs = logsResult.rows;
         } catch (e) {
             console.warn('[getAuditLog] query failed:', e.message);
         }
@@ -635,17 +641,19 @@ exports.exportAuditLog = async (req, res) => {
     let conn;
     try {
         const { format = 'json', date_from, date_to, admin_id, promo_code_id } = req.query;
-        conn = await pool.getConnection();
+        conn = await pool.connect();
         let logs = [];
 
         try {
             const params = [];
+            let pi = 1;
             let where = 'WHERE 1=1';
-            if (promo_code_id) { where += ' AND promo_code_id=?'; params.push(promo_code_id); }
-            if (date_from)     { where += ' AND action_timestamp >= ?'; params.push(`${date_from} 00:00:00`); }
-            if (date_to)       { where += ' AND action_timestamp <= ?'; params.push(`${date_to} 23:59:59`); }
-            if (admin_id)      { where += ' AND admin_id=?'; params.push(admin_id); }
-            [logs] = await conn.query(`SELECT * FROM manual_override_audit_log ${where} ORDER BY action_timestamp DESC`, params);
+            if (promo_code_id) { where += ` AND promo_code_id=$${pi++}`; params.push(promo_code_id); }
+            if (date_from)     { where += ` AND action_timestamp >= $${pi++}`; params.push(`${date_from} 00:00:00`); }
+            if (date_to)       { where += ` AND action_timestamp <= $${pi++}`; params.push(`${date_to} 23:59:59`); }
+            if (admin_id)      { where += ` AND admin_id=$${pi++}`; params.push(admin_id); }
+            const logsResult = await conn.query(`SELECT * FROM manual_override_audit_log ${where} ORDER BY action_timestamp DESC`, params);
+            logs = logsResult.rows;
         } catch (e) {
             console.warn('[exportAuditLog] query failed:', e.message);
         }
@@ -685,18 +693,21 @@ exports.exportAuditLog = async (req, res) => {
 exports.getOverrideStats = async (req, res) => {
     let conn;
     try {
-        conn = await pool.getConnection();
+        conn = await pool.connect();
         let totalOverrides = 0, todayOverrides = 0;
         let overridesByAction = [], overridesByReason = [], overridesByAdmin = [];
 
         try {
-            const [[totalRow]] = await conn.query(`SELECT COUNT(*) as count FROM manual_override_audit_log`);
-            const [[todayRow]] = await conn.query(`SELECT COUNT(*) as count FROM manual_override_audit_log WHERE DATE(action_timestamp) = DATE(NOW())`);
-            [overridesByAction] = await conn.query(`SELECT action, COUNT(*) as count FROM manual_override_audit_log GROUP BY action`);
-            [overridesByReason] = await conn.query(`SELECT override_reason, COUNT(*) as count FROM manual_override_audit_log WHERE override_reason IS NOT NULL GROUP BY override_reason`);
-            [overridesByAdmin]  = await conn.query(`SELECT admin_id, admin_name, COUNT(*) as count FROM manual_override_audit_log GROUP BY admin_id, admin_name ORDER BY count DESC LIMIT 10`);
-            totalOverrides = Number(totalRow?.count || 0);
-            todayOverrides = Number(todayRow?.count || 0);
+            const totalResult = await conn.query(`SELECT COUNT(*) as count FROM manual_override_audit_log`);
+            const todayResult = await conn.query(`SELECT COUNT(*) as count FROM manual_override_audit_log WHERE CURRENT_DATE = CURRENT_DATE`);
+            const actionResult = await conn.query(`SELECT action, COUNT(*) as count FROM manual_override_audit_log GROUP BY action`);
+            const reasonResult = await conn.query(`SELECT override_reason, COUNT(*) as count FROM manual_override_audit_log WHERE override_reason IS NOT NULL GROUP BY override_reason`);
+            const adminResult  = await conn.query(`SELECT admin_id, admin_name, COUNT(*) as count FROM manual_override_audit_log GROUP BY admin_id, admin_name ORDER BY count DESC LIMIT 10`);
+            overridesByAction = actionResult.rows;
+            overridesByReason = reasonResult.rows;
+            overridesByAdmin  = adminResult.rows;
+            totalOverrides = Number(totalResult.rows[0]?.count || 0);
+            todayOverrides = Number(todayResult.rows[0]?.count || 0);
         } catch (e) {
             console.warn('[getOverrideStats] query failed:', e.message);
         }

@@ -15,7 +15,7 @@ const {
 } = require('../services/securityLogService');
 
 async function querySingleValue(conn, sql, params = []) {
-  const [rows] = await conn.query(sql, params);
+  const { rows } = await conn.query(sql, params);
   if (!rows || rows.length === 0) return 0;
 
   const firstRow = rows[0];
@@ -24,11 +24,11 @@ async function querySingleValue(conn, sql, params = []) {
 }
 
 async function tableHasCreatedAt(conn, tableName) {
-  const [rows] = await conn.query(
+  const { rows } = await conn.query(
     `SELECT COUNT(*) AS total
      FROM information_schema.columns
-     WHERE table_schema = DATABASE()
-       AND table_name = ?
+     WHERE table_schema = current_schema()
+       AND table_name = $1
        AND column_name = 'created_at'`,
     [tableName]
   );
@@ -37,12 +37,12 @@ async function tableHasCreatedAt(conn, tableName) {
 }
 
 async function tableHasColumn(conn, tableName, columnName) {
-  const [rows] = await conn.query(
+  const { rows } = await conn.query(
     `SELECT COUNT(*) AS total
      FROM information_schema.columns
-     WHERE table_schema = DATABASE()
-       AND table_name = ?
-       AND column_name = ?`,
+     WHERE table_schema = current_schema()
+       AND table_name = $1
+       AND column_name = $2`,
     [tableName, columnName]
   );
 
@@ -51,7 +51,7 @@ async function tableHasColumn(conn, tableName, columnName) {
 
 async function safeQuery(conn, sql, params = []) {
   try {
-    const [rows] = await conn.query(sql, params);
+    const { rows } = await conn.query(sql, params);
     return rows;
   } catch (error) {
     return [];
@@ -60,30 +60,30 @@ async function safeQuery(conn, sql, params = []) {
 
 async function ensureRewardColumns(conn) {
   try {
-    const [columns] = await conn.query(
-      `SELECT COLUMN_NAME
+    const { rows: columns } = await conn.query(
+      `SELECT column_name
        FROM information_schema.columns
-       WHERE table_schema = DATABASE()
+       WHERE table_schema = current_schema()
          AND table_name = 'rewards'`
     );
 
-    const colSet = new Set(columns.map((column) => column.COLUMN_NAME.toLowerCase()));
+    const colSet = new Set(columns.map((column) => column.column_name.toLowerCase()));
 
     if (!colSet.has('required_points') && colSet.has('points_required')) {
       try {
-        await conn.query('ALTER TABLE rewards ADD COLUMN required_points INT DEFAULT 0 AFTER reward_name');
+        await conn.query('ALTER TABLE rewards ADD COLUMN required_points INT DEFAULT 0');
         await conn.query('UPDATE rewards SET required_points = points_required WHERE required_points = 0 OR required_points IS NULL');
       } catch (err) {
-        if (err.code !== 'ER_DUP_FIELDNAME') throw err;
+        if (err.code !== '42701') throw err;
       }
     }
 
     if (!colSet.has('points_required') && colSet.has('required_points')) {
       try {
-        await conn.query('ALTER TABLE rewards ADD COLUMN points_required INT DEFAULT 0 AFTER reward_name');
+        await conn.query('ALTER TABLE rewards ADD COLUMN points_required INT DEFAULT 0');
         await conn.query('UPDATE rewards SET points_required = required_points WHERE points_required = 0 OR points_required IS NULL');
       } catch (err) {
-        if (err.code !== 'ER_DUP_FIELDNAME') throw err;
+        if (err.code !== '42701') throw err;
       }
     }
 
@@ -97,10 +97,10 @@ async function ensureRewardColumns(conn) {
           } else if (col === 'partner_id') {
             await conn.query(`ALTER TABLE rewards ADD COLUMN ${col} INT DEFAULT NULL`);
           } else {
-            await conn.query(`ALTER TABLE rewards ADD COLUMN ${col} DATETIME DEFAULT NULL`);
+            await conn.query(`ALTER TABLE rewards ADD COLUMN ${col} TIMESTAMP DEFAULT NULL`);
           }
         } catch (err) {
-          if (err.code !== 'ER_DUP_FIELDNAME') throw err;
+          if (err.code !== '42701') throw err;
           // Column already exists, ignore
         }
       }
@@ -114,51 +114,43 @@ async function ensureRewardColumns(conn) {
 async function ensureAdminLogsTable(conn) {
   await conn.query(
     `CREATE TABLE IF NOT EXISTS admin_logs (
-      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      id BIGSERIAL NOT NULL,
       event VARCHAR(500) NOT NULL,
-      \`user\` VARCHAR(255) NULL,
-      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      PRIMARY KEY (id),
-      INDEX idx_admin_logs_created_at (created_at)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+      "user" VARCHAR(255) NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id)
+    )`
   );
 }
 
 async function ensurePostModerationLogsTable(conn) {
   await conn.query(
     `CREATE TABLE IF NOT EXISTS post_moderation_logs (
-      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      id BIGSERIAL NOT NULL,
       post_id INT NOT NULL,
       admin_actor VARCHAR(255) NOT NULL,
       action VARCHAR(50) NOT NULL,
       reason VARCHAR(255) NULL,
       note TEXT NULL,
-      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      PRIMARY KEY (id),
-      INDEX idx_post_moderation_logs_post_id (post_id),
-      INDEX idx_post_moderation_logs_created_at (created_at),
-      CONSTRAINT fk_post_moderation_logs_post FOREIGN KEY (post_id) REFERENCES posts(post_id) ON DELETE CASCADE
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id)
+    )`
   );
 }
 
 async function ensurePostReportsTable(conn) {
   await conn.query(
     `CREATE TABLE IF NOT EXISTS post_reports (
-      report_id INT AUTO_INCREMENT PRIMARY KEY,
+      report_id SERIAL PRIMARY KEY,
       post_id INT NOT NULL,
       reporter_user_id INT NOT NULL,
       reason VARCHAR(100) NULL,
       detail TEXT NULL,
-      status ENUM('pending','reviewed','dismissed') NOT NULL DEFAULT 'pending',
-      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      UNIQUE KEY uniq_post_reporter (post_id, reporter_user_id),
-      INDEX idx_post_reports_post_id (post_id),
-      INDEX idx_post_reports_status_created (status, created_at),
-      CONSTRAINT fk_post_reports_post FOREIGN KEY (post_id) REFERENCES posts(post_id) ON DELETE CASCADE,
-      CONSTRAINT fk_post_reports_reporter FOREIGN KEY (reporter_user_id) REFERENCES users(user_id) ON DELETE CASCADE
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE (post_id, reporter_user_id)
+    )`
   );
 }
 
@@ -315,12 +307,12 @@ async function ensureRewardSettingsColumns(conn) {
   ];
 
   for (const col of columnsToEnsure) {
-    const [rows] = await conn.query(
+    const { rows } = await conn.query(
       `SELECT COUNT(*) AS total
-       FROM INFORMATION_SCHEMA.COLUMNS
-       WHERE TABLE_SCHEMA = DATABASE()
-         AND TABLE_NAME = 'reward_settings'
-         AND COLUMN_NAME = ?`,
+       FROM information_schema.columns
+       WHERE table_schema = current_schema()
+         AND table_name = 'reward_settings'
+         AND column_name = $1`,
       [col.name]
     );
 
@@ -429,7 +421,7 @@ async function buildSummaryAndActivity(conn, options = {}) {
     conn,
      `SELECT COUNT(DISTINCT user_id) AS total
       FROM (${activeUnionSql}) active
-      WHERE activity_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)`
+      WHERE activity_at >= NOW() - INTERVAL '7 days'`
   );
   const weeklyActiveUsers = Number(weeklyActiveRows?.[0]?.total || 0);
 
@@ -438,22 +430,22 @@ async function buildSummaryAndActivity(conn, options = {}) {
     conn,
      `SELECT COUNT(DISTINCT user_id) AS total
       FROM (${activeUnionSql}) active
-      WHERE activity_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)`
+      WHERE activity_at >= NOW() - INTERVAL '24 hours'`
   );
   const usersToday = Number(usersTodayRows?.[0]?.total || 0);
 
   const postsToday = postsHasCreatedAt
-    ? await querySingleValue(conn, "SELECT COUNT(*) AS total FROM posts WHERE is_deleted = 0 AND DATE(created_at) = DATE(NOW())")
+    ? await querySingleValue(conn, "SELECT COUNT(*) AS total FROM posts WHERE is_deleted = 0 AND DATE(created_at) = CURRENT_DATE")
     : 0;
 
   // DAU graph: selected day (hourly 00:00-23:00)
   const dauRows = await safeQuery(
     conn,
-    `SELECT HOUR(activity_at) AS hour_slot,
+    `SELECT EXTRACT(HOUR FROM activity_at) AS hour_slot,
             COUNT(DISTINCT user_id) AS total
      FROM (${activeUnionSql}) active
-     WHERE DATE(activity_at) = ?
-     GROUP BY HOUR(activity_at)` ,
+     WHERE DATE(activity_at) = $1
+     GROUP BY EXTRACT(HOUR FROM activity_at)`,
     [selectedDauDate]
   );
 
@@ -481,12 +473,12 @@ async function buildSummaryAndActivity(conn, options = {}) {
 
   const mauRows = await safeQuery(
     conn,
-    `SELECT DAY(activity_at) AS day_of_month,
+    `SELECT EXTRACT(DAY FROM activity_at) AS day_of_month,
             COUNT(DISTINCT user_id) AS total
      FROM (${activeUnionSql}) active
-     WHERE DATE(activity_at) >= ?
-       AND DATE(activity_at) < ?
-     GROUP BY DAY(activity_at)`,
+     WHERE DATE(activity_at) >= $1
+       AND DATE(activity_at) < $2
+     GROUP BY EXTRACT(DAY FROM activity_at)`,
     [monthStart, nextMonthStart]
   );
 
@@ -510,13 +502,13 @@ async function buildSummaryAndActivity(conn, options = {}) {
   let activeUsersWeeklyMap = {};
 
   if (postsHasCreatedAt) {
-    const [postWeekRows] = await conn.query(
+    const { rows: postWeekRows } = await conn.query(
       `SELECT DATE(created_at) AS day_key,
               COUNT(*) AS total
        FROM posts
        WHERE is_deleted = 0
-         AND DATE(created_at) >= ?
-         AND DATE(created_at) <= ?
+         AND DATE(created_at) >= $1
+         AND DATE(created_at) <= $2
        GROUP BY DATE(created_at)`,
       [wauStartDate, wauEndDate]
     );
@@ -532,8 +524,8 @@ async function buildSummaryAndActivity(conn, options = {}) {
     `SELECT DATE(activity_at) AS day_key,
             COUNT(DISTINCT user_id) AS total
       FROM (${activeUnionSql}) active
-      WHERE DATE(activity_at) >= ?
-        AND DATE(activity_at) <= ?
+      WHERE DATE(activity_at) >= $1
+        AND DATE(activity_at) <= $2
       GROUP BY DATE(activity_at)`,
     [wauStartDate, wauEndDate]
   );
@@ -594,7 +586,7 @@ exports.getDashboardSummary = async (req, res) => {
   let conn;
 
   try {
-    conn = await pool.getConnection();
+    conn = await pool.connect();
     const payload = await buildSummaryAndActivity(conn, {
       dauDate: req.query.dauDate,
       mauMonth: req.query.mauMonth,
@@ -614,7 +606,7 @@ exports.getDashboardData = async (req, res) => {
   let conn;
 
   try {
-    conn = await pool.getConnection();
+    conn = await pool.connect();
     console.log('✅ Database connection established for dashboard');
     await ensureModerationColumns(conn);
     await ensureAdminLogsTable(conn);
@@ -652,19 +644,15 @@ exports.getDashboardData = async (req, res) => {
     async function ensureCommentReportsTable(conn) {
       await conn.query(
         `CREATE TABLE IF NOT EXISTS comment_reports (
-          report_id INT AUTO_INCREMENT PRIMARY KEY,
+          report_id SERIAL PRIMARY KEY,
           comment_id INT NOT NULL,
           reporter_user_id INT NOT NULL,
           reason VARCHAR(100) NULL,
           detail TEXT NULL,
-          status ENUM('pending','reviewed','dismissed') NOT NULL DEFAULT 'pending',
-          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          UNIQUE KEY uniq_comment_reporter (comment_id, reporter_user_id),
-          INDEX idx_comment_reports_comment_id (comment_id),
-          INDEX idx_comment_reports_status_created (status, created_at),
-          CONSTRAINT fk_comment_reports_comment FOREIGN KEY (comment_id) REFERENCES comments(comment_id) ON DELETE CASCADE,
-          CONSTRAINT fk_comment_reports_reporter FOREIGN KEY (reporter_user_id) REFERENCES users(user_id) ON DELETE CASCADE
+          status TEXT NOT NULL DEFAULT 'pending',
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE (comment_id, reporter_user_id)
         )`
       );
     }
@@ -771,7 +759,7 @@ exports.getDashboardData = async (req, res) => {
       conn,
       `SELECT COUNT(*) AS total
        FROM security_logs
-       WHERE DATE(created_at) = DATE(NOW())
+       WHERE DATE(created_at) = CURRENT_DATE
          AND event_type IN ('user_otp_request', 'admin_otp_request')`
     );
 
@@ -779,7 +767,7 @@ exports.getDashboardData = async (req, res) => {
       conn,
       `SELECT COUNT(*) AS total
        FROM security_logs
-       WHERE DATE(created_at) = DATE(NOW())
+       WHERE DATE(created_at) = CURRENT_DATE
          AND event_type IN ('user_otp_success', 'admin_otp_success')`
     );
 
@@ -787,7 +775,7 @@ exports.getDashboardData = async (req, res) => {
       conn,
       `SELECT COUNT(*) AS total
        FROM security_logs
-       WHERE DATE(created_at) = DATE(NOW())
+       WHERE DATE(created_at) = CURRENT_DATE
          AND event_type IN ('user_otp_failed', 'admin_otp_failed')`
     );
 
@@ -795,7 +783,7 @@ exports.getDashboardData = async (req, res) => {
       conn,
       `SELECT COUNT(*) AS total
        FROM security_logs
-       WHERE DATE(created_at) = DATE(NOW())
+       WHERE DATE(created_at) = CURRENT_DATE
          AND event_type IN ('user_otp_success', 'admin_otp_success', 'admin_login_success')`
     );
 
@@ -803,7 +791,7 @@ exports.getDashboardData = async (req, res) => {
       conn,
       `SELECT COUNT(*) AS total
        FROM security_logs
-       WHERE DATE(created_at) = DATE(NOW())
+       WHERE DATE(created_at) = CURRENT_DATE
          AND event_type IN ('user_otp_failed', 'admin_otp_failed', 'admin_login_failed')`
     );
 
@@ -815,7 +803,7 @@ exports.getDashboardData = async (req, res) => {
       conn,
       `SELECT event_type, actor_name, actor_phone, target_name, target_phone, ip_address, device, detail, created_at
        FROM security_logs
-       WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+       WHERE created_at >= NOW() - INTERVAL '30 days'
          AND (
            event_type IN ('user_otp_request', 'user_otp_success', 'user_otp_failed', 'admin_otp_request', 'admin_otp_success', 'admin_otp_failed', 'admin_login_success', 'admin_login_failed', 'user_blocked', 'user_unblocked')
          )
@@ -1001,11 +989,11 @@ exports.getPostDetail = async (req, res) => {
       return res.status(400).json({ error: 'Invalid post id' });
     }
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
     await ensureModerationColumns(conn);
     await ensureAdminLogsTable(conn);
 
-    const [postRows] = await conn.query(
+    const { rows: postRows } = await conn.query(
       `SELECT p.post_id, p.content, p.created_at, p.visibility, p.user_id, p.group_id,
               u.full_name, u.phone_number, u.profile_picture,
               u.is_blocked, u.blocked_reason, u.warning_note, u.blocked_at,
@@ -1014,7 +1002,7 @@ exports.getPostDetail = async (req, res) => {
               (SELECT COUNT(*) FROM posts sp WHERE sp.shared_post_id=p.post_id AND sp.is_deleted=0) AS shares
        FROM posts p
        JOIN users u ON u.user_id = p.user_id
-       WHERE p.post_id = ?
+       WHERE p.post_id = $1
        LIMIT 1`,
       [postId]
     );
@@ -1025,8 +1013,8 @@ exports.getPostDetail = async (req, res) => {
 
     const post = postRows[0];
 
-    const [imageRows] = await conn.query(
-      'SELECT image_url FROM post_images WHERE post_id = ? ORDER BY image_id ASC',
+    const { rows: imageRows } = await conn.query(
+      'SELECT image_url FROM post_images WHERE post_id = $1 ORDER BY image_id ASC',
       [postId]
     );
 
@@ -1037,10 +1025,10 @@ exports.getPostDetail = async (req, res) => {
       `SELECT COUNT(*) AS report_count,
               SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_count,
               SUM(CASE WHEN status = 'reviewed' THEN 1 ELSE 0 END) AS reviewed_count,
-              GROUP_CONCAT(DISTINCT NULLIF(TRIM(reason), '') ORDER BY created_at DESC SEPARATOR ' | ') AS reasons,
+              STRING_AGG(DISTINCT NULLIF(TRIM(reason), ''), ' | ' ORDER BY NULLIF(TRIM(reason), '')) AS reasons,
               MAX(created_at) AS latest_report_at
        FROM post_reports
-       WHERE post_id = ?`,
+       WHERE post_id = $1`,
       [postId]
     );
 
@@ -1051,7 +1039,7 @@ exports.getPostDetail = async (req, res) => {
               reporter.phone_number AS reporter_phone
        FROM post_reports pr
        JOIN users reporter ON reporter.user_id = pr.reporter_user_id
-       WHERE pr.post_id = ?
+       WHERE pr.post_id = $1
        ORDER BY pr.created_at DESC
        LIMIT 6`,
       [postId]
@@ -1063,18 +1051,18 @@ exports.getPostDetail = async (req, res) => {
       conn,
       `SELECT action, admin_actor, reason, note, created_at
        FROM post_moderation_logs
-       WHERE post_id = ?
+       WHERE post_id = $1
        ORDER BY created_at DESC
        LIMIT 10`,
       [postId]
     );
 
-    const [commentRows] = await conn.query(
+    const { rows: commentRows } = await conn.query(
       `SELECT c.comment_id, c.content, c.created_at,
               u.full_name, u.phone_number, u.profile_picture
        FROM comments c
        JOIN users u ON u.user_id = c.user_id
-       WHERE c.post_id = ?
+       WHERE c.post_id = $1
        ORDER BY c.created_at ASC`,
       [postId]
     );
@@ -1182,19 +1170,19 @@ exports.moderatePost = async (req, res) => {
       return res.status(400).json({ error: 'Invalid moderation action' });
     }
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
     await ensureModerationColumns(conn);
     await ensureAdminLogsTable(conn);
     await ensurePostModerationLogsTable(conn);
     await ensureSecurityLogsTable(conn);
     await ensurePostReportsTable(conn);
 
-    const [postRows] = await conn.query(
+    const { rows: postRows } = await conn.query(
       `SELECT p.post_id, p.visibility, p.is_deleted, p.user_id,
               u.full_name, u.phone_number
        FROM posts p
        JOIN users u ON u.user_id = p.user_id
-       WHERE p.post_id = ?
+       WHERE p.post_id = $1
        LIMIT 1`,
       [postId]
     );
@@ -1216,17 +1204,17 @@ exports.moderatePost = async (req, res) => {
 
     if (normalizedAction === 'delete') {
       await conn.query(
-        'UPDATE posts SET is_deleted = 1, deleted_at = NOW() WHERE post_id = ?',
+        'UPDATE posts SET is_deleted = 1, deleted_at = NOW() WHERE post_id = $1',
         [postId]
       );
     } else if (normalizedAction === 'hide') {
       await conn.query(
-        "UPDATE posts SET visibility = 'only_me' WHERE post_id = ?",
+        "UPDATE posts SET visibility = 'only_me' WHERE post_id = $1",
         [postId]
       );
     } else if (normalizedAction === 'warn') {
       await conn.query(
-        'UPDATE users SET warning_note = ? WHERE user_id = ?',
+        'UPDATE users SET warning_note = $1 WHERE user_id = $2',
         [normalizedWarning, Number(post.user_id)]
       );
     } else if (normalizedAction === 'dismiss') {
@@ -1237,27 +1225,27 @@ exports.moderatePost = async (req, res) => {
       await conn.query(
         `UPDATE post_reports
          SET status = 'dismissed'
-         WHERE post_id = ? AND status = 'pending'`,
+         WHERE post_id = $1 AND status = 'pending'`,
         [postId]
       );
     } else {
       await conn.query(
         `UPDATE post_reports
          SET status = 'reviewed'
-         WHERE post_id = ? AND status = 'pending'`,
+         WHERE post_id = $1 AND status = 'pending'`,
         [postId]
       );
     }
 
     await conn.query(
       `INSERT INTO post_moderation_logs (post_id, admin_actor, action, reason, note)
-       VALUES (?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5)`,
       [postId, adminActor, normalizedAction, normalizedReason, normalizedWarning]
     );
 
     try {
       await conn.query(
-        'INSERT INTO admin_logs (event, user) VALUES (?, ?)',
+        'INSERT INTO admin_logs (event, "user") VALUES ($1, $2)',
         [
           `POST_${normalizedAction.toUpperCase()}: ${postId} | reason: ${normalizedReason}`,
           `${post.phone_number || '-'} | by ${adminActor}`
@@ -1305,12 +1293,12 @@ exports.movePostGroup = async (req, res) => {
       return res.status(400).json({ error: 'Invalid group_id' });
     }
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
     await ensureAdminLogsTable(conn);
     await ensurePostModerationLogsTable(conn);
 
-    const [postRows] = await conn.query(
-      'SELECT post_id, group_id, is_deleted FROM posts WHERE post_id = ? LIMIT 1',
+    const { rows: postRows } = await conn.query(
+      'SELECT post_id, group_id, is_deleted FROM posts WHERE post_id = $1 LIMIT 1',
       [postId]
     );
     if (!postRows.length) return res.status(404).json({ error: 'Post not found' });
@@ -1319,20 +1307,20 @@ exports.movePostGroup = async (req, res) => {
     }
 
     if (targetGroupId !== null) {
-      const [grpRows] = await conn.query(
-        'SELECT group_id FROM `groups` WHERE group_id = ?',
+      const { rows: grpRows } = await conn.query(
+        'SELECT group_id FROM groups WHERE group_id = $1',
         [targetGroupId]
       );
       if (!grpRows.length) return res.status(404).json({ error: 'Target group not found' });
     }
 
     const oldGroupId = postRows[0].group_id;
-    await conn.query('UPDATE posts SET group_id = ? WHERE post_id = ?', [targetGroupId, postId]);
+    await conn.query('UPDATE posts SET group_id = $1 WHERE post_id = $2', [targetGroupId, postId]);
 
     const adminActor = getAdminActorLabel(req);
     await conn.query(
       `INSERT INTO post_moderation_logs(post_id, action, admin_actor, reason, note)
-       VALUES(?, 'move_group', ?, ?, NULL)`,
+       VALUES($1, 'move_group', $2, $3, NULL)`,
       [
         postId,
         adminActor,
@@ -1341,7 +1329,7 @@ exports.movePostGroup = async (req, res) => {
     );
 
     try {
-      await conn.query('INSERT INTO admin_logs (event, user) VALUES (?, ?)', [
+      await conn.query('INSERT INTO admin_logs (event, "user") VALUES ($1, $2)', [
         `POST_MOVE_GROUP: ${postId} | from=${oldGroupId ?? 'null'} to=${targetGroupId ?? 'null'}`,
         `by ${adminActor}`
       ]);
@@ -1366,7 +1354,7 @@ exports.blockUser = async (req, res) => {
       return res.status(400).json({ error: 'phone_number is required' });
     }
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
     await ensureModerationColumns(conn);
     await ensureAdminLogsTable(conn);
 
@@ -1381,11 +1369,11 @@ exports.blockUser = async (req, res) => {
     await conn.query(
       `UPDATE users
        SET is_blocked = 1,
-           blocked_reason = ?,
-           warning_note = ?,
+           blocked_reason = $1,
+           warning_note = $2,
            blocked_at = NOW(),
-           blocked_by = ?
-       WHERE user_id = ?`,
+           blocked_by = $3
+       WHERE user_id = $4`,
       [
         normalizedReason,
         normalizedWarning,
@@ -1398,7 +1386,7 @@ exports.blockUser = async (req, res) => {
     try {
       const actor = String(req.admin?.phone_number || req.admin?.username || req.admin?.sub || 'admin');
       await conn.query(
-        'INSERT INTO admin_logs (event, user) VALUES (?, ?)',
+        'INSERT INTO admin_logs (event, "user") VALUES ($1, $2)',
         [`BLOCK_USER: ${phone_number} | reason: ${normalizedReason}`, `${phone_number} | by ${actor}`]
       );
       await logSecurityEvent(conn, {
@@ -1441,7 +1429,7 @@ exports.unblockUser = async (req, res) => {
       return res.status(400).json({ error: 'phone_number is required' });
     }
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
     await ensureModerationColumns(conn);
     await ensureSecurityLogsTable(conn);
 
@@ -1456,7 +1444,7 @@ exports.unblockUser = async (req, res) => {
            blocked_reason = NULL,
            warning_note = NULL,
            blocked_by = NULL
-       WHERE user_id = ?`,
+       WHERE user_id = $1`,
       [user.userId]
     );
 
@@ -1464,7 +1452,7 @@ exports.unblockUser = async (req, res) => {
     try {
       const actor = String(req.admin?.phone_number || req.admin?.username || req.admin?.sub || 'admin');
       await conn.query(
-        'INSERT INTO admin_logs (event, user) VALUES (?, ?)',
+        'INSERT INTO admin_logs (event, "user") VALUES ($1, $2)',
         [`UNBLOCK_USER: ${phone_number}`, `${phone_number} | by ${actor}`]
       );
       await logSecurityEvent(conn, {
@@ -1509,11 +1497,11 @@ exports.getUserDetailByPhone = async (req, res) => {
       return res.status(400).json({ error: 'phone is required' });
     }
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
     await ensureModerationColumns(conn);
 
     // ดึงข้อมูล user พื้นฐาน
-    const [userRows] = await conn.query(
+    const { rows: userRows } = await conn.query(
       `SELECT
         u.user_id,
         u.phone_number,
@@ -1535,7 +1523,7 @@ exports.getUserDetailByPhone = async (req, res) => {
         u.warning_note,
         u.blocked_at
        FROM users u
-       WHERE u.phone_number = ?`,
+       WHERE u.phone_number = $1`,
       [phone]
     );
 
@@ -1549,8 +1537,8 @@ exports.getUserDetailByPhone = async (req, res) => {
     // ดึงคะแนนและ streak ของผู้ใช้ (ถ้ามี user_points table)
     let points = { total_points: 0, streak: 0 };
     try {
-      const [pointRows] = await conn.query(
-        `SELECT total_points, login_streak FROM user_points WHERE user_id = ?`,
+      const { rows: pointRows } = await conn.query(
+        `SELECT total_points, login_streak FROM user_points WHERE user_id = $1`,
         [user.user_id]
       );
       if (pointRows && pointRows.length > 0) {
@@ -1564,7 +1552,7 @@ exports.getUserDetailByPhone = async (req, res) => {
     }
 
     // ดึง recent posts ของผู้ใช้
-    const [recentPosts] = await conn.query(
+    const { rows: recentPosts } = await conn.query(
       `SELECT
         p.post_id,
         p.content,
@@ -1574,17 +1562,17 @@ exports.getUserDetailByPhone = async (req, res) => {
         (SELECT COUNT(*) FROM comments WHERE post_id = p.post_id) as comments,
         (SELECT COUNT(*) FROM posts sp WHERE sp.shared_post_id = p.post_id AND sp.is_deleted = 0) as shares
        FROM posts p
-       WHERE p.user_id = ? AND p.is_deleted = 0
+       WHERE p.user_id = $1 AND p.is_deleted = 0
        ORDER BY p.created_at DESC
        LIMIT 6`,
       [user.user_id]
     );
 
     // ดึง block history logs
-    let [blockHistory] = await conn.query(
-      `SELECT event, created_at, user FROM admin_logs
+    let { rows: blockHistory } = await conn.query(
+      `SELECT event, created_at, "user" FROM admin_logs
        WHERE (event LIKE '%block%' OR event LIKE '%บล็อค%' OR event LIKE '%ระงับ%')
-       AND (event LIKE ? OR user LIKE ?)
+       AND (event LIKE $1 OR "user" LIKE $2)
        ORDER BY created_at DESC
        LIMIT 8`,
       [`%${phone}%`, `%${phone}%`]
@@ -1669,9 +1657,9 @@ exports.getUserDetailByPhone = async (req, res) => {
 exports.getRewardSettings = async (req, res) => {
   let conn;
   try {
-    conn = await pool.getConnection();
+    conn = await pool.connect();
     await ensureRewardSettingsColumns(conn);
-    const [settings] = await conn.query(
+    const { rows: settings } = await conn.query(
       'SELECT * FROM reward_settings WHERE setting_id = 1'
     );
 
@@ -1736,7 +1724,7 @@ exports.updateRewardSettings = async (req, res) => {
       share_activity_points
     } = req.body;
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
     await ensureRewardSettingsColumns(conn);
 
     // Validate inputs
@@ -1782,39 +1770,40 @@ exports.updateRewardSettings = async (req, res) => {
     }
 
     // Build update query
+    let paramIdx = 1;
     const updates = [];
     const values = [];
 
     if (typeof points_per_minute !== 'undefined') {
-      updates.push('points_per_minute = ?');
+      updates.push(`points_per_minute = $${paramIdx++}`);
       values.push(points_per_minute);
     }
     if (typeof session_bonus_threshold !== 'undefined') {
-      updates.push('session_bonus_threshold = ?');
+      updates.push(`session_bonus_threshold = $${paramIdx++}`);
       values.push(session_bonus_threshold);
     }
     if (typeof session_bonus_points !== 'undefined') {
-      updates.push('session_bonus_points = ?');
+      updates.push(`session_bonus_points = $${paramIdx++}`);
       values.push(session_bonus_points);
     }
     if (typeof usage_reward_daily_limit_count !== 'undefined') {
-      updates.push('usage_reward_daily_limit_count = ?');
+      updates.push(`usage_reward_daily_limit_count = $${paramIdx++}`);
       values.push(usage_reward_daily_limit_count);
     }
     if (typeof daily_login_bonus !== 'undefined') {
-      updates.push('daily_login_bonus = ?');
+      updates.push(`daily_login_bonus = $${paramIdx++}`);
       values.push(daily_login_bonus);
     }
     if (typeof daily_login_bonus_3x_threshold !== 'undefined') {
-      updates.push('daily_login_bonus_3x_threshold = ?');
+      updates.push(`daily_login_bonus_3x_threshold = $${paramIdx++}`);
       values.push(daily_login_bonus_3x_threshold);
     }
     if (typeof daily_login_bonus_3x_multiplier !== 'undefined') {
-      updates.push('daily_login_bonus_3x_multiplier = ?');
+      updates.push(`daily_login_bonus_3x_multiplier = $${paramIdx++}`);
       values.push(daily_login_bonus_3x_multiplier);
     }
     if (typeof streak_milestone_bonus !== 'undefined') {
-      updates.push('streak_milestone_bonus = ?');
+      updates.push(`streak_milestone_bonus = $${paramIdx++}`);
       values.push(streak_milestone_bonus);
     }
     if (typeof streak_milestone_days !== 'undefined') {
@@ -1822,31 +1811,31 @@ exports.updateRewardSettings = async (req, res) => {
         conn.release();
         return res.status(400).json({ error: 'streak_milestone_days must be > 0' });
       }
-      updates.push('streak_milestone_days = ?');
+      updates.push(`streak_milestone_days = $${paramIdx++}`);
       values.push(streak_milestone_days);
     }
     if (typeof profile_completion_points !== 'undefined') {
-      updates.push('profile_completion_points = ?');
+      updates.push(`profile_completion_points = $${paramIdx++}`);
       values.push(profile_completion_points);
     }
     if (typeof post_activity_points !== 'undefined') {
-      updates.push('post_activity_points = ?');
+      updates.push(`post_activity_points = $${paramIdx++}`);
       values.push(post_activity_points);
     }
     if (typeof post_activity_required_posts !== 'undefined') {
-      updates.push('post_activity_required_posts = ?');
+      updates.push(`post_activity_required_posts = $${paramIdx++}`);
       values.push(post_activity_required_posts);
     }
     if (typeof comment_activity_points !== 'undefined') {
-      updates.push('comment_activity_points = ?');
+      updates.push(`comment_activity_points = $${paramIdx++}`);
       values.push(comment_activity_points);
     }
     if (typeof comment_activity_daily_limit_count !== 'undefined') {
-      updates.push('comment_activity_daily_limit_count = ?');
+      updates.push(`comment_activity_daily_limit_count = $${paramIdx++}`);
       values.push(comment_activity_daily_limit_count);
     }
     if (typeof share_activity_points !== 'undefined') {
-      updates.push('share_activity_points = ?');
+      updates.push(`share_activity_points = $${paramIdx++}`);
       values.push(share_activity_points);
     }
 
@@ -1857,11 +1846,11 @@ exports.updateRewardSettings = async (req, res) => {
 
     values.push(1); // setting_id = 1
 
-    const query = `UPDATE reward_settings SET ${updates.join(', ')} WHERE setting_id = ?`;
+    const query = `UPDATE reward_settings SET ${updates.join(', ')} WHERE setting_id = $${paramIdx}`;
     await conn.query(query, values);
 
     // Return updated settings
-    const [updated] = await conn.query(
+    const { rows: updated } = await conn.query(
       'SELECT * FROM reward_settings WHERE setting_id = 1'
     );
 
@@ -1909,8 +1898,8 @@ exports.updateRewardSettings = async (req, res) => {
 exports.getBonusEvents = async (req, res) => {
   let conn;
   try {
-    conn = await pool.getConnection();
-    const [events] = await conn.query(
+    conn = await pool.connect();
+    const { rows: events } = await conn.query(
       `SELECT * FROM bonus_events WHERE is_deleted = 0 ORDER BY created_at DESC`
     );
 
@@ -1952,11 +1941,11 @@ exports.updateUserPoints = async (req, res) => {
       return res.status(400).json({ error: 'Missing userId or totalPoints' });
     }
 
-    conn = await pool.getConnection();
-    
+    conn = await pool.connect();
+
     // Verify user exists and get current points
-    const [userRows] = await conn.query(
-      'SELECT user_id, total_points, full_name, phone_number FROM users WHERE user_id = ? LIMIT 1',
+    const { rows: userRows } = await conn.query(
+      'SELECT user_id, total_points, full_name, phone_number FROM users WHERE user_id = $1 LIMIT 1',
       [userId]
     );
 
@@ -1970,28 +1959,25 @@ exports.updateUserPoints = async (req, res) => {
 
     // Update user points
     await conn.query(
-      'UPDATE users SET total_points = ? WHERE user_id = ?',
+      'UPDATE users SET total_points = $1 WHERE user_id = $2',
       [newPoints, userId]
     );
 
     // Create points_transactions table if not exists
     await conn.query(
       `CREATE TABLE IF NOT EXISTS points_transactions (
-        transaction_id INT AUTO_INCREMENT PRIMARY KEY,
+        transaction_id SERIAL PRIMARY KEY,
         user_id INT NOT NULL,
         source_type VARCHAR(50) DEFAULT 'admin',
         points DECIMAL(10,2) NOT NULL,
         type VARCHAR(10) NOT NULL,
-        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-        INDEX idx_user_id (user_id),
-        INDEX idx_created_at (created_at)
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       )`
     );
 
     // Log to points_transactions
     await conn.query(
-      `INSERT INTO points_transactions (user_id, source_type, points, type) VALUES (?, ?, ?, ?)`,
+      `INSERT INTO points_transactions (user_id, source_type, points, type) VALUES ($1, $2, $3, $4)`,
       [userId, 'admin', pointsDifference, pointsDifference > 0 ? 'add' : 'deduct']
     );
 
@@ -2034,25 +2020,22 @@ exports.getPointTransactionHistory = async (req, res) => {
     const limit = Math.min(Number(req.query.limit) || 100, 500);
     const offset = Number(req.query.offset) || 0;
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
     // Ensure transactions table exists
     await conn.query(
       `CREATE TABLE IF NOT EXISTS points_transactions (
-        transaction_id INT AUTO_INCREMENT PRIMARY KEY,
+        transaction_id SERIAL PRIMARY KEY,
         user_id INT NOT NULL,
         source_type VARCHAR(50) DEFAULT 'admin',
         points DECIMAL(10,2) NOT NULL,
         type VARCHAR(10) NOT NULL,
-        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-        INDEX idx_user_id (user_id),
-        INDEX idx_created_at (created_at)
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       )`
     );
 
     // Get transactions with user info
-    const [transactions] = await conn.query(
+    const { rows: transactions } = await conn.query(
       `SELECT
         pt.transaction_id,
         pt.user_id,
@@ -2065,15 +2048,15 @@ exports.getPointTransactionHistory = async (req, res) => {
        FROM points_transactions pt
        LEFT JOIN users u ON pt.user_id = u.user_id
        ORDER BY pt.created_at DESC
-       LIMIT ? OFFSET ?`,
+       LIMIT $1 OFFSET $2`,
       [limit, offset]
     );
 
     // Get total count
-    const [countResult] = await conn.query(
+    const countResult = await conn.query(
       'SELECT COUNT(*) as total FROM points_transactions'
     );
-    const total = countResult[0]?.total || 0;
+    const total = countResult.rows[0]?.total || 0;
 
     conn.release();
 
@@ -2118,37 +2101,34 @@ exports.getUserPointsHistory = async (req, res) => {
       return res.status(400).json({ error: 'Invalid userId' });
     }
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
     // Check if points_transactions table exists
-    const [tables] = await conn.query(
-      `SELECT TABLE_NAME FROM information_schema.tables
-       WHERE TABLE_SCHEMA = DATABASE()
-       AND TABLE_NAME = 'points_transactions'`
+    const { rows: tables } = await conn.query(
+      `SELECT table_name FROM information_schema.tables
+       WHERE table_schema = current_schema()
+       AND table_name = 'points_transactions'`
     );
 
     if (!tables || tables.length === 0) {
       // Create table if not exists
       await conn.query(
         `CREATE TABLE IF NOT EXISTS points_transactions (
-          transaction_id INT AUTO_INCREMENT PRIMARY KEY,
+          transaction_id SERIAL PRIMARY KEY,
           user_id INT NOT NULL,
           source_type VARCHAR(50) DEFAULT 'admin',
           points DECIMAL(10,2) NOT NULL,
           type VARCHAR(10) NOT NULL,
-          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-          INDEX idx_user_id (user_id),
-          INDEX idx_created_at (created_at)
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
         )`
       );
     }
 
     // Get points history
-    const [history] = await conn.query(
+    const { rows: history } = await conn.query(
       `SELECT transaction_id, user_id, source_type, points, type, created_at
        FROM points_transactions
-       WHERE user_id = ?
+       WHERE user_id = $1
        ORDER BY created_at DESC
        LIMIT 100`,
       [userId]
@@ -2181,28 +2161,25 @@ exports.getUserPointsHistory = async (req, res) => {
 exports.getPointsTransactionsHistory = async (req, res) => {
   let conn;
   try {
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
     // Check if points_transactions table exists
-    const [tables] = await conn.query(
-      `SELECT TABLE_NAME FROM information_schema.tables
-       WHERE TABLE_SCHEMA = DATABASE()
-       AND TABLE_NAME = 'points_transactions'`
+    const { rows: tables } = await conn.query(
+      `SELECT table_name FROM information_schema.tables
+       WHERE table_schema = current_schema()
+       AND table_name = 'points_transactions'`
     );
 
     if (!tables || tables.length === 0) {
       // Create table if not exists
       await conn.query(
         `CREATE TABLE IF NOT EXISTS points_transactions (
-          transaction_id INT AUTO_INCREMENT PRIMARY KEY,
+          transaction_id SERIAL PRIMARY KEY,
           user_id INT NOT NULL,
           source_type VARCHAR(50) DEFAULT 'admin',
           points DECIMAL(10,2) NOT NULL,
           type VARCHAR(10) NOT NULL,
-          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-          INDEX idx_user_id (user_id),
-          INDEX idx_created_at (created_at)
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
         )`
       );
       conn.release();
@@ -2213,7 +2190,7 @@ exports.getPointsTransactionsHistory = async (req, res) => {
     const limit = Math.min(Number(req.query.limit) || 50, 500);
     const offset = Math.max(Number(req.query.offset) || 0, 0);
 
-    const [transactions] = await conn.query(
+    const { rows: transactions } = await conn.query(
       `SELECT
         pt.transaction_id,
         pt.user_id,
@@ -2226,7 +2203,7 @@ exports.getPointsTransactionsHistory = async (req, res) => {
        FROM points_transactions pt
        JOIN users u ON u.user_id = pt.user_id
        ORDER BY pt.created_at DESC
-       LIMIT ? OFFSET ?`,
+       LIMIT $1 OFFSET $2`,
       [limit, offset]
     );
 
@@ -2277,13 +2254,14 @@ exports.createBonusEvent = async (req, res) => {
       });
     }
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
-    const [result] = await conn.query(
+    const result = await conn.query(
       `INSERT INTO bonus_events (
         event_name, event_type, points_awarded, description,
         start_date, end_date, is_active, max_points_per_user, bonus_type, created_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      RETURNING event_id`,
       [
         event_name,
         event_type,
@@ -2302,7 +2280,7 @@ exports.createBonusEvent = async (req, res) => {
     return res.json({
       success: true,
       message: 'Event created successfully',
-      event_id: Number(result.insertId)
+      event_id: Number(result.rows[0].event_id)
     });
   } catch (error) {
     console.error('Failed to create bonus event:', error);
@@ -2322,11 +2300,11 @@ exports.updateBonusEvent = async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
     // Check if event exists
-    const [event] = await conn.query(
-      'SELECT event_id FROM bonus_events WHERE event_id = ? AND is_deleted = 0',
+    const { rows: event } = await conn.query(
+      'SELECT event_id FROM bonus_events WHERE event_id = $1 AND is_deleted = 0',
       [id]
     );
 
@@ -2336,43 +2314,44 @@ exports.updateBonusEvent = async (req, res) => {
     }
 
     // Build dynamic update query
+    let paramIdx = 1;
     const updateFields = [];
     const values = [];
 
     if (updates.event_name) {
-      updateFields.push('event_name = ?');
+      updateFields.push(`event_name = $${paramIdx++}`);
       values.push(updates.event_name);
     }
     if (updates.event_type) {
-      updateFields.push('event_type = ?');
+      updateFields.push(`event_type = $${paramIdx++}`);
       values.push(updates.event_type);
     }
     if (typeof updates.points_awarded !== 'undefined') {
-      updateFields.push('points_awarded = ?');
+      updateFields.push(`points_awarded = $${paramIdx++}`);
       values.push(updates.points_awarded);
     }
     if (updates.description !== undefined) {
-      updateFields.push('description = ?');
+      updateFields.push(`description = $${paramIdx++}`);
       values.push(updates.description || null);
     }
     if (updates.start_date) {
-      updateFields.push('start_date = ?');
+      updateFields.push(`start_date = $${paramIdx++}`);
       values.push(updates.start_date);
     }
     if (updates.end_date) {
-      updateFields.push('end_date = ?');
+      updateFields.push(`end_date = $${paramIdx++}`);
       values.push(updates.end_date);
     }
     if (typeof updates.is_active !== 'undefined') {
-      updateFields.push('is_active = ?');
+      updateFields.push(`is_active = $${paramIdx++}`);
       values.push(updates.is_active ? 1 : 0);
     }
     if (updates.max_points_per_user !== undefined) {
-      updateFields.push('max_points_per_user = ?');
+      updateFields.push(`max_points_per_user = $${paramIdx++}`);
       values.push(updates.max_points_per_user || null);
     }
     if (updates.bonus_type) {
-      updateFields.push('bonus_type = ?');
+      updateFields.push(`bonus_type = $${paramIdx++}`);
       values.push(updates.bonus_type);
     }
 
@@ -2384,7 +2363,7 @@ exports.updateBonusEvent = async (req, res) => {
     values.push(id);
 
     await conn.query(
-      `UPDATE bonus_events SET ${updateFields.join(', ')} WHERE event_id = ?`,
+      `UPDATE bonus_events SET ${updateFields.join(', ')} WHERE event_id = $${paramIdx}`,
       values
     );
 
@@ -2410,11 +2389,11 @@ exports.deleteBonusEvent = async (req, res) => {
   try {
     const { id } = req.params;
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
     // Check if event exists
-    const [event] = await conn.query(
-      'SELECT event_id FROM bonus_events WHERE event_id = ? AND is_deleted = 0',
+    const { rows: event } = await conn.query(
+      'SELECT event_id FROM bonus_events WHERE event_id = $1 AND is_deleted = 0',
       [id]
     );
 
@@ -2423,7 +2402,7 @@ exports.deleteBonusEvent = async (req, res) => {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    await conn.query('UPDATE bonus_events SET is_deleted = 1 WHERE event_id = ?', [id]);
+    await conn.query('UPDATE bonus_events SET is_deleted = 1 WHERE event_id = $1', [id]);
 
     conn.release();
     return res.json({
@@ -2448,20 +2427,21 @@ exports.getAllRewards = async (req, res) => {
     const { page = 1, limit = 20, partner_id } = req.query;
     const offset = (page - 1) * limit;
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
     await ensureRewardColumns(conn);
 
     // Get total count
-    const [countResult] = await conn.query(
-      `SELECT COUNT(*) as total FROM rewards WHERE is_deleted = 0${partner_id ? ' AND partner_id = ?' : ''}`,
+    const countResult = await conn.query(
+      `SELECT COUNT(*) as total FROM rewards WHERE is_deleted = 0${partner_id ? ' AND partner_id = $1' : ''}`,
       partner_id ? [parseInt(partner_id)] : []
     );
-    const total = Number(countResult[0]?.total || 0);
+    const total = Number(countResult.rows[0]?.total || 0);
 
     // Get rewards with pagination.
-    // Use a derived table for redemption counts so the query works with ONLY_FULL_GROUP_BY.
-    const [rewards] = await conn.query(
-          `SELECT r.reward_id, r.reward_name, r.required_points,
+    // Use a derived table for redemption counts so the query works correctly.
+    let rewardsQuery, rewardsParams;
+    if (partner_id) {
+      rewardsQuery = `SELECT r.reward_id, r.reward_name, r.required_points,
             r.description, r.image_url, r.category,
               r.expiry_date, r.is_active, r.stock, r.user_limit, r.campaign_start_date, r.campaign_end_date,
               r.created_at, r.updated_at, r.partner_id,
@@ -2472,13 +2452,28 @@ exports.getAllRewards = async (req, res) => {
          FROM reward_redemption_history
          GROUP BY reward_id
        ) rc ON r.reward_id = rc.reward_id
-       WHERE r.is_deleted = 0${partner_id ? ' AND r.partner_id = ?' : ''}
+       WHERE r.is_deleted = 0 AND r.partner_id = $1
        ORDER BY r.created_at DESC
-       LIMIT ? OFFSET ?`,
-      partner_id
-        ? [parseInt(partner_id), parseInt(limit), parseInt(offset)]
-        : [parseInt(limit), parseInt(offset)]
-    );
+       LIMIT $2 OFFSET $3`;
+      rewardsParams = [parseInt(partner_id), parseInt(limit), parseInt(offset)];
+    } else {
+      rewardsQuery = `SELECT r.reward_id, r.reward_name, r.required_points,
+            r.description, r.image_url, r.category,
+              r.expiry_date, r.is_active, r.stock, r.user_limit, r.campaign_start_date, r.campaign_end_date,
+              r.created_at, r.updated_at, r.partner_id,
+              COALESCE(rc.redemption_count, 0) AS redemption_count
+       FROM rewards r
+       LEFT JOIN (
+         SELECT reward_id, COUNT(*) AS redemption_count
+         FROM reward_redemption_history
+         GROUP BY reward_id
+       ) rc ON r.reward_id = rc.reward_id
+       WHERE r.is_deleted = 0
+       ORDER BY r.created_at DESC
+       LIMIT $1 OFFSET $2`;
+      rewardsParams = [parseInt(limit), parseInt(offset)];
+    }
+    const { rows: rewards } = await conn.query(rewardsQuery, rewardsParams);
 
     // Convert BigInt values to Number for JSON serialization
     const rewardsWithConvertedTypes = rewards.map(reward => ({
@@ -2522,10 +2517,10 @@ exports.getRewardDetail = async (req, res) => {
   try {
     const { id } = req.params;
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
     await ensureRewardColumns(conn);
 
-    const [reward] = await conn.query(
+    const { rows: reward } = await conn.query(
       `SELECT r.reward_id, r.reward_name, r.required_points, r.description, r.image_url, r.category,
               r.expiry_date, r.is_active, r.stock, r.user_limit, r.created_at, r.updated_at,
               r.campaign_start_date, r.campaign_end_date, r.usage_instructions, r.validity_hours,
@@ -2536,7 +2531,7 @@ exports.getRewardDetail = async (req, res) => {
          FROM reward_redemption_history
          GROUP BY reward_id
        ) rc ON r.reward_id = rc.reward_id
-       WHERE r.reward_id = ? AND r.is_deleted = 0`,
+       WHERE r.reward_id = $1 AND r.is_deleted = 0`,
       [id]
     );
 
@@ -2616,7 +2611,7 @@ exports.createReward = async (req, res) => {
       });
     }
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
     await ensureRewardColumns(conn);
 
     // Handle image file
@@ -2625,9 +2620,10 @@ exports.createReward = async (req, res) => {
       imagePath = `/uploads/rewards/${req.file.filename}`;
     }
 
-    const [result] = await conn.query(
+    const result = await conn.query(
       `INSERT INTO rewards (reward_name, required_points, description, image_url, category, expiry_date, is_active, stock, user_limit, campaign_start_date, campaign_end_date, usage_instructions, validity_hours, partner_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+       RETURNING reward_id`,
       [
         reward_name,
         required_points,
@@ -2651,7 +2647,7 @@ exports.createReward = async (req, res) => {
     return res.json({
       success: true,
       message: 'Reward created successfully',
-      reward_id: Number(result.insertId),
+      reward_id: Number(result.rows[0].reward_id),
       image_url: imagePath
     });
   } catch (error) {
@@ -2682,11 +2678,11 @@ exports.updateReward = async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
     // Check if reward exists
-    const [reward] = await conn.query(
-      'SELECT reward_id, image_url FROM rewards WHERE reward_id = ? AND is_deleted = 0',
+    const { rows: reward } = await conn.query(
+      'SELECT reward_id, image_url FROM rewards WHERE reward_id = $1 AND is_deleted = 0',
       [id]
     );
 
@@ -2704,26 +2700,27 @@ exports.updateReward = async (req, res) => {
     }
 
     // Build dynamic update query
+    let paramIdx = 1;
     const updateFields = [];
     const values = [];
 
     // Handle FormData fields (sent from frontend as form data)
     if (updates.reward_name !== undefined && updates.reward_name !== '') {
-      updateFields.push('reward_name = ?');
+      updateFields.push(`reward_name = $${paramIdx++}`);
       values.push(updates.reward_name);
     }
     if (updates.required_points !== undefined && updates.required_points !== '') {
       const points = parseInt(updates.required_points);
       if (!isNaN(points)) {
-        updateFields.push('required_points = ?');
+        updateFields.push(`required_points = $${paramIdx++}`);
         values.push(points);
       }
     }
     if (updates.description !== undefined) {
-      updateFields.push('description = ?');
+      updateFields.push(`description = $${paramIdx++}`);
       values.push(updates.description && updates.description !== '' ? updates.description : null);
     }
-    
+
     // Handle image file upload
     if (req.file) {
       // Delete old image file if it exists
@@ -2736,54 +2733,54 @@ exports.updateReward = async (req, res) => {
         });
       }
       // Update with new image path
-      updateFields.push('image_url = ?');
+      updateFields.push(`image_url = $${paramIdx++}`);
       values.push(`/uploads/rewards/${req.file.filename}`);
     }
-    
+
     if (updates.category !== undefined) {
-      updateFields.push('category = ?');
+      updateFields.push(`category = $${paramIdx++}`);
       values.push(updates.category && updates.category !== '' ? updates.category : null);
     }
     if (updates.expiry_date !== undefined) {
-      updateFields.push('expiry_date = ?');
+      updateFields.push(`expiry_date = $${paramIdx++}`);
       values.push(updates.expiry_date && updates.expiry_date !== '' ? updates.expiry_date : null);
     }
     if (updates.is_active !== undefined && updates.is_active !== '') {
       // Handle both boolean and string '0'/'1' from FormData
       const isActive = typeof updates.is_active === 'boolean' ? updates.is_active : (updates.is_active === '1' || updates.is_active === 1);
-      updateFields.push('is_active = ?');
+      updateFields.push(`is_active = $${paramIdx++}`);
       values.push(isActive ? 1 : 0);
     }
     if (updates.stock !== undefined && updates.stock !== '' && updates.stock !== null) {
       const stock = parseInt(updates.stock);
       if (!isNaN(stock) && stock >= 0) {
-        updateFields.push('stock = ?');
+        updateFields.push(`stock = $${paramIdx++}`);
         values.push(stock);
       }
     }
     if (updates.user_limit !== undefined && updates.user_limit !== '') {
       const userLimit = parseInt(updates.user_limit);
       if (!isNaN(userLimit)) {
-        updateFields.push('user_limit = ?');
+        updateFields.push(`user_limit = $${paramIdx++}`);
         values.push(userLimit);
       }
     }
     if (updates.campaign_start_date !== undefined) {
-      updateFields.push('campaign_start_date = ?');
+      updateFields.push(`campaign_start_date = $${paramIdx++}`);
       values.push(updates.campaign_start_date && updates.campaign_start_date !== '' ? updates.campaign_start_date : null);
     }
     if (updates.campaign_end_date !== undefined) {
-      updateFields.push('campaign_end_date = ?');
+      updateFields.push(`campaign_end_date = $${paramIdx++}`);
       values.push(updates.campaign_end_date && updates.campaign_end_date !== '' ? updates.campaign_end_date : null);
     }
     if (updates.usage_instructions !== undefined) {
-      updateFields.push('usage_instructions = ?');
+      updateFields.push(`usage_instructions = $${paramIdx++}`);
       values.push(updates.usage_instructions && updates.usage_instructions !== '' ? updates.usage_instructions : null);
     }
     if (updates.validity_hours !== undefined && updates.validity_hours !== '') {
       const validityHours = parseInt(updates.validity_hours);
       if (!isNaN(validityHours) && validityHours >= 1) {
-        updateFields.push('validity_hours = ?');
+        updateFields.push(`validity_hours = $${paramIdx++}`);
         values.push(validityHours);
       }
     }
@@ -2801,11 +2798,11 @@ exports.updateReward = async (req, res) => {
       return res.status(400).json({ error: 'No fields to update' });
     }
 
-    updateFields.push('updated_at = NOW()');
+    updateFields.push(`updated_at = NOW()`);
     values.push(id);
 
     await conn.query(
-      `UPDATE rewards SET ${updateFields.join(', ')} WHERE reward_id = ?`,
+      `UPDATE rewards SET ${updateFields.join(', ')} WHERE reward_id = $${paramIdx}`,
       values
     );
 
@@ -2843,11 +2840,11 @@ exports.deleteReward = async (req, res) => {
   try {
     const { id } = req.params;
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
     // Check if reward exists
-    const [reward] = await conn.query(
-      'SELECT reward_id FROM rewards WHERE reward_id = ? AND is_deleted = 0',
+    const { rows: reward } = await conn.query(
+      'SELECT reward_id FROM rewards WHERE reward_id = $1 AND is_deleted = 0',
       [id]
     );
 
@@ -2857,7 +2854,7 @@ exports.deleteReward = async (req, res) => {
     }
 
     // Soft delete the reward
-    await conn.query('UPDATE rewards SET is_deleted = 1 WHERE reward_id = ?', [id]);
+    await conn.query('UPDATE rewards SET is_deleted = 1 WHERE reward_id = $1', [id]);
 
     conn.release();
 
@@ -2880,9 +2877,9 @@ exports.deleteReward = async (req, res) => {
 exports.getRewardCategories = async (req, res) => {
   let conn;
   try {
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
-    const [categories] = await conn.query(
+    const { rows: categories } = await conn.query(
       `SELECT DISTINCT category FROM rewards WHERE category IS NOT NULL AND category != '' AND is_deleted = 0 ORDER BY category`
     );
 
@@ -2904,10 +2901,10 @@ exports.getRewardCategories = async (req, res) => {
 exports.getAllUsers = async (req, res) => {
   let conn;
   try {
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
     // ดึงข้อมูลผู้ใช้ทั้งหมด (ไม่รวม password)
-    const [users] = await conn.query(
+    const { rows: users } = await conn.query(
       `SELECT
         user_id,
         full_name,
@@ -2948,9 +2945,9 @@ exports.searchUsers = async (req, res) => {
       return res.status(400).json({ error: 'Search query is required' });
     }
 
-    conn = await pool.getConnection();
+    conn = await pool.connect();
 
-    const [users] = await conn.query(
+    const { rows: users } = await conn.query(
       `SELECT
         user_id,
         full_name,
@@ -2963,7 +2960,7 @@ exports.searchUsers = async (req, res) => {
         blocked_at,
         profile_picture
       FROM users
-      WHERE full_name LIKE ? OR phone_number LIKE ?
+      WHERE full_name LIKE $1 OR phone_number LIKE $2
       ORDER BY created_at DESC
       LIMIT 100`,
       [`%${query}%`, `%${query}%`]
