@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "330333979241",
+    "project_id": "eldersspace",
+    "storage_bucket": "eldersspace.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:330333979241:android:d712e55a066c7ba54f98f8",
+        "android_client_info": {
+          "package_name": "com.example.eldersspace"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC04wvpbPGiaV1XEDFnWUUEv1XMyX_aCzw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

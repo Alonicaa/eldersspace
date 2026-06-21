@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EldersSpace - API Connection Diagnostic</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px 12px 0 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .tests {
+            background: white;
+            padding: 30px;
+            border-radius: 0 0 12px 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .test-item {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-left: 4px solid #ddd;
+            border-radius: 4px;
+            background: #f9f9f9;
+        }
+        .test-item.loading { border-color: #ff9800; }
+        .test-item.success { border-color: #4caf50; background: #f1f8f4; }
+        .test-item.error { border-color: #f44336; background: #fdf1f0; }
+        .test-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .test-status {
+            font-size: 12px;
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            background: white;
+        }
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ff9800;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .summary {
+            margin-top: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #2196F3;
+        }
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+            border: 1px solid #ddd;
+        }
+        .btn-secondary:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 EldersSpace API Connection Diagnostic</h1>
+            <p>ตรวจสอบการเชื่อมต่อระหว่าง HTML/Flutter กับ Backend API</p>
+        </div>
+
+        <div class="tests">
+            <div id="test-backend" class="test-item loading">
+                <div class="test-title">
+                    <div class="spinner"></div>
+                    1. Backend Health Check
+                </div>
+                <div class="test-status">กำลังตรวจสอบ...</div>
+            </div>
+
+            <div id="test-cloudsql" class="test-item loading">
+                <div class="test-title">
+                    <div class="spinner"></div>
+                    2. Cloud SQL Connection
+                </div>
+                <div class="test-status">กำลังตรวจสอบ...</div>
+            </div>
+
+            <div id="test-admin-api" class="test-item loading">
+                <div class="test-title">
+                    <div class="spinner"></div>
+                    3. Admin API Connection
+                </div>
+                <div class="test-status">กำลังตรวจสอบ...</div>
+            </div>
+
+            <div id="test-flutter-api" class="test-item loading">
+                <div class="test-title">
+                    <div class="spinner"></div>
+                    4. Flutter API Compatibility
+                </div>
+                <div class="test-status">กำลังตรวจสอบ...</div>
+            </div>
+
+            <div id="test-cors" class="test-item loading">
+                <div class="test-title">
+                    <div class="spinner"></div>
+                    5. CORS Configuration
+                </div>
+                <div class="test-status">กำลังตรวจสอบ...</div>
+            </div>
+
+            <div id="summary" class="summary" style="display:none;">
+                <h3>📊 สรุปผลการตรวจสอบ</h3>
+                <p id="summary-text" style="margin-top: 10px;"></p>
+                <div class="controls">
+                    <button class="btn-primary" onclick="location.href='index.html'">📱 ไปที่ Admin Panel</button>
+                    <button class="btn-secondary" onclick="window.location.reload()">🔄 รัน Diagnostic อีกครั้ง</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URLS = [
+            { name: 'Local', url: 'http://localhost:3000' },
+            { name: 'Cloud SQL', url: 'http://34.126.155.104:3000' },
+            { name: 'Stored Config', url: localStorage.getItem('elderspace_api_base') || '' }
+        ];
+
+        const results = {
+            backend: false,
+            cloudsql: false,
+            admin: false,
+            flutter: false,
+            cors: false
+        };
+
+        async function runDiagnostic() {
+            await testBackendHealth();
+            await testCloudSQL();
+            await testAdminAPI();
+            await testFlutterAPI();
+            await testCORS();
+            showSummary();
+        }
+
+        async function testBackendHealth() {
+            const el = document.getElementById('test-backend');
+            try {
+                for (const server of API_URLS) {
+                    if (!server.url) continue;
+                    try {
+                        const response = await fetch(`${server.url}/health`, { timeout: 5000 });
+                        if (response.ok) {
+                            const data = await response.json();
+                            results.backend = true;
+                            setTestResult('test-backend', true, 
+                                `✓ Connected to: ${server.name} (${server.url})\nResponse: ${JSON.stringify(data)}`);
+                            localStorage.setItem('elderspace_api_base', server.url);
+                            return;
+                        }
+                    } catch (e) {}
+                }
+                setTestResult('test-backend', false, 
+                    '✗ No backend found. Tested:\n' + 
+                    API_URLS.map(s => `  - ${s.name}: ${s.url}`).join('\n'));
+            } catch (error) {
+                setTestResult('test-backend', false, `✗ Error: ${error.message}`);
+            }
+        }
+
+        async function testCloudSQL() {
+            const el = document.getElementById('test-cloudsql');
+            try {
+                const baseUrl = localStorage.getItem('elderspace_api_base') || 'http://34.126.155.104:3000';
+                const response = await fetch(`${baseUrl}/health`);
+                if (response.ok) {
+                    results.cloudsql = true;
+                    setTestResult('test-cloudsql', true, 
+                        `✓ Cloud SQL Backend accessible at: ${baseUrl}`);
+                } else {
+                    setTestResult('test-cloudsql', false, 
+                        `✗ Backend responded with: ${response.status} ${response.statusText}`);
+                }
+            } catch (error) {
+                setTestResult('test-cloudsql', false, `✗ Error: ${error.message}`);
+            }
+        }
+
+        async function testAdminAPI() {
+            const el = document.getElementById('test-admin-api');
+            try {
+                const baseUrl = localStorage.getItem('elderspace_api_base') || 'http://34.126.155.104:3000';
+                const response = await fetch(`${baseUrl}/api/admin/dashboard-data`, {
+                    headers: { 'Authorization': 'Bearer test' }
+                });
+                // 401/403 is OK - means API exists but needs auth
+                if (response.ok || response.status === 401 || response.status === 403) {
+                    results.admin = true;
+                    setTestResult('test-admin-api', true, 
+                        `✓ Admin API endpoint exists (Auth required: ${response.status})`);
+                } else {
+                    setTestResult('test-admin-api', false, 
+                        `✗ API Error: ${response.status} ${response.statusText}`);
+                }
+            } catch (error) {
+                setTestResult('test-admin-api', false, `✗ Error: ${error.message}`);
+            }
+        }
+
+        async function testFlutterAPI() {
+            const el = document.getElementById('test-flutter-api');
+            try {
+                const baseUrl = localStorage.getItem('elderspace_api_base') || 'http://34.126.155.104:3000';
+                const response = await fetch(`${baseUrl}/api/auth/request-otp`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone_number: '0000000000' })
+                });
+                // Any response means endpoint exists
+                if (response.ok || response.status === 400 || response.status === 500) {
+                    results.flutter = true;
+                    setTestResult('test-flutter-api', true, 
+                        `✓ Flutter API endpoints are accessible`);
+                } else {
+                    setTestResult('test-flutter-api', false, 
+                        `✗ Unexpected response: ${response.status}`);
+                }
+            } catch (error) {
+                setTestResult('test-flutter-api', false, `✗ Error: ${error.message}`);
+            }
+        }
+
+        async function testCORS() {
+            const el = document.getElementById('test-cors');
+            try {
+                const baseUrl = localStorage.getItem('elderspace_api_base') || 'http://34.126.155.104:3000';
+                const response = await fetch(`${baseUrl}/health`);
+                const corsHeader = response.headers.get('Access-Control-Allow-Origin');
+                if (corsHeader === '*' || corsHeader) {
+                    results.cors = true;
+                    setTestResult('test-cors', true, 
+                        `✓ CORS is properly configured\nAccess-Control-Allow-Origin: ${corsHeader || '*'}`);
+                } else {
+                    setTestResult('test-cors', false, `⚠️ CORS header not found`);
+                }
+            } catch (error) {
+                setTestResult('test-cors', false, `✗ Error: ${error.message}`);
+            }
+        }
+
+        function setTestResult(testId, success, message) {
+            const el = document.getElementById(testId);
+            el.className = `test-item ${success ? 'success' : 'error'}`;
+            el.querySelector('.test-status').textContent = message;
+        }
+
+        function showSummary() {
+            const passed = Object.values(results).filter(v => v).length;
+            const total = Object.keys(results).length;
+            const all = passed === total;
+            
+            const summaryEl = document.getElementById('summary');
+            const textEl = document.getElementById('summary-text');
+            
+            summaryEl.style.display = 'block';
+            summaryEl.style.borderColor = all ? '#4caf50' : '#ff9800';
+            
+            let text = `✓ ผลการทดสอบ: ${passed}/${total} passed\n\n`;
+            if (all) {
+                text += '🎉 ทั้ง HTML และ Flutter สามารถเชื่อมกับ Backend API ได้อย่างถูกต้อง!';
+            } else {
+                text += '⚠️ มีบางส่วนที่ต้องแก้ไข:\n';
+                if (!results.backend) text += '• Backend ไม่ response\n';
+                if (!results.cloudsql) text += '• Cloud SQL ไม่เชื่อมได้\n';
+                if (!results.admin) text += '• Admin API ไม่accessible\n';
+                if (!results.flutter) text += '• Flutter API ไม่accessible\n';
+                if (!results.cors) text += '• CORS ไม่ configured\n';
+            }
+            
+            textEl.textContent = text;
+        }
+
+        // Run diagnostic on page load
+        window.addEventListener('load', runDiagnostic);
+    </script>
+</body>
+</html>

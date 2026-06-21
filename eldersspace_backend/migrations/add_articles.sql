@@ -1,0 +1,26 @@
+CREATE TABLE IF NOT EXISTS articles (
+  article_id     INT AUTO_INCREMENT PRIMARY KEY,
+  title          VARCHAR(255)  NOT NULL,
+  author_name    VARCHAR(150)  NOT NULL,
+  cover_image    VARCHAR(500)  NULL,
+  summary        TEXT          NULL,
+  headline       VARCHAR(500)  NULL,
+  introduction   TEXT          NULL,
+  body           LONGTEXT      NULL,
+  conclusion     TEXT          NULL,
+  category       ENUM('สุขภาพ','โภชนาการ','สมาธิ','จิตใจ') NOT NULL DEFAULT 'สุขภาพ',
+  source_type    ENUM('partner','user')                     NOT NULL DEFAULT 'user',
+  submitted_by_user_id INT     NULL,
+  partner_name   VARCHAR(255)  NULL,
+  badge_label    VARCHAR(100)  NULL,
+  is_featured    TINYINT(1)    NOT NULL DEFAULT 0,
+  status         ENUM('pending','approved','rejected')      NOT NULL DEFAULT 'pending',
+  is_deleted     TINYINT(1)    NOT NULL DEFAULT 0,
+  created_at     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_articles_status_cat (status, category),
+  INDEX idx_articles_source     (source_type),
+  INDEX idx_articles_user       (submitted_by_user_id),
+  CONSTRAINT fk_articles_user FOREIGN KEY (submitted_by_user_id)
+    REFERENCES users(user_id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

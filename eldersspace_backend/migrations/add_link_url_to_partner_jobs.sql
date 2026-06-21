@@ -1,0 +1,1 @@
+ALTER TABLE partner_jobs ADD COLUMN link_url VARCHAR(500) DEFAULT NULL;

@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter analyze *)",
+      "Bash(dir \"C:\\\\Users\\\\kirit\\\\OneDrive\\\\Desktop\\\\flutter\" /b)",
+      "Bash(Select-String -Path \"C:\\\\Users\\\\kirit\\\\OneDrive\\\\Desktop\\\\flutter\\\\manual_override_styles.css\" -Pattern \"\\\\.drawer-hero|\\\\.info-group|\\\\.ig-row|\\\\.audit-timeline|\\\\.atl-item|\\\\.srl-item|\\\\.ali-item|\\\\.actions-tab|\\\\.danger-zone\")",
+      "Bash(Select-Object -ExpandProperty Line)",
+      "Bash(Select-Object -First 20)",
+      "Bash(node test_cloud_sql_connection.js)",
+      "Bash(node -e \"require\\('dotenv'\\).config\\(\\); const pool = require\\('./config/db'\\); setTimeout\\(async \\(\\) => { try { const [rows] = await pool.execute\\('SELECT COUNT\\(*\\) as cnt FROM users'\\); console.log\\('Users:', rows[0].cnt\\); const [posts] = await pool.execute\\('SELECT COUNT\\(*\\) as cnt FROM posts'\\); console.log\\('Posts:', posts[0].cnt\\); } catch\\(e\\) { console.error\\(e.message\\); } finally { process.exit\\(0\\); } }, 2000\\);\")",
+      "Bash(Invoke-WebRequest -Uri \"http://localhost:3000/health\" -UseBasicParsing -TimeoutSec 3)",
+      "Bash(Select-Object -First 5)",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:3000/health\" -UseBasicParsing -TimeoutSec 3; Write-Host \"Server UP: $\\($r.Content\\)\" } catch { Write-Host \"Server DOWN: $_\" })",
+      "Bash(node -e ' *)",
+      "PowerShell(Get-Process -Name \"node\" -ErrorAction SilentlyContinue)",
+      "PowerShell(Stop-Process -Force -ErrorAction SilentlyContinue)",
+      "Bash(node server.js)",
+      "Bash(curl -s http://localhost:3000/health)",
+      "Bash(curl -s \"http://localhost:3000/api/posts\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'Posts count: {len\\(d\\)}'\\); print\\('First post keys:', list\\(d[0].keys\\(\\)\\)[:8] if d else 'none'\\)\")",
+      "Bash(curl -s \"http://localhost:3000/api/auth/profile/0650479951\")",
+      "Bash(curl -s \"http://localhost:3000/api/groups\")",
+      "Bash(.\\\\gradlew.bat clean *)",
+      "Bash(dir \"C:\\\\Users\\\\gussy\\\\.claude\")",
+      "Bash(flutter clean *)",
+      "Bash(flutter pub *)",
+      "Bash(grep -n \"CREATE TABLE \\\\`promo\" \"C:/Users/kirit/Downloads/Cloud_SQL_Export_2026-06-20 \\(03_02_56\\).sql\")",
+      "Bash(grep -n \"CREATE TABLE \\\\`promo_campaigns\\\\|promo_campaigns\" \"C:/Users/kirit/Downloads/Cloud_SQL_Export_2026-06-20 \\(03_02_56\\).sql\")"
+    ]
+  }
+}

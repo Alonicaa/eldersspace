@@ -1,0 +1,574 @@
+Ignoring invalid configuration option passed to Connection: keepAliveInitialDelayMs. This is currently a warning, but in future versions of MySQL2, an error will be thrown if you pass an invalid configuration option to a Connection
+Ignoring invalid configuration option passed to Connection: allowPublicKeyRetrieval. This is currently a warning, but in future versions of MySQL2, an error will be thrown if you pass an invalid configuration option to a Connection
+⚠️ SMS Service: Twilio not configured. OTP will be logged to console only.
+Get promo code detail error: Error: Unknown column 'p.campaign_id' in 'field list'
+    at exports.getPromoCodeDetail (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\controllers\manualOverrideController.js:82:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_BAD_FIELD_ERROR',
+  errno: 1054,
+  sqlState: '42S22',
+  sqlMessage: "Unknown column 'p.campaign_id' in 'field list'",
+  sql: '\n' +
+    '                SELECT\n' +
+    '                    p.promo_code_id, p.code, p.reward_id,\n' +
+    '                    r.reward_name, r.required_points AS reward_points,\n' +
+    '                    p.campaign_id, p.description, p.expiry_date,\n' +
+    '                    p.is_used, p.used_by_phone, p.used_by_user_id, p.used_at,\n' +
+    '                    p.created_at, p.override_flag, p.last_updated_by, p.last_updated_at,\n' +
+    '                    NULL AS status, NULL AS redeemed_by, NULL AS redeemed_at,\n' +
+    '                    NULL AS replacement_for, NULL AS replaced_by, NULL AS issue_reason, NULL AS note\n' +
+    '                FROM promo_codes p\n' +
+    '                LEFT JOIN rewards r ON p.reward_id = r.reward_id\n' +
+    "                WHERE p.promo_code_id = '2001'\n" +
+    '            '
+}
+Get promo code detail error: Error: Unknown column 'p.campaign_id' in 'field list'
+    at exports.getPromoCodeDetail (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\controllers\manualOverrideController.js:82:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_BAD_FIELD_ERROR',
+  errno: 1054,
+  sqlState: '42S22',
+  sqlMessage: "Unknown column 'p.campaign_id' in 'field list'",
+  sql: '\n' +
+    '                SELECT\n' +
+    '                    p.promo_code_id, p.code, p.reward_id,\n' +
+    '                    r.reward_name, r.required_points AS reward_points,\n' +
+    '                    p.campaign_id, p.description, p.expiry_date,\n' +
+    '                    p.is_used, p.used_by_phone, p.used_by_user_id, p.used_at,\n' +
+    '                    p.created_at, p.override_flag, p.last_updated_by, p.last_updated_at,\n' +
+    '                    NULL AS status, NULL AS redeemed_by, NULL AS redeemed_at,\n' +
+    '                    NULL AS replacement_for, NULL AS replaced_by, NULL AS issue_reason, NULL AS note\n' +
+    '                FROM promo_codes p\n' +
+    '                LEFT JOIN rewards r ON p.reward_id = r.reward_id\n' +
+    "                WHERE p.promo_code_id = '2001'\n" +
+    '            '
+}
+Get promo code detail error: Error: Unknown column 'p.campaign_id' in 'field list'
+    at exports.getPromoCodeDetail (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\controllers\manualOverrideController.js:82:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_BAD_FIELD_ERROR',
+  errno: 1054,
+  sqlState: '42S22',
+  sqlMessage: "Unknown column 'p.campaign_id' in 'field list'",
+  sql: '\n' +
+    '                SELECT\n' +
+    '                    p.promo_code_id, p.code, p.reward_id,\n' +
+    '                    r.reward_name, r.required_points AS reward_points,\n' +
+    '                    p.campaign_id, p.description, p.expiry_date,\n' +
+    '                    p.is_used, p.used_by_phone, p.used_by_user_id, p.used_at,\n' +
+    '                    p.created_at, p.override_flag, p.last_updated_by, p.last_updated_at,\n' +
+    '                    NULL AS status, NULL AS redeemed_by, NULL AS redeemed_at,\n' +
+    '                    NULL AS replacement_for, NULL AS replaced_by, NULL AS issue_reason, NULL AS note\n' +
+    '                FROM promo_codes p\n' +
+    '                LEFT JOIN rewards r ON p.reward_id = r.reward_id\n' +
+    "                WHERE p.promo_code_id = '2001'\n" +
+    '            '
+}
+Get promo code detail error: Error: Unknown column 'p.campaign_id' in 'field list'
+    at exports.getPromoCodeDetail (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\controllers\manualOverrideController.js:82:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_BAD_FIELD_ERROR',
+  errno: 1054,
+  sqlState: '42S22',
+  sqlMessage: "Unknown column 'p.campaign_id' in 'field list'",
+  sql: '\n' +
+    '                SELECT\n' +
+    '                    p.promo_code_id, p.code, p.reward_id,\n' +
+    '                    r.reward_name, r.required_points AS reward_points,\n' +
+    '                    p.campaign_id, p.description, p.expiry_date,\n' +
+    '                    p.is_used, p.used_by_phone, p.used_by_user_id, p.used_at,\n' +
+    '                    p.created_at, p.override_flag, p.last_updated_by, p.last_updated_at,\n' +
+    '                    NULL AS status, NULL AS redeemed_by, NULL AS redeemed_at,\n' +
+    '                    NULL AS replacement_for, NULL AS replaced_by, NULL AS issue_reason, NULL AS note\n' +
+    '                FROM promo_codes p\n' +
+    '                LEFT JOIN rewards r ON p.reward_id = r.reward_id\n' +
+    "                WHERE p.promo_code_id = '2002'\n" +
+    '            '
+}
+Get promo code detail error: Error: Unknown column 'p.campaign_id' in 'field list'
+    at exports.getPromoCodeDetail (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\controllers\manualOverrideController.js:82:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_BAD_FIELD_ERROR',
+  errno: 1054,
+  sqlState: '42S22',
+  sqlMessage: "Unknown column 'p.campaign_id' in 'field list'",
+  sql: '\n' +
+    '                SELECT\n' +
+    '                    p.promo_code_id, p.code, p.reward_id,\n' +
+    '                    r.reward_name, r.required_points AS reward_points,\n' +
+    '                    p.campaign_id, p.description, p.expiry_date,\n' +
+    '                    p.is_used, p.used_by_phone, p.used_by_user_id, p.used_at,\n' +
+    '                    p.created_at, p.override_flag, p.last_updated_by, p.last_updated_at,\n' +
+    '                    NULL AS status, NULL AS redeemed_by, NULL AS redeemed_at,\n' +
+    '                    NULL AS replacement_for, NULL AS replaced_by, NULL AS issue_reason, NULL AS note\n' +
+    '                FROM promo_codes p\n' +
+    '                LEFT JOIN rewards r ON p.reward_id = r.reward_id\n' +
+    "                WHERE p.promo_code_id = '2001'\n" +
+    '            '
+}
+Get promo code detail error: Error: Unknown column 'p.campaign_id' in 'field list'
+    at exports.getPromoCodeDetail (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\controllers\manualOverrideController.js:82:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_BAD_FIELD_ERROR',
+  errno: 1054,
+  sqlState: '42S22',
+  sqlMessage: "Unknown column 'p.campaign_id' in 'field list'",
+  sql: '\n' +
+    '                SELECT\n' +
+    '                    p.promo_code_id, p.code, p.reward_id,\n' +
+    '                    r.reward_name, r.required_points AS reward_points,\n' +
+    '                    p.campaign_id, p.description, p.expiry_date,\n' +
+    '                    p.is_used, p.used_by_phone, p.used_by_user_id, p.used_at,\n' +
+    '                    p.created_at, p.override_flag, p.last_updated_by, p.last_updated_at,\n' +
+    '                    NULL AS status, NULL AS redeemed_by, NULL AS redeemed_at,\n' +
+    '                    NULL AS replacement_for, NULL AS replaced_by, NULL AS issue_reason, NULL AS note\n' +
+    '                FROM promo_codes p\n' +
+    '                LEFT JOIN rewards r ON p.reward_id = r.reward_id\n' +
+    "                WHERE p.promo_code_id = '2003'\n" +
+    '            '
+}
+Get promo code detail error: Error: Unknown column 'p.campaign_id' in 'field list'
+    at exports.getPromoCodeDetail (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\controllers\manualOverrideController.js:82:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_BAD_FIELD_ERROR',
+  errno: 1054,
+  sqlState: '42S22',
+  sqlMessage: "Unknown column 'p.campaign_id' in 'field list'",
+  sql: '\n' +
+    '                SELECT\n' +
+    '                    p.promo_code_id, p.code, p.reward_id,\n' +
+    '                    r.reward_name, r.required_points AS reward_points,\n' +
+    '                    p.campaign_id, p.description, p.expiry_date,\n' +
+    '                    p.is_used, p.used_by_phone, p.used_by_user_id, p.used_at,\n' +
+    '                    p.created_at, p.override_flag, p.last_updated_by, p.last_updated_at,\n' +
+    '                    NULL AS status, NULL AS redeemed_by, NULL AS redeemed_at,\n' +
+    '                    NULL AS replacement_for, NULL AS replaced_by, NULL AS issue_reason, NULL AS note\n' +
+    '                FROM promo_codes p\n' +
+    '                LEFT JOIN rewards r ON p.reward_id = r.reward_id\n' +
+    "                WHERE p.promo_code_id = '2001'\n" +
+    '            '
+}
+Get promo code detail error: Error: Unknown column 'p.campaign_id' in 'field list'
+    at exports.getPromoCodeDetail (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\controllers\manualOverrideController.js:82:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_BAD_FIELD_ERROR',
+  errno: 1054,
+  sqlState: '42S22',
+  sqlMessage: "Unknown column 'p.campaign_id' in 'field list'",
+  sql: '\n' +
+    '                SELECT\n' +
+    '                    p.promo_code_id, p.code, p.reward_id,\n' +
+    '                    r.reward_name, r.required_points AS reward_points,\n' +
+    '                    p.campaign_id, p.description, p.expiry_date,\n' +
+    '                    p.is_used, p.used_by_phone, p.used_by_user_id, p.used_at,\n' +
+    '                    p.created_at, p.override_flag, p.last_updated_by, p.last_updated_at,\n' +
+    '                    NULL AS status, NULL AS redeemed_by, NULL AS redeemed_at,\n' +
+    '                    NULL AS replacement_for, NULL AS replaced_by, NULL AS issue_reason, NULL AS note\n' +
+    '                FROM promo_codes p\n' +
+    '                LEFT JOIN rewards r ON p.reward_id = r.reward_id\n' +
+    "                WHERE p.promo_code_id = '2003'\n" +
+    '            '
+}
+Get promo code detail error: Error: Unknown column 'p.campaign_id' in 'field list'
+    at exports.getPromoCodeDetail (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\controllers\manualOverrideController.js:82:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_BAD_FIELD_ERROR',
+  errno: 1054,
+  sqlState: '42S22',
+  sqlMessage: "Unknown column 'p.campaign_id' in 'field list'",
+  sql: '\n' +
+    '                SELECT\n' +
+    '                    p.promo_code_id, p.code, p.reward_id,\n' +
+    '                    r.reward_name, r.required_points AS reward_points,\n' +
+    '                    p.campaign_id, p.description, p.expiry_date,\n' +
+    '                    p.is_used, p.used_by_phone, p.used_by_user_id, p.used_at,\n' +
+    '                    p.created_at, p.override_flag, p.last_updated_by, p.last_updated_at,\n' +
+    '                    NULL AS status, NULL AS redeemed_by, NULL AS redeemed_at,\n' +
+    '                    NULL AS replacement_for, NULL AS replaced_by, NULL AS issue_reason, NULL AS note\n' +
+    '                FROM promo_codes p\n' +
+    '                LEFT JOIN rewards r ON p.reward_id = r.reward_id\n' +
+    "                WHERE p.promo_code_id = '2003'\n" +
+    '            '
+}
+Get promo code detail error: Error: Unknown column 'p.campaign_id' in 'field list'
+    at exports.getPromoCodeDetail (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\controllers\manualOverrideController.js:82:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_BAD_FIELD_ERROR',
+  errno: 1054,
+  sqlState: '42S22',
+  sqlMessage: "Unknown column 'p.campaign_id' in 'field list'",
+  sql: '\n' +
+    '                SELECT\n' +
+    '                    p.promo_code_id, p.code, p.reward_id,\n' +
+    '                    r.reward_name, r.required_points AS reward_points,\n' +
+    '                    p.campaign_id, p.description, p.expiry_date,\n' +
+    '                    p.is_used, p.used_by_phone, p.used_by_user_id, p.used_at,\n' +
+    '                    p.created_at, p.override_flag, p.last_updated_by, p.last_updated_at,\n' +
+    '                    NULL AS status, NULL AS redeemed_by, NULL AS redeemed_at,\n' +
+    '                    NULL AS replacement_for, NULL AS replaced_by, NULL AS issue_reason, NULL AS note\n' +
+    '                FROM promo_codes p\n' +
+    '                LEFT JOIN rewards r ON p.reward_id = r.reward_id\n' +
+    "                WHERE p.promo_code_id = '2003'\n" +
+    '            '
+}
+Get promo code detail error: Error: Unknown column 'p.campaign_id' in 'field list'
+    at exports.getPromoCodeDetail (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\controllers\manualOverrideController.js:82:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_BAD_FIELD_ERROR',
+  errno: 1054,
+  sqlState: '42S22',
+  sqlMessage: "Unknown column 'p.campaign_id' in 'field list'",
+  sql: '\n' +
+    '                SELECT\n' +
+    '                    p.promo_code_id, p.code, p.reward_id,\n' +
+    '                    r.reward_name, r.required_points AS reward_points,\n' +
+    '                    p.campaign_id, p.description, p.expiry_date,\n' +
+    '                    p.is_used, p.used_by_phone, p.used_by_user_id, p.used_at,\n' +
+    '                    p.created_at, p.override_flag, p.last_updated_by, p.last_updated_at,\n' +
+    '                    NULL AS status, NULL AS redeemed_by, NULL AS redeemed_at,\n' +
+    '                    NULL AS replacement_for, NULL AS replaced_by, NULL AS issue_reason, NULL AS note\n' +
+    '                FROM promo_codes p\n' +
+    '                LEFT JOIN rewards r ON p.reward_id = r.reward_id\n' +
+    "                WHERE p.promo_code_id = '2003'\n" +
+    '            '
+}
+Get promo code detail error: Error: Unknown column 'p.campaign_id' in 'field list'
+    at exports.getPromoCodeDetail (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\controllers\manualOverrideController.js:82:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_BAD_FIELD_ERROR',
+  errno: 1054,
+  sqlState: '42S22',
+  sqlMessage: "Unknown column 'p.campaign_id' in 'field list'",
+  sql: '\n' +
+    '                SELECT\n' +
+    '                    p.promo_code_id, p.code, p.reward_id,\n' +
+    '                    r.reward_name, r.required_points AS reward_points,\n' +
+    '                    p.campaign_id, p.description, p.expiry_date,\n' +
+    '                    p.is_used, p.used_by_phone, p.used_by_user_id, p.used_at,\n' +
+    '                    p.created_at, p.override_flag, p.last_updated_by, p.last_updated_at,\n' +
+    '                    NULL AS status, NULL AS redeemed_by, NULL AS redeemed_at,\n' +
+    '                    NULL AS replacement_for, NULL AS replaced_by, NULL AS issue_reason, NULL AS note\n' +
+    '                FROM promo_codes p\n' +
+    '                LEFT JOIN rewards r ON p.reward_id = r.reward_id\n' +
+    "                WHERE p.promo_code_id = '2004'\n" +
+    '            '
+}
+Get promo code detail error: Error: Unknown column 'p.campaign_id' in 'field list'
+    at exports.getPromoCodeDetail (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\controllers\manualOverrideController.js:82:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_BAD_FIELD_ERROR',
+  errno: 1054,
+  sqlState: '42S22',
+  sqlMessage: "Unknown column 'p.campaign_id' in 'field list'",
+  sql: '\n' +
+    '                SELECT\n' +
+    '                    p.promo_code_id, p.code, p.reward_id,\n' +
+    '                    r.reward_name, r.required_points AS reward_points,\n' +
+    '                    p.campaign_id, p.description, p.expiry_date,\n' +
+    '                    p.is_used, p.used_by_phone, p.used_by_user_id, p.used_at,\n' +
+    '                    p.created_at, p.override_flag, p.last_updated_by, p.last_updated_at,\n' +
+    '                    NULL AS status, NULL AS redeemed_by, NULL AS redeemed_at,\n' +
+    '                    NULL AS replacement_for, NULL AS replaced_by, NULL AS issue_reason, NULL AS note\n' +
+    '                FROM promo_codes p\n' +
+    '                LEFT JOIN rewards r ON p.reward_id = r.reward_id\n' +
+    "                WHERE p.promo_code_id = '2004'\n" +
+    '            '
+}
+Get promo code detail error: Error: Unknown column 'p.campaign_id' in 'field list'
+    at exports.getPromoCodeDetail (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\controllers\manualOverrideController.js:82:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_BAD_FIELD_ERROR',
+  errno: 1054,
+  sqlState: '42S22',
+  sqlMessage: "Unknown column 'p.campaign_id' in 'field list'",
+  sql: '\n' +
+    '                SELECT\n' +
+    '                    p.promo_code_id, p.code, p.reward_id,\n' +
+    '                    r.reward_name, r.required_points AS reward_points,\n' +
+    '                    p.campaign_id, p.description, p.expiry_date,\n' +
+    '                    p.is_used, p.used_by_phone, p.used_by_user_id, p.used_at,\n' +
+    '                    p.created_at, p.override_flag, p.last_updated_by, p.last_updated_at,\n' +
+    '                    NULL AS status, NULL AS redeemed_by, NULL AS redeemed_at,\n' +
+    '                    NULL AS replacement_for, NULL AS replaced_by, NULL AS issue_reason, NULL AS note\n' +
+    '                FROM promo_codes p\n' +
+    '                LEFT JOIN rewards r ON p.reward_id = r.reward_id\n' +
+    "                WHERE p.promo_code_id = '2004'\n" +
+    '            '
+}
+Get promo code detail error: Error: Unknown column 'p.campaign_id' in 'field list'
+    at exports.getPromoCodeDetail (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\controllers\manualOverrideController.js:82:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_BAD_FIELD_ERROR',
+  errno: 1054,
+  sqlState: '42S22',
+  sqlMessage: "Unknown column 'p.campaign_id' in 'field list'",
+  sql: '\n' +
+    '                SELECT\n' +
+    '                    p.promo_code_id, p.code, p.reward_id,\n' +
+    '                    r.reward_name, r.required_points AS reward_points,\n' +
+    '                    p.campaign_id, p.description, p.expiry_date,\n' +
+    '                    p.is_used, p.used_by_phone, p.used_by_user_id, p.used_at,\n' +
+    '                    p.created_at, p.override_flag, p.last_updated_by, p.last_updated_at,\n' +
+    '                    NULL AS status, NULL AS redeemed_by, NULL AS redeemed_at,\n' +
+    '                    NULL AS replacement_for, NULL AS replaced_by, NULL AS issue_reason, NULL AS note\n' +
+    '                FROM promo_codes p\n' +
+    '                LEFT JOIN rewards r ON p.reward_id = r.reward_id\n' +
+    "                WHERE p.promo_code_id = '2004'\n" +
+    '            '
+}
+Get promo code detail error: Error: Unknown column 'p.campaign_id' in 'field list'
+    at exports.getPromoCodeDetail (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\controllers\manualOverrideController.js:82:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_BAD_FIELD_ERROR',
+  errno: 1054,
+  sqlState: '42S22',
+  sqlMessage: "Unknown column 'p.campaign_id' in 'field list'",
+  sql: '\n' +
+    '                SELECT\n' +
+    '                    p.promo_code_id, p.code, p.reward_id,\n' +
+    '                    r.reward_name, r.required_points AS reward_points,\n' +
+    '                    p.campaign_id, p.description, p.expiry_date,\n' +
+    '                    p.is_used, p.used_by_phone, p.used_by_user_id, p.used_at,\n' +
+    '                    p.created_at, p.override_flag, p.last_updated_by, p.last_updated_at,\n' +
+    '                    NULL AS status, NULL AS redeemed_by, NULL AS redeemed_at,\n' +
+    '                    NULL AS replacement_for, NULL AS replaced_by, NULL AS issue_reason, NULL AS note\n' +
+    '                FROM promo_codes p\n' +
+    '                LEFT JOIN rewards r ON p.reward_id = r.reward_id\n' +
+    "                WHERE p.promo_code_id = '2003'\n" +
+    '            '
+}
+Get promo code detail error: Error: Unknown column 'p.campaign_id' in 'field list'
+    at exports.getPromoCodeDetail (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\controllers\manualOverrideController.js:82:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_BAD_FIELD_ERROR',
+  errno: 1054,
+  sqlState: '42S22',
+  sqlMessage: "Unknown column 'p.campaign_id' in 'field list'",
+  sql: '\n' +
+    '                SELECT\n' +
+    '                    p.promo_code_id, p.code, p.reward_id,\n' +
+    '                    r.reward_name, r.required_points AS reward_points,\n' +
+    '                    p.campaign_id, p.description, p.expiry_date,\n' +
+    '                    p.is_used, p.used_by_phone, p.used_by_user_id, p.used_at,\n' +
+    '                    p.created_at, p.override_flag, p.last_updated_by, p.last_updated_at,\n' +
+    '                    NULL AS status, NULL AS redeemed_by, NULL AS redeemed_at,\n' +
+    '                    NULL AS replacement_for, NULL AS replaced_by, NULL AS issue_reason, NULL AS note\n' +
+    '                FROM promo_codes p\n' +
+    '                LEFT JOIN rewards r ON p.reward_id = r.reward_id\n' +
+    "                WHERE p.promo_code_id = '2004'\n" +
+    '            '
+}
+Get promo code detail error: Error: Unknown column 'p.campaign_id' in 'field list'
+    at exports.getPromoCodeDetail (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\controllers\manualOverrideController.js:82:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_BAD_FIELD_ERROR',
+  errno: 1054,
+  sqlState: '42S22',
+  sqlMessage: "Unknown column 'p.campaign_id' in 'field list'",
+  sql: '\n' +
+    '                SELECT\n' +
+    '                    p.promo_code_id, p.code, p.reward_id,\n' +
+    '                    r.reward_name, r.required_points AS reward_points,\n' +
+    '                    p.campaign_id, p.description, p.expiry_date,\n' +
+    '                    p.is_used, p.used_by_phone, p.used_by_user_id, p.used_at,\n' +
+    '                    p.created_at, p.override_flag, p.last_updated_by, p.last_updated_at,\n' +
+    '                    NULL AS status, NULL AS redeemed_by, NULL AS redeemed_at,\n' +
+    '                    NULL AS replacement_for, NULL AS replaced_by, NULL AS issue_reason, NULL AS note\n' +
+    '                FROM promo_codes p\n' +
+    '                LEFT JOIN rewards r ON p.reward_id = r.reward_id\n' +
+    "                WHERE p.promo_code_id = '2001'\n" +
+    '            '
+}
+Get promo code detail error: Error: Unknown column 'p.campaign_id' in 'field list'
+    at exports.getPromoCodeDetail (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\controllers\manualOverrideController.js:82:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_BAD_FIELD_ERROR',
+  errno: 1054,
+  sqlState: '42S22',
+  sqlMessage: "Unknown column 'p.campaign_id' in 'field list'",
+  sql: '\n' +
+    '                SELECT\n' +
+    '                    p.promo_code_id, p.code, p.reward_id,\n' +
+    '                    r.reward_name, r.required_points AS reward_points,\n' +
+    '                    p.campaign_id, p.description, p.expiry_date,\n' +
+    '                    p.is_used, p.used_by_phone, p.used_by_user_id, p.used_at,\n' +
+    '                    p.created_at, p.override_flag, p.last_updated_by, p.last_updated_at,\n' +
+    '                    NULL AS status, NULL AS redeemed_by, NULL AS redeemed_at,\n' +
+    '                    NULL AS replacement_for, NULL AS replaced_by, NULL AS issue_reason, NULL AS note\n' +
+    '                FROM promo_codes p\n' +
+    '                LEFT JOIN rewards r ON p.reward_id = r.reward_id\n' +
+    "                WHERE p.promo_code_id = '2001'\n" +
+    '            '
+}
+Get promo code detail error: Error: Unknown column 'p.campaign_id' in 'field list'
+    at exports.getPromoCodeDetail (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\controllers\manualOverrideController.js:82:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_BAD_FIELD_ERROR',
+  errno: 1054,
+  sqlState: '42S22',
+  sqlMessage: "Unknown column 'p.campaign_id' in 'field list'",
+  sql: '\n' +
+    '                SELECT\n' +
+    '                    p.promo_code_id, p.code, p.reward_id,\n' +
+    '                    r.reward_name, r.required_points AS reward_points,\n' +
+    '                    p.campaign_id, p.description, p.expiry_date,\n' +
+    '                    p.is_used, p.used_by_phone, p.used_by_user_id, p.used_at,\n' +
+    '                    p.created_at, p.override_flag, p.last_updated_by, p.last_updated_at,\n' +
+    '                    NULL AS status, NULL AS redeemed_by, NULL AS redeemed_at,\n' +
+    '                    NULL AS replacement_for, NULL AS replaced_by, NULL AS issue_reason, NULL AS note\n' +
+    '                FROM promo_codes p\n' +
+    '                LEFT JOIN rewards r ON p.reward_id = r.reward_id\n' +
+    "                WHERE p.promo_code_id = '2001'\n" +
+    '            '
+}
+Get promo code detail error: Error: Unknown column 'p.campaign_id' in 'field list'
+    at exports.getPromoCodeDetail (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\controllers\manualOverrideController.js:82:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_BAD_FIELD_ERROR',
+  errno: 1054,
+  sqlState: '42S22',
+  sqlMessage: "Unknown column 'p.campaign_id' in 'field list'",
+  sql: '\n' +
+    '                SELECT\n' +
+    '                    p.promo_code_id, p.code, p.reward_id,\n' +
+    '                    r.reward_name, r.required_points AS reward_points,\n' +
+    '                    p.campaign_id, p.description, p.expiry_date,\n' +
+    '                    p.is_used, p.used_by_phone, p.used_by_user_id, p.used_at,\n' +
+    '                    p.created_at, p.override_flag, p.last_updated_by, p.last_updated_at,\n' +
+    '                    NULL AS status, NULL AS redeemed_by, NULL AS redeemed_at,\n' +
+    '                    NULL AS replacement_for, NULL AS replaced_by, NULL AS issue_reason, NULL AS note\n' +
+    '                FROM promo_codes p\n' +
+    '                LEFT JOIN rewards r ON p.reward_id = r.reward_id\n' +
+    "                WHERE p.promo_code_id = '2004'\n" +
+    '            '
+}
+Get promo code detail error: Error: Unknown column 'p.campaign_id' in 'field list'
+    at exports.getPromoCodeDetail (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\controllers\manualOverrideController.js:82:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_BAD_FIELD_ERROR',
+  errno: 1054,
+  sqlState: '42S22',
+  sqlMessage: "Unknown column 'p.campaign_id' in 'field list'",
+  sql: '\n' +
+    '                SELECT\n' +
+    '                    p.promo_code_id, p.code, p.reward_id,\n' +
+    '                    r.reward_name, r.required_points AS reward_points,\n' +
+    '                    p.campaign_id, p.description, p.expiry_date,\n' +
+    '                    p.is_used, p.used_by_phone, p.used_by_user_id, p.used_at,\n' +
+    '                    p.created_at, p.override_flag, p.last_updated_by, p.last_updated_at,\n' +
+    '                    NULL AS status, NULL AS redeemed_by, NULL AS redeemed_at,\n' +
+    '                    NULL AS replacement_for, NULL AS replaced_by, NULL AS issue_reason, NULL AS note\n' +
+    '                FROM promo_codes p\n' +
+    '                LEFT JOIN rewards r ON p.reward_id = r.reward_id\n' +
+    "                WHERE p.promo_code_id = '2004'\n" +
+    '            '
+}
+Replace code error: Error: Unknown column 'campaign_id' in 'field list'
+    at exports.replaceCode (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\controllers\manualOverrideController.js:388:51)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_BAD_FIELD_ERROR',
+  errno: 1054,
+  sqlState: '42S22',
+  sqlMessage: "Unknown column 'campaign_id' in 'field list'",
+  sql: '\n' +
+    '                    INSERT INTO promo_codes (code, reward_id, campaign_id, description, expiry_date, is_used, created_at)\n' +
+    "                    VALUES ('RPL-E88F18680A', 8, NULL, 'คูปองส่วนลด KFC 50 บาท', NULL, 0, NOW())\n" +
+    '                '
+}
+Get promo code detail error: Error: Unknown column 'p.campaign_id' in 'field list'
+    at exports.getPromoCodeDetail (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\controllers\manualOverrideController.js:82:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ER_BAD_FIELD_ERROR',
+  errno: 1054,
+  sqlState: '42S22',
+  sqlMessage: "Unknown column 'p.campaign_id' in 'field list'",
+  sql: '\n' +
+    '                SELECT\n' +
+    '                    p.promo_code_id, p.code, p.reward_id,\n' +
+    '                    r.reward_name, r.required_points AS reward_points,\n' +
+    '                    p.campaign_id, p.description, p.expiry_date,\n' +
+    '                    p.is_used, p.used_by_phone, p.used_by_user_id, p.used_at,\n' +
+    '                    p.created_at, p.override_flag, p.last_updated_by, p.last_updated_at,\n' +
+    '                    NULL AS status, NULL AS redeemed_by, NULL AS redeemed_at,\n' +
+    '                    NULL AS replacement_for, NULL AS replaced_by, NULL AS issue_reason, NULL AS note\n' +
+    '                FROM promo_codes p\n' +
+    '                LEFT JOIN rewards r ON p.reward_id = r.reward_id\n' +
+    "                WHERE p.promo_code_id = '2004'\n" +
+    '            '
+}
+Error: connect ETIMEDOUT
+    at PoolConnection._handleTimeoutError (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\node_modules\mysql2\lib\base\connection.js:244:17)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
+Error: connect ETIMEDOUT
+    at PoolConnection._handleTimeoutError (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\node_modules\mysql2\lib\base\connection.js:244:17)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
+Error: connect ETIMEDOUT
+    at PoolConnection._handleTimeoutError (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\node_modules\mysql2\lib\base\connection.js:244:17)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
+Error: connect ETIMEDOUT
+    at PoolConnection._handleTimeoutError (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\node_modules\mysql2\lib\base\connection.js:244:17)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
+Error: connect ETIMEDOUT
+    at PoolConnection._handleTimeoutError (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\node_modules\mysql2\lib\base\connection.js:244:17)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
+Error: connect ETIMEDOUT
+    at PoolConnection._handleTimeoutError (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\node_modules\mysql2\lib\base\connection.js:244:17)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
+Error: connect ETIMEDOUT
+    at PoolConnection._handleTimeoutError (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\node_modules\mysql2\lib\base\connection.js:244:17)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
+Error: connect ETIMEDOUT
+    at PoolConnection._handleTimeoutError (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\node_modules\mysql2\lib\base\connection.js:244:17)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
+Error: connect ETIMEDOUT
+    at PoolConnection._handleTimeoutError (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\node_modules\mysql2\lib\base\connection.js:244:17)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
+Error: connect ETIMEDOUT
+    at PoolConnection._handleTimeoutError (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\node_modules\mysql2\lib\base\connection.js:244:17)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
+Error: connect ETIMEDOUT
+    at PoolConnection._handleTimeoutError (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\node_modules\mysql2\lib\base\connection.js:244:17)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
+Error: connect ETIMEDOUT
+    at PoolConnection._handleTimeoutError (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\node_modules\mysql2\lib\base\connection.js:244:17)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
+Error: connect ETIMEDOUT
+    at PoolConnection._handleTimeoutError (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\node_modules\mysql2\lib\base\connection.js:244:17)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
+Error: connect ETIMEDOUT
+    at PoolConnection._handleTimeoutError (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\node_modules\mysql2\lib\base\connection.js:244:17)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
+Error: connect ETIMEDOUT
+    at PoolConnection._handleTimeoutError (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\node_modules\mysql2\lib\base\connection.js:244:17)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
+Error: connect ETIMEDOUT
+    at PoolConnection._handleTimeoutError (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\node_modules\mysql2\lib\base\connection.js:244:17)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
+Error: connect ETIMEDOUT
+    at PoolConnection._handleTimeoutError (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\node_modules\mysql2\lib\base\connection.js:244:17)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
+Error: connect ETIMEDOUT
+    at PoolConnection._handleTimeoutError (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\node_modules\mysql2\lib\base\connection.js:244:17)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
+Error: connect ETIMEDOUT
+    at PoolConnection._handleTimeoutError (C:\Users\kirit\OneDrive\Desktop\flutter\eldersspace_backend\node_modules\mysql2\lib\base\connection.js:244:17)
+    at listOnTimeout (node:internal/timers:594:17)
+    at process.processTimers (node:internal/timers:529:7)
