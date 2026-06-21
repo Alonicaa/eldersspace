@@ -9,6 +9,7 @@ const pool = new Pool({
   database: process.env.DB_DATABASE,
   ssl: { rejectUnauthorized: false },
   max: process.env.DB_CONNECTION_LIMIT || 5,
+  family: 4,
 });
 
 pool.connect()
