@@ -662,8 +662,9 @@ exports.sessionHeartbeat = async (req, res) => {
 // ============================================================
 exports.getRewardSummary = async (req, res) => {
   const { phone } = req.params;
-  const conn = await pool.connect();
+  let conn;
   try {
+    conn = await pool.connect();
     const usageRule = await getAppUsageRule(conn);
     const { today } = await getBangkokDates(conn);
 
@@ -750,7 +751,7 @@ exports.getRewardSummary = async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   } finally {
-    conn.release();
+    if (conn) conn.release();
   }
 };
 
@@ -1559,7 +1560,6 @@ exports.getRewardSettings = async (req, res) => {
       return res.status(404).json({ error: 'Settings not found' });
     }
 
-    conn.release();
     return res.json({
       success: true,
       data: {
@@ -1601,7 +1601,6 @@ exports.getBonusEvents = async (req, res) => {
       `SELECT * FROM bonus_events ORDER BY created_at DESC`
     );
 
-    conn.release();
     return res.json({
       success: true,
       data: events.map(e => ({

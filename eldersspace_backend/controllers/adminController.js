@@ -1099,7 +1099,7 @@ exports.getPostDetail = async (req, res) => {
         author: post.full_name || '-',
         authorPhone: post.phone_number || '-',
         authorAvatarUrl: post.profile_picture
-          ? `http://10.0.2.2:3000/uploads/${post.profile_picture}`
+          ? (/^https?:\/\//i.test(post.profile_picture) ? post.profile_picture : `${process.env.BACKEND_URL || 'http://10.0.2.2:3000'}/uploads/${post.profile_picture}`)
           : null,
         content: post.content || '',
         visibility: post.visibility || 'public',
@@ -1107,7 +1107,7 @@ exports.getPostDetail = async (req, res) => {
         likes: Number(post.likes || 0),
         comments: Number(post.comments || 0),
         shares: Number(post.shares || 0),
-        images: imageRows.map((row) => `http://10.0.2.2:3000/uploads/${row.image_url}`),
+        images: imageRows.map((row) => /^https?:\/\//i.test(row.image_url) ? row.image_url : `${process.env.BACKEND_URL || 'http://10.0.2.2:3000'}/uploads/${row.image_url}`),
         moderation,
         violationHints: detectViolationHints(post.content || '')
       },
@@ -1116,7 +1116,7 @@ exports.getPostDetail = async (req, res) => {
         author: row.full_name || '-',
         authorPhone: row.phone_number || '-',
         authorAvatarUrl: row.profile_picture
-          ? `http://10.0.2.2:3000/uploads/${row.profile_picture}`
+          ? (/^https?:\/\//i.test(row.profile_picture) ? row.profile_picture : `${process.env.BACKEND_URL || 'http://10.0.2.2:3000'}/uploads/${row.profile_picture}`)
           : null,
         content: row.content || '',
         createdAt: row.created_at || null,

@@ -41,6 +41,7 @@ exports.getComments = async (req,res)=>{
  u.phone_number as user_phone,
  CASE
    WHEN u.profile_picture IS NULL OR u.profile_picture='' THEN NULL
+   WHEN u.profile_picture LIKE 'http%' THEN u.profile_picture
    ELSE $1 || '/uploads/' || u.profile_picture
  END as profile_picture_url
 FROM comments c

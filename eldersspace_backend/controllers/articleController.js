@@ -72,8 +72,9 @@ async function ensureArticlesTable(conn) {
 
 // ── GET /api/articles ────────────────────────────────────────────────────────
 exports.getApprovedArticles = async (req, res) => {
-  const conn = await pool.connect();
+  let conn;
   try {
+    conn = await pool.connect();
     await ensureArticlesTable(conn);
     const { category, page = 1, limit = 20, phone, sort } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
@@ -120,7 +121,7 @@ exports.getApprovedArticles = async (req, res) => {
     console.error('[Articles] getApprovedArticles', err);
     res.status(500).json({ error: 'Server error' });
   } finally {
-    conn.release();
+    if (conn) conn.release();
   }
 };
 
@@ -549,6 +550,7 @@ exports.getArticleComments = async (req, res) => {
               u.full_name,
               CASE WHEN u.profile_picture IS NULL OR u.profile_picture=''
                    THEN NULL
+                   WHEN u.profile_picture LIKE 'http%' THEN u.profile_picture
                    ELSE $1 || '/uploads/' || u.profile_picture
               END AS profile_picture_url
        FROM article_comments ac
@@ -599,7 +601,7 @@ exports.addArticleComment = async (req, res) => {
       created_at: new Date(),
       full_name: user.full_name,
       profile_picture_url: user.profile_picture
-        ? `${backendUrl}/uploads/${user.profile_picture}` : null,
+        ? (/^https?:\/\//i.test(user.profile_picture) ? user.profile_picture : `${backendUrl}/uploads/${user.profile_picture}`) : null,
     });
   } catch (err) {
     console.error('[Articles] addArticleComment', err);
