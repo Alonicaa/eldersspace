@@ -453,9 +453,11 @@ exports.getUserProfile = async (req, res) => {
       ...u,
       followers: Number(u.followers),
       following:  Number(u.following),
-      profile_picture_url: u.profile_picture
-        ? `${process.env.BACKEND_URL || 'http://10.0.2.2:3000'}/uploads/` + u.profile_picture
-        : null,
+      profile_picture_url: (() => {
+        if (!u.profile_picture) return null;
+        if (/^https?:\/\//i.test(u.profile_picture)) return u.profile_picture;
+        return `${process.env.BACKEND_URL || 'http://10.0.2.2:3000'}/uploads/${u.profile_picture}`;
+      })(),
     });
 
   } catch (err) {

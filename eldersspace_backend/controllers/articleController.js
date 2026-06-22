@@ -1,28 +1,9 @@
 const pool   = require('../config/db');
 const multer = require('multer');
-const path   = require('path');
-const fs     = require('fs');
+const { uploadToStorage } = require('../config/supabaseStorage');
 
-// ── Multer ──────────────────────────────────────────────────────────────────
-const tmpStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = 'uploads/tmp/';
-    fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  }
-});
-exports.upload = multer({ storage: tmpStorage }).single('cover_image');
-
-function moveToArticleFolder(tmpPath, articleId, filename) {
-  const dir = `uploads/articles/${articleId}/`;
-  fs.mkdirSync(dir, { recursive: true });
-  const dest = dir + filename;
-  fs.renameSync(tmpPath, dest);
-  return `articles/${articleId}/${filename}`;
-}
+// ── Multer (memory storage; cover images uploaded to Supabase Storage) ──────
+exports.upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } }).single('cover_image');
 
 // ── Ensure tables exist ──────────────────────────────────────────────────────
 async function ensureArticlesTable(conn) {
@@ -190,7 +171,6 @@ exports.submitUserArticle = async (req, res) => {
     } = req.body;
 
     if (!title || !author_name) {
-      if (req.file) fs.unlinkSync(req.file.path);
       return res.status(400).json({ error: 'title and author_name required' });
     }
 
@@ -199,7 +179,6 @@ exports.submitUserArticle = async (req, res) => {
       [phone_number]
     );
     if (!userRows.length) {
-      if (req.file) fs.unlinkSync(req.file.path);
       return res.status(404).json({ error: 'User not found' });
     }
     const userId = userRows[0].user_id;
@@ -219,15 +198,13 @@ exports.submitUserArticle = async (req, res) => {
     );
     const articleId = ins[0].article_id;
 
-    let coverPath = null;
     if (req.file) {
-      coverPath = moveToArticleFolder(req.file.path, articleId, req.file.filename);
-      await conn.query('UPDATE articles SET cover_image = $1 WHERE article_id = $2', [coverPath, articleId]);
+      const coverUrl = await uploadToStorage(req.file.buffer, req.file.originalname, req.file.mimetype, 'articles');
+      await conn.query('UPDATE articles SET cover_image = $1 WHERE article_id = $2', [coverUrl, articleId]);
     }
 
     res.status(201).json({ success: true, article_id: articleId, status: 'pending' });
   } catch (err) {
-    if (req.file) try { fs.unlinkSync(req.file.path); } catch (_) {}
     console.error('[Articles] submitUserArticle', err);
     res.status(500).json({ error: 'Server error' });
   } finally {
@@ -274,7 +251,6 @@ exports.adminCreateArticle = async (req, res) => {
     } = req.body;
 
     if (!title || !partner_name) {
-      if (req.file) fs.unlinkSync(req.file.path);
       return res.status(400).json({ error: 'title and partner_name required' });
     }
 
@@ -294,15 +270,13 @@ exports.adminCreateArticle = async (req, res) => {
     );
     const articleId = ins[0].article_id;
 
-    let coverPath = null;
     if (req.file) {
-      coverPath = moveToArticleFolder(req.file.path, articleId, req.file.filename);
-      await conn.query('UPDATE articles SET cover_image = $1 WHERE article_id = $2', [coverPath, articleId]);
+      const coverUrl = await uploadToStorage(req.file.buffer, req.file.originalname, req.file.mimetype, 'articles');
+      await conn.query('UPDATE articles SET cover_image = $1 WHERE article_id = $2', [coverUrl, articleId]);
     }
 
     res.status(201).json({ success: true, article_id: articleId });
   } catch (err) {
-    if (req.file) try { fs.unlinkSync(req.file.path); } catch (_) {}
     console.error('[Articles] adminCreateArticle', err);
     res.status(500).json({ error: 'Server error' });
   } finally {
@@ -320,7 +294,6 @@ exports.adminUpdateArticle = async (req, res) => {
     } = req.body;
 
     if (!title) {
-      if (req.file) fs.unlinkSync(req.file.path);
       return res.status(400).json({ error: 'title required' });
     }
 
@@ -342,9 +315,8 @@ exports.adminUpdateArticle = async (req, res) => {
     sets.push('updated_at = NOW()');
 
     if (req.file) {
-      const articleId = req.params.id;
-      const coverPath = moveToArticleFolder(req.file.path, articleId, req.file.filename);
-      addField('cover_image', coverPath);
+      const coverUrl = await uploadToStorage(req.file.buffer, req.file.originalname, req.file.mimetype, 'articles');
+      addField('cover_image', coverUrl);
     }
 
     vals.push(req.params.id);
@@ -354,7 +326,6 @@ exports.adminUpdateArticle = async (req, res) => {
     );
     res.json({ success: true });
   } catch (err) {
-    if (req.file) try { fs.unlinkSync(req.file.path); } catch (_) {}
     console.error('[Articles] adminUpdateArticle', err);
     res.status(500).json({ error: 'Server error' });
   } finally {

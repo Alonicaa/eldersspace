@@ -79,9 +79,13 @@ router.get('/:id/posts', async (req, res) => {
 
     for (let post of posts) {
       const imgs = await conn.query('SELECT image_url FROM post_images WHERE post_id=$1', [post.post_id]);
-      post.images = imgs.rows.map(i => `${backendUrl}/uploads/` + i.image_url);
-      post.profile_picture_url = post.profile_picture
-        ? `${backendUrl}/uploads/` + post.profile_picture : null;
+      const resolveUrl = (v) => {
+        if (!v) return null;
+        if (/^https?:\/\//i.test(v)) return v;
+        return `${backendUrl}/uploads/${v}`;
+      };
+      post.images = imgs.rows.map(i => resolveUrl(i.image_url));
+      post.profile_picture_url = resolveUrl(post.profile_picture);
     }
 
     conn.release();

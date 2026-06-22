@@ -1,6 +1,5 @@
 const pool = require('../config/db');
-const path = require('path');
-const fs = require('fs');
+const { uploadToStorage } = require('../config/supabaseStorage');
 
 // ── Auto-migrate: add contact columns if they don't exist ──
 (async () => {
@@ -17,18 +16,6 @@ const fs = require('fs');
     conn.release();
   } catch (_) {}
 })();
-
-// ── Helpers ──
-
-function buildUploadsDir(sub) {
-  const dir = path.join(__dirname, `../uploads/${sub}`);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  return dir;
-}
-
-function fileUrl(filename, sub) {
-  return `/uploads/${sub}/${filename}`;
-}
 
 // Helper: build pg numbered placeholders for dynamic UPDATE
 function buildUpdateSet(updates) {
@@ -104,10 +91,12 @@ exports.createPartner = async (req, res) => {
     let cover_image_url = null;
 
     if (req.files?.logo?.[0]) {
-      logo_url = fileUrl(req.files.logo[0].filename, 'partners');
+      const f = req.files.logo[0];
+      logo_url = await uploadToStorage(f.buffer, f.originalname, f.mimetype, 'partners');
     }
     if (req.files?.cover?.[0]) {
-      cover_image_url = fileUrl(req.files.cover[0].filename, 'partners');
+      const f = req.files.cover[0];
+      cover_image_url = await uploadToStorage(f.buffer, f.originalname, f.mimetype, 'partners');
     }
 
     const { rows: result } = await pool.query(
@@ -146,8 +135,14 @@ exports.updatePartner = async (req, res) => {
     if (contact_line !== undefined)     updates.contact_line     = contact_line     || null;
     if (contact_facebook !== undefined) updates.contact_facebook = contact_facebook || null;
     if (contact_address !== undefined)  updates.contact_address  = contact_address  || null;
-    if (req.files?.logo?.[0]) updates.logo_url = fileUrl(req.files.logo[0].filename, 'partners');
-    if (req.files?.cover?.[0]) updates.cover_image_url = fileUrl(req.files.cover[0].filename, 'partners');
+    if (req.files?.logo?.[0]) {
+      const f = req.files.logo[0];
+      updates.logo_url = await uploadToStorage(f.buffer, f.originalname, f.mimetype, 'partners');
+    }
+    if (req.files?.cover?.[0]) {
+      const f = req.files.cover[0];
+      updates.cover_image_url = await uploadToStorage(f.buffer, f.originalname, f.mimetype, 'partners');
+    }
 
     if (Object.keys(updates).length === 0) {
       return res.json({ message: 'No changes' });
@@ -257,7 +252,7 @@ exports.createService = async (req, res) => {
     const { title, description, display_order } = req.body;
     let image_url = null;
     if (req.file) {
-      image_url = fileUrl(req.file.filename, 'partners');
+      image_url = await uploadToStorage(req.file.buffer, req.file.originalname, req.file.mimetype, 'partners');
     }
     const { rows: result } = await pool.query(
       `INSERT INTO partner_services (partner_id, title, image_url, description, display_order)
@@ -289,7 +284,7 @@ exports.updateService = async (req, res) => {
     if (title !== undefined) updates.title = title;
     if (description !== undefined) updates.description = description;
     if (display_order !== undefined) updates.display_order = display_order;
-    if (req.file) updates.image_url = fileUrl(req.file.filename, 'partners');
+    if (req.file) updates.image_url = await uploadToStorage(req.file.buffer, req.file.originalname, req.file.mimetype, 'partners');
     if (!Object.keys(updates).length) return res.json({ message: 'No changes' });
     const { setClause, values } = buildUpdateSet(updates);
     await pool.query(`UPDATE partner_services SET ${setClause} WHERE id = $${values.length + 1}`, [...values, serviceId]);
@@ -334,7 +329,7 @@ exports.createProject = async (req, res) => {
     const { partner_id } = req.params;
     const { title, description, link_url } = req.body;
     let image_url = null;
-    if (req.file) image_url = fileUrl(req.file.filename, 'partners');
+    if (req.file) image_url = await uploadToStorage(req.file.buffer, req.file.originalname, req.file.mimetype, 'partners');
     const { rows: result } = await pool.query(
       `INSERT INTO partner_projects (partner_id, title, image_url, description, link_url)
        VALUES ($1, $2, $3, $4, $5)
@@ -365,7 +360,7 @@ exports.updateProject = async (req, res) => {
     if (title !== undefined) updates.title = title;
     if (description !== undefined) updates.description = description;
     if (link_url !== undefined) updates.link_url = link_url;
-    if (req.file) updates.image_url = fileUrl(req.file.filename, 'partners');
+    if (req.file) updates.image_url = await uploadToStorage(req.file.buffer, req.file.originalname, req.file.mimetype, 'partners');
     if (!Object.keys(updates).length) return res.json({ message: 'No changes' });
     const { setClause, values } = buildUpdateSet(updates);
     await pool.query(`UPDATE partner_projects SET ${setClause} WHERE id = $${values.length + 1}`, [...values, projectId]);
@@ -446,7 +441,7 @@ exports.createBanner = async (req, res) => {
     const { partner_id, title, description, link_url, banner_type, display_order, start_date, end_date } = req.body;
     let image_url = null;
     if (req.file) {
-      image_url = fileUrl(req.file.filename, 'banners');
+      image_url = await uploadToStorage(req.file.buffer, req.file.originalname, req.file.mimetype, 'banners');
     }
     const { rows: result } = await pool.query(
       `INSERT INTO home_banners (partner_id, title, description, image_url, link_url, banner_type, display_order, start_date, end_date)
@@ -478,7 +473,7 @@ exports.updateBanner = async (req, res) => {
     if (start_date !== undefined) updates.start_date = start_date;
     if (end_date !== undefined) updates.end_date = end_date;
     if (partner_id !== undefined) updates.partner_id = partner_id;
-    if (req.file) updates.image_url = fileUrl(req.file.filename, 'banners');
+    if (req.file) updates.image_url = await uploadToStorage(req.file.buffer, req.file.originalname, req.file.mimetype, 'banners');
 
     if (Object.keys(updates).length === 0) return res.json({ message: 'No changes' });
     const { setClause, values } = buildUpdateSet(updates);

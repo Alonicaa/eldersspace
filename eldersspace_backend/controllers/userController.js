@@ -1,52 +1,13 @@
 const pool = require('../config/db.js');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+const { uploadToStorage } = require('../config/supabaseStorage');
 const {
   ensureModerationColumns,
   getUserModerationByPhone
 } = require('../services/moderationService');
 
-const UPLOADS_ROOT = path.resolve(process.cwd(), 'uploads');
-const AVATAR_DIR = 'avatars';
-
-function normalizePhoneForPath(phone) {
-  return (
-    String(phone || '')
-      .trim()
-      .replace(/[^a-zA-Z0-9_-]/g, '_') || 'unknown'
-  );
-}
-
-function normalizeStoredPath(storedPath) {
-  return String(storedPath || '').replace(/\\/g, '/');
-}
-
-const BACKEND_URL = process.env.BACKEND_URL || 'http://10.0.2.2:3000';
-
-function buildUploadUrl(storedPath) {
-  const normalized = normalizeStoredPath(storedPath);
-  return normalized ? `${BACKEND_URL}/uploads/${normalized}` : null;
-}
-
-// Multer – profile picture upload
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    try {
-      const safePhone = normalizePhoneForPath(req.params.phone_number);
-      const userAvatarDir = path.join(UPLOADS_ROOT, AVATAR_DIR, safePhone);
-      fs.mkdirSync(userAvatarDir, { recursive: true });
-      cb(null, userAvatarDir);
-    } catch (err) {
-      cb(err);
-    }
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, Date.now() + '_avatar' + ext.toLowerCase());
-  },
-});
-exports.uploadAvatar = multer({ storage }).single('avatar');
+// Multer – profile picture upload (memory storage; file is uploaded to Supabase Storage)
+exports.uploadAvatar = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } }).single('avatar');
 
 // Register (legacy)
 exports.registerUser = async (req, res) => {
@@ -70,39 +31,37 @@ exports.updateProfilePicture = async (req, res) => {
   const { phone_number } = req.params;
   if (!req.file) return res.status(400).json({ error: 'No image file provided' });
   try {
+    const publicUrl = await uploadToStorage(req.file.buffer, req.file.originalname, req.file.mimetype, 'profiles');
+
     const conn = await pool.connect();
     const { rows: user } = await conn.query(
-      'SELECT user_id, profile_picture FROM users WHERE phone_number = $1',
+      'SELECT user_id FROM users WHERE phone_number = $1',
       [phone_number]
     );
     if (user.length === 0) { conn.release(); return res.status(404).json({ error: 'User not found' }); }
 
-    const safePhone = normalizePhoneForPath(phone_number);
-    const storedPath = normalizeStoredPath(
-      path.posix.join(AVATAR_DIR, safePhone, req.file.filename)
-    );
-
-    await conn.query('UPDATE users SET profile_picture = $1 WHERE user_id = $2', [storedPath, user[0].user_id]);
-
-    // Remove old avatar when user uploads a replacement image.
-    const oldStoredPath = normalizeStoredPath(user[0].profile_picture);
-    if (oldStoredPath) {
-      const oldAbsolutePath = path.join(UPLOADS_ROOT, ...oldStoredPath.split('/'));
-      if (fs.existsSync(oldAbsolutePath)) {
-        fs.unlinkSync(oldAbsolutePath);
-      }
-    }
+    await conn.query('UPDATE users SET profile_picture = $1 WHERE user_id = $2', [publicUrl, user[0].user_id]);
 
     conn.release();
     res.json({
       message: 'Profile picture updated',
-      profile_picture_path: storedPath,
-      profile_picture_url: buildUploadUrl(storedPath),
+      profile_picture_url: publicUrl,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
+const BACKEND_URL = process.env.BACKEND_URL || 'http://10.0.2.2:3000';
+
+// Returns a full URL for a stored profile_picture value.
+// New uploads store the full Supabase public URL directly.
+// Legacy rows store a relative path like "avatars/+66xxx/file.jpg".
+function resolveProfilePictureUrl(storedValue) {
+  if (!storedValue) return null;
+  if (/^https?:\/\//i.test(storedValue)) return storedValue;
+  return `${BACKEND_URL}/uploads/${storedValue.replace(/\\/g, '/')}`;
+}
 
 // Get profile picture
 exports.getProfilePicture = async (req, res) => {
@@ -112,10 +71,9 @@ exports.getProfilePicture = async (req, res) => {
     const { rows: user } = await conn.query('SELECT profile_picture FROM users WHERE phone_number = $1', [phone_number]);
     conn.release();
     if (user.length === 0) return res.status(404).json({ error: 'User not found' });
-    const pic = normalizeStoredPath(user[0].profile_picture);
+    const pic = user[0].profile_picture || null;
     res.json({
-      profile_picture_path: pic || null,
-      profile_picture_url: buildUploadUrl(pic),
+      profile_picture_url: resolveProfilePictureUrl(pic),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -250,7 +208,7 @@ exports.getFollowers = async (req, res) => {
        FROM followers f JOIN users u ON f.follower_id=u.user_id JOIN users me ON me.user_id=f.following_id
        WHERE me.phone_number=$1`, [phone_number]);
     conn.release();
-    res.json(users.map(u => ({ ...u, profile_picture_url: u.profile_picture ? `${BACKEND_URL}/uploads/` + u.profile_picture : null })));
+    res.json(users.map(u => ({ ...u, profile_picture_url: resolveProfilePictureUrl(u.profile_picture) })));
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
@@ -263,7 +221,7 @@ exports.getFollowing = async (req, res) => {
        FROM followers f JOIN users u ON f.following_id=u.user_id JOIN users me ON me.user_id=f.follower_id
        WHERE me.phone_number=$1`, [phone_number]);
     conn.release();
-    res.json(users.map(u => ({ ...u, profile_picture_url: u.profile_picture ? `${BACKEND_URL}/uploads/` + u.profile_picture : null })));
+    res.json(users.map(u => ({ ...u, profile_picture_url: resolveProfilePictureUrl(u.profile_picture) })));
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
@@ -337,9 +295,8 @@ exports.getUserPosts = async (req, res) => {
 
     for (let post of posts) {
       const { rows: imgs } = await conn.query('SELECT image_url FROM post_images WHERE post_id=$1', [post.post_id]);
-      post.images = imgs.map(i => `${BACKEND_URL}/uploads/` + i.image_url);
-      post.profile_picture_url = post.profile_picture
-        ? `${BACKEND_URL}/uploads/` + post.profile_picture : null;
+      post.images = imgs.map(i => resolveProfilePictureUrl(i.image_url));
+      post.profile_picture_url = resolveProfilePictureUrl(post.profile_picture);
 
       // ดึงโพสต์ต้นฉบับจริงๆ (chase chain จนถึง root)
       if (post.shared_post_id) {
@@ -373,9 +330,8 @@ exports.getUserPosts = async (req, res) => {
           const { rows: origImgs } = await conn.query(
             'SELECT image_url FROM post_images WHERE post_id=$1', [row.post_id]
           );
-          row.images = origImgs.map(i => `${BACKEND_URL}/uploads/` + i.image_url);
-          row.profile_picture_url = row.profile_picture
-            ? `${BACKEND_URL}/uploads/` + row.profile_picture : null;
+          row.images = origImgs.map(i => resolveProfilePictureUrl(i.image_url));
+          row.profile_picture_url = resolveProfilePictureUrl(row.profile_picture);
           delete row.shared_post_id;
           rootPost = row;
           break;

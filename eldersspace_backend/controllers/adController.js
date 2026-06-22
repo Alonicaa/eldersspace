@@ -1,6 +1,5 @@
 const pool = require('../config/db');
-const path = require('path');
-const fs   = require('fs');
+const { uploadToStorage } = require('../config/supabaseStorage');
 
 // Firebase Admin — initialized lazily from FIREBASE_SERVICE_ACCOUNT_JSON env var
 let _firebaseAdmin = null;
@@ -17,10 +16,6 @@ function getFirebase() {
     console.warn('[FCM] firebase-admin not available:', e.message);
   }
   return _firebaseAdmin;
-}
-
-function fileUrl(filename) {
-  return `/uploads/ads/${filename}`;
 }
 
 // Helper: build pg numbered placeholders for dynamic UPDATE
@@ -118,7 +113,7 @@ exports.createAd = async (req, res) => {
       start_date, end_date,
     } = req.body;
     let image_url = null;
-    if (req.file) image_url = fileUrl(req.file.filename);
+    if (req.file) image_url = await uploadToStorage(req.file.buffer, req.file.originalname, req.file.mimetype, 'ads');
 
     const { rows: result } = await pool.query(
       `INSERT INTO partner_ads
@@ -151,7 +146,7 @@ exports.updateAd = async (req, res) => {
     for (const f of allowed) {
       if (req.body[f] !== undefined) updates[f] = req.body[f];
     }
-    if (req.file) updates.image_url = fileUrl(req.file.filename);
+    if (req.file) updates.image_url = await uploadToStorage(req.file.buffer, req.file.originalname, req.file.mimetype, 'ads');
     if (Object.keys(updates).length === 0) return res.json({ message: 'No changes' });
 
     const { setClause, values } = buildUpdateSet(updates);

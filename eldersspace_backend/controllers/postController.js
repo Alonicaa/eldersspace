@@ -1,39 +1,10 @@
 const pool   = require('../config/db');
 const multer = require('multer');
-const path   = require('path');
-const fs     = require('fs');
+const { uploadToStorage } = require('../config/supabaseStorage');
 const { assertUserCanInteract } = require('../services/moderationService');
 
-// ─── Multer temp storage ───
-const tmpStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = 'uploads/tmp/';
-    fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  }
-});
-exports.upload = multer({ storage: tmpStorage }).any();
-
-function sanitizeName(name) {
-  return (name || 'unknown')
-    .replace(/[^a-zA-Z0-9ก-๙\-_]/g, '_')
-    .replace(/_+/g, '_').replace(/^_|_$/, '')
-    .substring(0, 50);
-}
-function moveToPostFolder(tmpPath, userName, postId, filename) {
-  const safeUser = sanitizeName(userName);
-  const dir = `uploads/posts/${safeUser}/${postId}/`;
-  fs.mkdirSync(dir, { recursive: true });
-  fs.renameSync(tmpPath, dir + filename);
-  return `posts/${safeUser}/${postId}/${filename}`;
-}
-function deletePostFolder(userName, postId) {
-  const dir = `uploads/posts/${sanitizeName(userName)}/${postId}/`;
-  if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
-}
+// ─── Multer memory storage (files are uploaded to Supabase Storage) ───
+exports.upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } }).any();
 
 async function ensureHiddenPostsTable(conn) {
   await conn.query(
@@ -94,6 +65,14 @@ function visibilityCondition(viewerUserId) {
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://10.0.2.2:3000';
 
+// Resolve a stored image_url/profile_picture value to a full URL.
+// New uploads store the full Supabase public URL; legacy rows store relative paths.
+function resolveUrl(stored) {
+  if (!stored) return null;
+  if (/^https?:\/\//i.test(stored)) return stored;
+  return `${BACKEND_URL}/uploads/${stored}`;
+}
+
 // ─── helper: ดึงโพสต์ต้นฉบับจริงๆ (chase chain จนถึง root) ───
 async function getOriginalPost(conn, sharedPostId) {
   if (!sharedPostId) return null;
@@ -125,9 +104,8 @@ async function getOriginalPost(conn, sharedPostId) {
     const { rows: imgs } = await conn.query(
       'SELECT image_url FROM post_images WHERE post_id=$1', [row.post_id]
     );
-    row.images = imgs.map(i => `${BACKEND_URL}/uploads/` + i.image_url);
-    row.profile_picture_url = row.profile_picture
-      ? `${BACKEND_URL}/uploads/` + row.profile_picture : null;
+    row.images = imgs.map(i => resolveUrl(i.image_url));
+    row.profile_picture_url = resolveUrl(row.profile_picture);
     delete row.shared_post_id;
     return row;
   }
@@ -181,8 +159,8 @@ exports.createPost = async (req, res) => {
 
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
-        const relPath = moveToPostFolder(file.path, userName, postId, file.filename);
-        await conn.query('INSERT INTO post_images(post_id,image_url) VALUES($1,$2)', [postId, relPath]);
+        const publicUrl = await uploadToStorage(file.buffer, file.originalname, file.mimetype, 'posts');
+        await conn.query('INSERT INTO post_images(post_id,image_url) VALUES($1,$2)', [postId, publicUrl]);
       }
     }
 
@@ -239,9 +217,8 @@ exports.getPosts = async (req, res) => {
       }
 
       const { rows: imgs } = await conn.query('SELECT image_url FROM post_images WHERE post_id=$1', [post.post_id]);
-      post.images = imgs.map(i => `${BACKEND_URL}/uploads/` + i.image_url);
-      post.profile_picture_url = post.profile_picture
-        ? `${BACKEND_URL}/uploads/` + post.profile_picture : null;
+      post.images = imgs.map(i => resolveUrl(i.image_url));
+      post.profile_picture_url = resolveUrl(post.profile_picture);
 
       post.shared_post = await getOriginalPost(conn, post.shared_post_id);
 
@@ -254,9 +231,7 @@ exports.getPosts = async (req, res) => {
         );
         if (artRows.length) {
           const art = artRows[0];
-          art.cover_image_url = art.cover_image
-            ? `${BACKEND_URL}/uploads/${art.cover_image}`
-            : null;
+          art.cover_image_url = resolveUrl(art.cover_image);
           post.linked_article = art;
         }
       }
@@ -421,10 +396,9 @@ exports.updatePost = async (req, res) => {
     await conn.query('UPDATE posts SET content=$1, visibility=$2 WHERE post_id=$3', [content, safeVis, postId]);
     if (req.files && req.files.length > 0) {
       await conn.query('DELETE FROM post_images WHERE post_id=$1', [postId]);
-      deletePostFolder(userName, postId);
       for (const file of req.files) {
-        const relPath = moveToPostFolder(file.path, userName, postId, file.filename);
-        await conn.query('INSERT INTO post_images(post_id,image_url) VALUES($1,$2)', [postId, relPath]);
+        const publicUrl = await uploadToStorage(file.buffer, file.originalname, file.mimetype, 'posts');
+        await conn.query('INSERT INTO post_images(post_id,image_url) VALUES($1,$2)', [postId, publicUrl]);
       }
     }
     conn.release();
@@ -491,9 +465,8 @@ exports.getDeletedPosts = async (req, res) => {
 
     for (let post of posts) {
       const { rows: imgs } = await conn.query('SELECT image_url FROM post_images WHERE post_id=$1', [post.post_id]);
-      post.images = imgs.map(i => `${BACKEND_URL}/uploads/` + i.image_url);
-      post.profile_picture_url = post.profile_picture
-        ? `${BACKEND_URL}/uploads/` + post.profile_picture : null;
+      post.images = imgs.map(i => resolveUrl(i.image_url));
+      post.profile_picture_url = resolveUrl(post.profile_picture);
     }
 
     conn.release();
