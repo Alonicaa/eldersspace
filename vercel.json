@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "name": "eldersspace-dashboard",
+  "buildCommand": "cd eldersspace && flutter/bin/flutter build web --release --no-tree-shake-icons",
+  "outputDirectory": "eldersspace/build/web",
+  "routes": [
+    { "src": "/(.*)", "dest": "/$1" }
+  ]
+}

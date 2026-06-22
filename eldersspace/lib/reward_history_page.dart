@@ -736,6 +736,140 @@ class _RewardHistoryPageState extends State<RewardHistoryPage> {
     return {};
   }
 
+  void _showReportCodeSheet({required int redemptionId, required String rewardName}) {
+    String selectedType = 'not_working';
+    final descController = TextEditingController();
+    bool isSubmitting = false;
+
+    final issueLabels = {
+      'not_working': 'โค้ดใช้งานไม่ได้',
+      'wrong_reward': 'รางวัลไม่ตรง',
+      'already_expired': 'โค้ดหมดอายุแล้ว',
+      'other': 'อื่นๆ',
+    };
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40, height: 4,
+                      decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('แจ้งปัญหาโค้ด', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text(rewardName, style: TextStyle(fontSize: 13, color: Colors.grey.shade600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 20),
+                  const Text('ประเภทปัญหา', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: issueLabels.entries.map((e) {
+                      final selected = selectedType == e.key;
+                      return GestureDetector(
+                        onTap: () => setSheetState(() => selectedType = e.key),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: selected ? Colors.orange.shade700 : Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: selected ? Colors.orange.shade700 : Colors.grey.shade300),
+                          ),
+                          child: Text(e.value, style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w500,
+                            color: selected ? Colors.white : Colors.grey.shade700,
+                          )),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text('รายละเอียดเพิ่มเติม (ถ้ามี)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: descController,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      hintText: 'อธิบายปัญหาที่พบ...',
+                      hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.orange, width: 1.5)),
+                      contentPadding: const EdgeInsets.all(12),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: isSubmitting ? null : () async {
+                        setSheetState(() => isSubmitting = true);
+                        final result = await RewardService.reportCode(
+                          phoneNumber: widget.phoneNumber,
+                          redemptionId: redemptionId,
+                          issueType: selectedType,
+                          description: descController.text.trim().isEmpty ? null : descController.text.trim(),
+                        );
+                        if (!mounted) return;
+                        Navigator.pop(ctx);
+                        if (result['success'] == true) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text('แจ้งปัญหาสำเร็จ ทีมงานจะตรวจสอบและติดต่อกลับ'),
+                              backgroundColor: Colors.green.shade600,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(result['error']?.toString() ?? 'เกิดข้อผิดพลาด'),
+                              backgroundColor: Colors.red.shade600,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange.shade700,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                      ),
+                      child: isSubmitting
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Text('ส่งรายงาน', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showRewardDetail(Map<String, dynamic> reward) {
     // Ensure reward is properly typed
     reward = _convertToStringKeyMap(reward);
@@ -2085,30 +2219,55 @@ class _RewardHistoryPageState extends State<RewardHistoryPage> {
                                   ),
                                   if (isRewardTx) ...[
                                     Divider(height: 1, color: Colors.grey.shade100),
-                                    InkWell(
-                                      onTap: () => _showRewardDetail(_convertToStringKeyMap(item)),
-                                      borderRadius: const BorderRadius.only(
-                                        bottomLeft: Radius.circular(14),
-                                        bottomRight: Radius.circular(14),
-                                      ),
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 10),
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Icon(Icons.qr_code_2, size: 14, color: Colors.blue.shade600),
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              'ดูรายละเอียด / QR Code',
-                                              style: TextStyle(
-                                                color: Colors.blue.shade600,
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 12,
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: InkWell(
+                                            onTap: () => _showRewardDetail(_convertToStringKeyMap(item)),
+                                            borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(14)),
+                                            child: Padding(
+                                              padding: const EdgeInsets.symmetric(vertical: 10),
+                                              child: Row(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(Icons.qr_code_2, size: 14, color: Colors.blue.shade600),
+                                                  const SizedBox(width: 6),
+                                                  Text('ดูรายละเอียด / QR Code',
+                                                    style: TextStyle(color: Colors.blue.shade600, fontWeight: FontWeight.w600, fontSize: 12)),
+                                                ],
                                               ),
                                             ),
-                                          ],
+                                          ),
                                         ),
-                                      ),
+                                        Container(width: 1, height: 36, color: Colors.grey.shade100),
+                                        Expanded(
+                                          child: InkWell(
+                                            onTap: () {
+                                              final rd = _convertToStringKeyMap(item);
+                                              final rdId = rd['redemption_id'];
+                                              if (rdId != null) {
+                                                _showReportCodeSheet(
+                                                  redemptionId: rdId is int ? rdId : int.tryParse(rdId.toString()) ?? 0,
+                                                  rewardName: (rd['reward_name'] ?? rd['name'] ?? 'รางวัล').toString(),
+                                                );
+                                              }
+                                            },
+                                            borderRadius: const BorderRadius.only(bottomRight: Radius.circular(14)),
+                                            child: Padding(
+                                              padding: const EdgeInsets.symmetric(vertical: 10),
+                                              child: Row(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(Icons.report_problem_outlined, size: 14, color: Colors.orange.shade700),
+                                                  const SizedBox(width: 6),
+                                                  Text('แจ้งปัญหาโค้ด',
+                                                    style: TextStyle(color: Colors.orange.shade700, fontWeight: FontWeight.w600, fontSize: 12)),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ],

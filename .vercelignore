@@ -1,0 +1,7 @@
+eldersspace/
+eldersspace_backend/
+node_modules/
+.git/
+*.md
+QUICK_START.md
+CLAUDE.md

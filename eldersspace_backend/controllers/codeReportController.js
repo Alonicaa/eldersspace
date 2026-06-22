@@ -8,14 +8,15 @@ function maskCode(code) {
 }
 
 // POST /api/rewards/report-code
-// Body: { user_id, phone_number, promo_code_id, issue_type, description }
+// Body: { phone_number, redemption_id, issue_type, description }
+// Uses redemption_id to look up which promo code was assigned to this user for this reward.
 exports.submitReport = async (req, res) => {
   let conn;
   try {
-    const { user_id, phone_number, promo_code_id, issue_type, description } = req.body;
+    const { phone_number, redemption_id, issue_type, description } = req.body;
 
-    if (!user_id || !phone_number || !promo_code_id) {
-      return res.status(400).json({ error: 'user_id, phone_number, promo_code_id are required' });
+    if (!phone_number || !redemption_id) {
+      return res.status(400).json({ error: 'phone_number and redemption_id are required' });
     }
 
     const validTypes = ['not_working', 'wrong_reward', 'already_expired', 'other'];
@@ -23,26 +24,42 @@ exports.submitReport = async (req, res) => {
 
     conn = await pool.connect();
 
-    // Verify the promo code belongs to this user
-    const { rows } = await conn.query(
+    // Verify redemption belongs to this phone and get reward_id + user_id
+    const { rows: rdRows } = await conn.query(
+      `SELECT redemption_id, user_id, reward_id, reward_name
+       FROM reward_redemption_history
+       WHERE redemption_id = $1 AND phone_number = $2`,
+      [redemption_id, phone_number]
+    );
+
+    if (!rdRows.length) {
+      return res.status(404).json({ error: 'ไม่พบรายการแลกรางวัลนี้' });
+    }
+
+    const rd = rdRows[0];
+
+    // Look up the promo code assigned to this user for this reward
+    const { rows: pcRows } = await conn.query(
       `SELECT p.promo_code_id, p.reward_id, r.reward_name
        FROM promo_codes p
        LEFT JOIN rewards r ON p.reward_id = r.reward_id
-       WHERE p.promo_code_id = $1 AND p.used_by_user_id = $2 AND p.is_deleted = 0`,
-      [promo_code_id, user_id]
+       WHERE p.used_by_phone = $1 AND p.reward_id = $2 AND p.is_deleted = 0
+       ORDER BY p.used_at DESC
+       LIMIT 1`,
+      [phone_number, rd.reward_id]
     );
 
-    if (!rows.length) {
-      return res.status(404).json({ error: 'โค้ดนี้ไม่พบในประวัติการแลกของคุณ' });
+    if (!pcRows.length) {
+      return res.status(404).json({ error: 'ไม่พบโค้ดที่เชื่อมกับรายการแลกนี้' });
     }
 
-    const promoRow = rows[0];
+    const promoRow = pcRows[0];
 
-    // Prevent duplicate open reports for the same code
+    // Prevent duplicate open reports for the same code + phone
     const { rows: existing } = await conn.query(
       `SELECT report_id FROM user_code_reports
-       WHERE promo_code_id = $1 AND user_id = $2 AND status IN ('pending','investigating') AND is_deleted = 0`,
-      [promo_code_id, user_id]
+       WHERE promo_code_id = $1 AND phone_number = $2 AND status IN ('pending','investigating') AND is_deleted = 0`,
+      [promoRow.promo_code_id, phone_number]
     );
 
     if (existing.length) {
@@ -54,16 +71,15 @@ exports.submitReport = async (req, res) => {
          (user_id, phone_number, promo_code_id, reward_id, reward_name, issue_type, description)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING report_id`,
-      [user_id, phone_number, promo_code_id, promoRow.reward_id, promoRow.reward_name, type, description || null]
+      [rd.user_id, phone_number, promoRow.promo_code_id, promoRow.reward_id, promoRow.reward_name || rd.reward_name, type, description || null]
     );
     const newReportId = result.rows[0].report_id;
 
-    // Audit log
     await conn.query(
       `INSERT INTO promo_code_logs (promo_code_id, code, action, user_id, phone_number, status, details)
        SELECT $1, code, 'user_report', $2, $3, 'success', $4
-       FROM promo_codes WHERE promo_code_id = $5`,
-      [promo_code_id, user_id, phone_number, JSON.stringify({ report_id: newReportId, issue_type: type }), promo_code_id]
+       FROM promo_codes WHERE promo_code_id = $1`,
+      [promoRow.promo_code_id, rd.user_id, phone_number, JSON.stringify({ report_id: newReportId, redemption_id, issue_type: type })]
     );
 
     return res.json({
@@ -79,12 +95,12 @@ exports.submitReport = async (req, res) => {
   }
 };
 
-// GET /api/rewards/my-reports?user_id=&page=&limit=
+// GET /api/rewards/my-reports?phone_number=&page=&limit=
 exports.getUserReports = async (req, res) => {
   let conn;
   try {
-    const { user_id, page = 1, limit = 20 } = req.query;
-    if (!user_id) return res.status(400).json({ error: 'user_id is required' });
+    const { phone_number, page = 1, limit = 20 } = req.query;
+    if (!phone_number) return res.status(400).json({ error: 'phone_number is required' });
 
     const offset = (Number(page) - 1) * Number(limit);
     conn = await pool.connect();
@@ -99,14 +115,14 @@ exports.getUserReports = async (req, res) => {
          r.admin_note,
          r.created_at,
          r.resolved_at,
-         pc.promo_code_id,
+         CONCAT('CPN-', LPAD(r.promo_code_id::text, 5, '0')) AS code_id_display,
          pc.used_at AS redeemed_at
        FROM user_code_reports r
        LEFT JOIN promo_codes pc ON r.promo_code_id = pc.promo_code_id
-       WHERE r.user_id = $1 AND r.is_deleted = 0
+       WHERE r.phone_number = $1 AND r.is_deleted = 0
        ORDER BY r.created_at DESC
        LIMIT $2 OFFSET $3`,
-      [user_id, parseInt(limit), offset]
+      [phone_number, parseInt(limit), offset]
     );
 
     return res.json({ success: true, data: reports });

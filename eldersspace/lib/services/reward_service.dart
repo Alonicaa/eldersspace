@@ -456,4 +456,48 @@ class RewardService {
       return [];
     }
   }
+
+  // ─────────────────────────────────────────────
+  // CODE REPORTS
+  // ─────────────────────────────────────────────
+
+  /// แจ้งปัญหาโค้ดส่วนลด
+  /// [issueType]: 'not_working' | 'wrong_reward' | 'already_expired' | 'other'
+  static Future<Map<String, dynamic>> reportCode({
+    required String phoneNumber,
+    required int redemptionId,
+    required String issueType,
+    String? description,
+  }) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$_base/report-code'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'phone_number': phoneNumber,
+          'redemption_id': redemptionId,
+          'issue_type': issueType,
+          'description': description,
+        }),
+      ).timeout(const Duration(seconds: 10));
+      return jsonDecode(res.body);
+    } catch (e) {
+      return {'error': 'Connection error: $e'};
+    }
+  }
+
+  /// ดูรายงานปัญหาโค้ดของฉัน
+  static Future<List<dynamic>> getMyReports(String phoneNumber) async {
+    try {
+      final url = Uri.parse('$_base/my-reports?phone_number=${Uri.encodeComponent(phoneNumber)}');
+      final res = await http.get(url).timeout(const Duration(seconds: 10));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        return (data['data'] as List?) ?? [];
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
 }
