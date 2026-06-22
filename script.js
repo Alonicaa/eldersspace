@@ -10,7 +10,7 @@ function resolveApiBaseUrl() {
         return storedBase.replace(/\/$/, '');
     }
 
-    return 'http://34.126.155.104:3000';
+    return 'https://eldersspace-backend.onrender.com';
 }
 const API_BASE_URL = resolveApiBaseUrl();
 

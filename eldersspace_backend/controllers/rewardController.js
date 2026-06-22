@@ -681,7 +681,7 @@ exports.getRewardSummary = async (req, res) => {
       `SELECT user_id, login_streak, last_checkin_date, total_points FROM users WHERE phone_number = $1`,
       [phone]
     );
-    if (!users.length) { conn.release(); return res.status(404).json({ error: 'User not found' }); }
+    if (!users.length) { return res.status(404).json({ error: 'User not found' }); }
     const user = users[0];
     const userId = user.user_id;
 
@@ -714,8 +714,7 @@ exports.getRewardSummary = async (req, res) => {
       dailyPointsDisplay = dailyLoginBonus * streakMultiplier;
     }
 
-    conn.release();
-    res.json({
+    return res.json({
       total_points: Number(user.total_points),
       login_streak: streak,
       checked_in_today: checkedInToday,
@@ -749,8 +748,9 @@ exports.getRewardSummary = async (req, res) => {
       })),
     });
   } catch (err) {
-    conn.release();
     res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
   }
 };
 
