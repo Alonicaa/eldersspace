@@ -29,7 +29,7 @@ async function tableHasColumn(conn, tableName, columnName) {
   const { rows } = await conn.query(
     `SELECT COUNT(*) AS total
      FROM information_schema.columns
-     WHERE table_schema = current_database()
+     WHERE table_schema = current_schema()
        AND table_name = $1
        AND column_name = $2`,
     [tableName, columnName]

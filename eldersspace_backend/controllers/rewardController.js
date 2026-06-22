@@ -57,7 +57,7 @@ async function ensureRewardSettingsColumns(conn) {
     const { rows } = await conn.query(
       `SELECT COUNT(*) AS total
        FROM INFORMATION_SCHEMA.COLUMNS
-       WHERE table_schema = current_database()
+       WHERE table_schema = current_schema()
          AND TABLE_NAME = 'reward_settings'
          AND COLUMN_NAME = $1`,
       [col.name]
@@ -191,7 +191,7 @@ async function getRewardsSchema(conn) {
   const { rows: columns } = await conn.query(
     `SELECT COLUMN_NAME
      FROM INFORMATION_SCHEMA.COLUMNS
-     WHERE table_schema = current_database() AND TABLE_NAME = 'rewards'`
+     WHERE table_schema = current_schema() AND TABLE_NAME = 'rewards'`
   );
 
   const colSet = new Set(columns.map((c) => c.COLUMN_NAME));
@@ -216,7 +216,7 @@ async function getUserRewardsSchema(conn) {
   const { rows: columns } = await conn.query(
     `SELECT COLUMN_NAME
      FROM INFORMATION_SCHEMA.COLUMNS
-     WHERE table_schema = current_database() AND TABLE_NAME = 'user_rewards'`
+     WHERE table_schema = current_schema() AND TABLE_NAME = 'user_rewards'`
   );
 
   const colSet = new Set(columns.map((c) => c.COLUMN_NAME));
