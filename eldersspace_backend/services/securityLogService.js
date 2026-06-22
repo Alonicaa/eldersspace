@@ -14,7 +14,7 @@ const SECURITY_EVENT_TYPES = {
 async function ensureSecurityLogsTable(conn) {
   await conn.query(
     `CREATE TABLE IF NOT EXISTS security_logs (
-      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      id BIGSERIAL PRIMARY KEY,
       event_type VARCHAR(64) NOT NULL,
       actor_name VARCHAR(255) NULL,
       actor_phone VARCHAR(50) NULL,
@@ -23,13 +23,8 @@ async function ensureSecurityLogsTable(conn) {
       ip_address VARCHAR(64) NULL,
       device VARCHAR(255) NULL,
       detail TEXT NULL,
-      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      PRIMARY KEY (id),
-      INDEX idx_security_logs_created_at (created_at),
-      INDEX idx_security_logs_event_type_created (event_type, created_at),
-      INDEX idx_security_logs_actor_phone (actor_phone),
-      INDEX idx_security_logs_target_phone (target_phone)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`
   );
 }
 
@@ -84,7 +79,7 @@ async function logSecurityEvent(conn, {
       device,
       detail,
       created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, NOW()))`,
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, COALESCE($9, NOW()))`,
     [
       eventType,
       actorName,
