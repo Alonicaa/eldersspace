@@ -1,10 +1,12 @@
 {
   "version": 2,
   "name": "eldersspace-dashboard",
-  "buildCommand": "",
-  "outputDirectory": "eldersspace/build/web",
+  "builds": [
+    { "src": "*.html", "use": "@vercel/static" },
+    { "src": "*.js", "use": "@vercel/static" },
+    { "src": "*.css", "use": "@vercel/static" }
+  ],
   "routes": [
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/index.html" }
+    { "src": "/(.*)", "dest": "/$1" }
   ]
 }
