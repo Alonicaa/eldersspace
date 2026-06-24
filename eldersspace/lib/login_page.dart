@@ -17,6 +17,7 @@ class _LoginPageState extends State<LoginPage> {
 
   bool isLoading = false;
   bool isValidLength = false;
+  bool _hasTouched = false;
 
   @override
   void initState() {
@@ -25,6 +26,7 @@ class _LoginPageState extends State<LoginPage> {
     phoneController.addListener(() {
       setState(() {
         isValidLength = phoneController.text.length == 10;
+        if (phoneController.text.isNotEmpty) _hasTouched = true;
       });
     });
   }
@@ -72,7 +74,7 @@ class _LoginPageState extends State<LoginPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('โหมดพัฒนา OTP คือ ${response["otp"]}'),
-          duration: const Duration(seconds: 4),
+          duration: const Duration(seconds: 15),
         ),
       );
     }
@@ -133,7 +135,30 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
 
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 24),
+
+                  const Text(
+                    'เข้าสู่ระบบ',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A3A6B),
+                    ),
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  const Text(
+                    'กรอกหมายเลขโทรศัพท์เพื่อรับรหัส OTP',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF666666),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
 
                   /// PHONE FIELD (Advanced Version)
                   TextFormField(
@@ -220,7 +245,21 @@ class _LoginPageState extends State<LoginPage> {
                     },
                   ),
 
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
+
+                  if (_hasTouched && phoneController.text.isNotEmpty && !isValidLength)
+                    const Padding(
+                      padding: EdgeInsets.only(left: 4),
+                      child: Text(
+                        'กรุณาตรวจสอบหมายเลขโทรศัพท์อีกครั้ง',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ),
+
+                  const SizedBox(height: 4),
 
                   const Text(
                     'เราจะส่งรหัสยืนยันไปทาง SMS',

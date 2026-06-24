@@ -68,12 +68,17 @@ class _OtpPageState extends State<OtpPage> {
 
   void resendOtp() async {
     if (_resendCountdown > 0) return;
-    await ApiService.requestOtp(widget.phoneNumber);
+    final response = await ApiService.requestOtp(widget.phoneNumber);
     if (!mounted) return;
     _startCountdown();
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('ส่ง OTP ใหม่แล้ว')));
+
+    final bool isDev = response["isDevelopment"] == true && response["otp"] != null;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(isDev ? 'ส่ง OTP ใหม่แล้ว — รหัสคือ ${response["otp"]}' : 'ส่ง OTP ใหม่แล้ว'),
+        duration: Duration(seconds: isDev ? 15 : 3),
+      ),
+    );
   }
 
   void verify() async {
@@ -90,9 +95,12 @@ class _OtpPageState extends State<OtpPage> {
     setState(() => isLoading = false);
 
     if (response["error"] != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(response["error"])));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('รหัส OTP ไม่ถูกต้อง กรุณาลองอีกครั้ง'),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
 
