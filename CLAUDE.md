@@ -2,6 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Deploy After Every Code Change
+
+After every code change to the Flutter frontend, always run a web build and deploy:
+
+```bash
+cd eldersspace
+flutter build web --release
+```
+
+Then commit and push so Vercel picks up the new build automatically. Never report a task as done without deploying.
+
 
 
 | Directory | Purpose |

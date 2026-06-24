@@ -40,7 +40,8 @@ class _LoginPageState extends State<LoginPage> {
 
   void submit() async {
     if (isLoading) return;
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+    setState(() => _hasTouched = true);
+    if (!isValidLength) return;
 
     FocusScope.of(context).unfocus();
 
@@ -135,30 +136,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
 
-                  const SizedBox(height: 24),
-
-                  const Text(
-                    'เข้าสู่ระบบ',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF1A3A6B),
-                    ),
-                  ),
-
-                  const SizedBox(height: 6),
-
-                  const Text(
-                    'กรอกหมายเลขโทรศัพท์เพื่อรับรหัส OTP',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF666666),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 40),
 
                   /// PHONE FIELD (Advanced Version)
                   TextFormField(
@@ -275,8 +253,7 @@ class _LoginPageState extends State<LoginPage> {
                   SizedBox(
                     height: 52,
                     child: ElevatedButton(
-                      onPressed:
-                          (!isValidLength || isLoading) ? null : submit,
+                      onPressed: isLoading ? null : submit,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF3B6FD4),
                         foregroundColor: Colors.white,
