@@ -1471,15 +1471,33 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
               );
             },
             onSave: () async {
+              final birthDateRaw = birthDateCtrl.text.trim();
+              if (birthDateRaw.isNotEmpty &&
+                  !RegExp(r'^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$')
+                      .hasMatch(birthDateRaw)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('รูปแบบวันเกิดไม่ถูกต้อง กรอกเป็น YYYY-MM-DD เช่น 1970-06-15')),
+                );
+                return;
+              }
+              final locationRaw = currentLocationCtrl.text.trim();
+              final hometownRaw = hometownCtrl.text.trim();
+              final familyRaw = familyCtrl.text.trim();
+              if (locationRaw.length > 100 || hometownRaw.length > 100 || familyRaw.length > 200) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('ข้อมูลบางช่องยาวเกินไป (สถานที่สูงสุด 100, สมาชิกครอบครัวสูงสุด 200 ตัวอักษร)')),
+                );
+                return;
+              }
               try {
                 await ApiService.updateProfileDetails(
                   widget.phoneNumber,
                   {
-                    'current_location': currentLocationCtrl.text.trim().isEmpty ? null : currentLocationCtrl.text.trim(),
-                    'hometown': hometownCtrl.text.trim().isEmpty ? null : hometownCtrl.text.trim(),
-                    'birth_date': birthDateCtrl.text.trim().isEmpty ? null : birthDateCtrl.text.trim(),
+                    'current_location': locationRaw.isEmpty ? null : locationRaw,
+                    'hometown': hometownRaw.isEmpty ? null : hometownRaw,
+                    'birth_date': birthDateRaw.isEmpty ? null : birthDateRaw,
                     'relationship_status': statusCtrl.text.trim().isEmpty ? null : statusCtrl.text.trim(),
-                    'family_info': familyCtrl.text.trim().isEmpty ? null : familyCtrl.text.trim(),
+                    'family_info': familyRaw.isEmpty ? null : familyRaw,
                     'gender': genderCtrl.text.trim().isEmpty ? null : genderCtrl.text.trim(),
                     'pronouns': pronounsCtrl.text.trim().isEmpty ? null : pronounsCtrl.text.trim(),
                   },
