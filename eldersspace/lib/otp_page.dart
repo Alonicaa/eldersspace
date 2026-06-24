@@ -76,7 +76,7 @@ class _OtpPageState extends State<OtpPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(isDev ? 'ส่ง OTP ใหม่แล้ว — รหัสคือ ${response["otp"]}' : 'ส่ง OTP ใหม่แล้ว'),
-        duration: Duration(seconds: isDev ? 15 : 3),
+        duration: Duration(seconds: isDev ? 10 : 3),
       ),
     );
   }
@@ -107,7 +107,7 @@ class _OtpPageState extends State<OtpPage> {
     await AppSettingsService.instance.setActiveUser(widget.phoneNumber);
     if (!mounted) return;
 
-    // 🔥 ตรงนี้คือ Navigation สำคัญ
+    ScaffoldMessenger.of(context).clearSnackBars();
 
     if (response["needs_name"] == true) {
       Navigator.pushReplacement(

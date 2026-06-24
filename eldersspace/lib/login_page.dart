@@ -74,7 +74,7 @@ class _LoginPageState extends State<LoginPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('โหมดพัฒนา OTP คือ ${response["otp"]}'),
-          duration: const Duration(seconds: 15),
+          duration: const Duration(seconds: 10),
         ),
       );
     }
