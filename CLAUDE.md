@@ -2,16 +2,32 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Vercel Projects
+
+There are **two separate Vercel projects** connected to this repo:
+
+| Vercel Project | URL | Serves |
+|---|---|---|
+| `eldersspace` | `eldersspace.vercel.app` | Flutter web app (pre-built) |
+| `eldersspace_dashboard` | `eldersspacedashboard.vercel.app` | Admin panel (index.html / script.js) |
+
+**`eldersspace` project settings (set once in Vercel dashboard, never change):**
+- Root Directory: `eldersspace/build/web`
+- Build Command: *(empty)*
+- Output Directory: *(empty)*
+
+`vercel.json` at repo root is for `eldersspace_dashboard` only. Do NOT add `buildCommand` or `outputDirectory` to it.
+
 ## Deploy After Every Code Change
 
 After every code change to the Flutter frontend, always run a web build and deploy:
 
 ```bash
 cd eldersspace
-flutter build web --release
+flutter build web --release --no-tree-shake-icons
 ```
 
-Then commit and push so Vercel picks up the new build automatically. Never report a task as done without deploying.
+Then `git add -f eldersspace/build/web/` and commit + push. Vercel picks up the new build automatically from `eldersspace/build/web`. Never report a task as done without deploying.
 
 
 
