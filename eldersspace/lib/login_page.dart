@@ -17,7 +17,7 @@ class _LoginPageState extends State<LoginPage> {
 
   bool isLoading = false;
   bool isValidLength = false;
-  bool _hasTouched = false;
+  bool _submitted = false;
 
   @override
   void initState() {
@@ -26,7 +26,6 @@ class _LoginPageState extends State<LoginPage> {
     phoneController.addListener(() {
       setState(() {
         isValidLength = phoneController.text.length == 10;
-        if (phoneController.text.isNotEmpty) _hasTouched = true;
       });
     });
   }
@@ -40,7 +39,7 @@ class _LoginPageState extends State<LoginPage> {
 
   void submit() async {
     if (isLoading) return;
-    setState(() => _hasTouched = true);
+    setState(() => _submitted = true);
     if (!isValidLength) return;
 
     FocusScope.of(context).unfocus();
@@ -225,7 +224,7 @@ class _LoginPageState extends State<LoginPage> {
 
                   const SizedBox(height: 6),
 
-                  if (_hasTouched && phoneController.text.isNotEmpty && !isValidLength)
+                  if (_submitted && !isValidLength)
                     const Padding(
                       padding: EdgeInsets.only(left: 4),
                       child: Text(
