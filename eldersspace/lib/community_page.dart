@@ -949,6 +949,29 @@ class _CommunityPageState extends State<CommunityPage> {
                                 ),
                               ),
 
+                              // ── Character counter ──
+                              ValueListenableBuilder<TextEditingValue>(
+                                valueListenable: postController,
+                                builder: (_, value, __) {
+                                  final count = value.text.length;
+                                  if (count == 0) return const SizedBox.shrink();
+                                  final near = count >= 4500;
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 16, top: 4),
+                                    child: Align(
+                                      alignment: Alignment.centerRight,
+                                      child: Text(
+                                        '$count / $_maxPostLength',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: near ? Colors.red : Colors.grey,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+
                               const SizedBox(height: 8),
 
                               // ── Preview รูป ──
