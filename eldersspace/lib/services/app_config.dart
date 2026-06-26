@@ -12,21 +12,7 @@ class AppConfig {
       return _backendHost;
     }
 
-    if (kIsWeb) {
-      return 'https://eldersspace-backend.onrender.com';
-    }
-
-    switch (defaultTargetPlatform) {
-      case TargetPlatform.android:
-        // Android emulator maps host localhost to 10.0.2.2
-        // For Google Cloud SQL backend, use the actual IP/domain
-        return 'http://10.0.2.2:3000';
-      case TargetPlatform.iOS:
-        // iOS simulator can use localhost or use your deployed backend
-        return 'http://localhost:3000';
-      default:
-        return 'http://localhost:3000';
-    }
+    return 'https://eldersspace-backend.onrender.com';
   }
 
   static String get apiBaseUrl => '$serverBaseUrl/api';

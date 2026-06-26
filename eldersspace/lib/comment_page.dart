@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'services/api_service.dart';
+import 'services/app_config.dart';
 import 'widgets/share_sheet.dart';
 
 class CommunityPage extends StatefulWidget {
@@ -25,7 +26,7 @@ class _CommunityPageState extends State<CommunityPage> {
 
   final TextEditingController postController = TextEditingController();
 
-  final String baseUrl = "http://10.0.2.2:3000/api";
+  String get baseUrl => AppConfig.apiBaseUrl;
 
   @override
   void initState() {
@@ -409,7 +410,7 @@ class _CommentPageState extends State<CommentPage> {
 
   final controller = TextEditingController();
 
-  final String baseUrl = "http://10.0.2.2:3000/api";
+  String get baseUrl => AppConfig.apiBaseUrl;
 
   @override
   void initState() {

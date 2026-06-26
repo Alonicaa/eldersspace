@@ -103,11 +103,8 @@ These rules apply to **every** post-login widget, page, card, and dialog — no 
 Before finalising any UI change, mentally simulate the layout at 1.3× font scale. If any container can receive more text than fits its fixed height, it will overflow in production Elder Mode. Fix it before committing.
 
 **Backend URL resolution by platform:**
-- Android Emulator → `10.0.2.2:3000`
-- Physical device / Production → `34.126.155.104:3000` (Google Cloud SQL host)
-- iOS Simulator / Web / Desktop → `localhost:3000`
-
-Override via `--dart-define=BACKEND_HOST=<url>` at `flutter run`.
+- All platforms (default) → `https://eldersspace-backend.onrender.com`
+- Override via `--dart-define=BACKEND_HOST=<url>` at `flutter run` (e.g. `http://10.0.2.2:3000` for Android emulator with local backend).
 
 ---
 
