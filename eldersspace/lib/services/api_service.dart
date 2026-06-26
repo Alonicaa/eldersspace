@@ -319,7 +319,7 @@ class ApiService {
     try {
       final res = await http.get(
         Uri.parse('$baseUrl/users/$phoneNumber/moderation-status'),
-      );
+      ).timeout(const Duration(seconds: 15));
       if (res.statusCode != 200) {
         return {'is_blocked': false};
       }
