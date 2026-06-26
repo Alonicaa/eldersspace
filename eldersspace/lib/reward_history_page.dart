@@ -54,94 +54,124 @@ class _RewardHistoryPageState extends State<RewardHistoryPage> {
     });
   }
 
+  List<dynamic> _safeList(Map<String, dynamic> data, List<String> keys) {
+    for (final key in keys) {
+      final v = data[key];
+      if (v is List) return v;
+    }
+    return [];
+  }
+
   Future<void> _loadSummary() async {
-    final data = await RewardService.getSummary(widget.phoneNumber);
-    if (!mounted) return;
-    setState(() {
-      _summary = data;
-      // Try multiple possible field names the server may use
-      final recentTx = (data['recent_transactions'] as List?) ??
-          (data['transactions'] as List?) ??
-          (data['transaction_history'] as List?) ??
-          (data['history'] as List?) ??
-          (data['earn_history'] as List?) ??
-          [];
+    try {
+      final data = await RewardService.getSummary(widget.phoneNumber);
+      if (!mounted) return;
+      final recentTx = _safeList(data, [
+        'recent_transactions',
+        'transactions',
+        'transaction_history',
+        'history',
+        'earn_history',
+      ]);
       debugPrint('📋 Earn transactions from summary: ${recentTx.length}');
-      _allTransactions = recentTx.map((tx) {
-        final txMap = Map<String, dynamic>.from(tx as Map);
-        return <String, dynamic>{...txMap, 'has_qr_code': false};
-      }).toList();
-    });
+      final parsed = <Map<String, dynamic>>[];
+      for (final tx in recentTx) {
+        try {
+          if (tx is Map) {
+            parsed.add({...Map<String, dynamic>.from(tx), 'has_qr_code': false});
+          }
+        } catch (_) {}
+      }
+      if (!mounted) return;
+      setState(() {
+        _summary = data;
+        _allTransactions = parsed;
+      });
+    } catch (e) {
+      debugPrint('❌ _loadSummary error: $e');
+    }
     // Load redemption history after earn transactions are set
     await _loadRedemptionHistory();
   }
 
   Future<void> _loadRedemptionHistory() async {
-    final redemptions = await RewardService.getRedemptionHistory(
-      widget.phoneNumber,
-    );
-    if (!mounted) return;
-
-    // Convert redemptions to transaction-like format and merge with existing
-    final rewardTransactions =
-        (redemptions as List?)?.map((r) {
-          final rMap = Map<String, dynamic>.from(r as Map);
-          final rewardName = rMap['reward_name'] ?? rMap['name'] ?? 'รางวัล';
-          return <String, dynamic>{
-            'source_type': 'reward_${rMap['reward_id']}',
-            'reward_name': rewardName,
-            'name': rewardName,
-            'points': -(((rMap['points_redeemed'] as num?) ?? 0)
-                .toInt()), // negative for redeem
-            'type': 'redeem',
-            'created_at': rMap['redeemed_at'] ?? rMap['created_at'],
-            'qr_code': rMap['qr_code'] ?? '', // Ensure qr_code is present
-            'redemption_status': rMap['redemption_status'],
-            'points_redeemed': rMap['points_redeemed'],
-            'used_at': rMap['used_at'],
-            'expires_at': rMap['expires_at'],
-            'redemption_id': rMap['redemption_id'],
-            'reward_id': rMap['reward_id'],
-            'phone_number': rMap['phone_number'] ?? widget.phoneNumber,
-            'has_qr_code': true, // Mark as having QR code
-          };
-        }).toList() ??
-        [];
-
-    // If summary returned no earn transactions, try dedicated earn history endpoint
-    List<Map<String, dynamic>> earnTransactions =
-        _allTransactions.cast<Map<String, dynamic>>();
-    if (earnTransactions.isEmpty) {
-      final earnData = await RewardService.getEarnHistory(widget.phoneNumber);
+    try {
+      final redemptions = await RewardService.getRedemptionHistory(
+        widget.phoneNumber,
+      );
       if (!mounted) return;
-      earnTransactions = earnData.map((tx) {
-        final txMap = Map<String, dynamic>.from(tx as Map);
-        return <String, dynamic>{...txMap, 'has_qr_code': false};
-      }).toList();
-      debugPrint('📋 Earn transactions from dedicated endpoint: ${earnTransactions.length}');
-    }
 
-    if (!mounted) return;
-    setState(() {
-      // Sort by date descending, redemptions first among same-date items
-      final merged = [...rewardTransactions, ...earnTransactions];
-      merged.sort((a, b) {
-        final dateA = DateTime.tryParse((a['created_at'] ?? '').toString());
-        final dateB = DateTime.tryParse((b['created_at'] ?? '').toString());
-        if (dateA == null && dateB == null) return 0;
-        if (dateA == null) return 1;
-        if (dateB == null) return -1;
-        return dateB.compareTo(dateA);
+      final rewardTransactions = <Map<String, dynamic>>[];
+      if (redemptions is List) {
+        for (final r in redemptions) {
+          try {
+            if (r is! Map) continue;
+            final rMap = Map<String, dynamic>.from(r);
+            final rewardName = rMap['reward_name'] ?? rMap['name'] ?? 'รางวัล';
+            final pointsRaw = rMap['points_redeemed'];
+            final points = pointsRaw is num ? pointsRaw.toInt() : int.tryParse(pointsRaw?.toString() ?? '') ?? 0;
+            rewardTransactions.add({
+              'source_type': 'reward_${rMap['reward_id']}',
+              'reward_name': rewardName,
+              'name': rewardName,
+              'points': -points,
+              'type': 'redeem',
+              'created_at': rMap['redeemed_at'] ?? rMap['created_at'],
+              'qr_code': rMap['qr_code'] ?? '',
+              'redemption_status': rMap['redemption_status'],
+              'points_redeemed': rMap['points_redeemed'],
+              'used_at': rMap['used_at'],
+              'expires_at': rMap['expires_at'],
+              'redemption_id': rMap['redemption_id'],
+              'reward_id': rMap['reward_id'],
+              'phone_number': rMap['phone_number'] ?? widget.phoneNumber,
+              'has_qr_code': true,
+            });
+          } catch (_) {}
+        }
+      }
+
+      // If summary returned no earn transactions, try dedicated earn history endpoint
+      List<Map<String, dynamic>> earnTransactions =
+          _allTransactions.whereType<Map<String, dynamic>>().toList();
+      if (earnTransactions.isEmpty) {
+        final earnData = await RewardService.getEarnHistory(widget.phoneNumber);
+        if (!mounted) return;
+        for (final tx in earnData) {
+          try {
+            if (tx is Map) {
+              earnTransactions.add({...Map<String, dynamic>.from(tx), 'has_qr_code': false});
+            }
+          } catch (_) {}
+        }
+        debugPrint('📋 Earn transactions from dedicated endpoint: ${earnTransactions.length}');
+      }
+
+      if (!mounted) return;
+      setState(() {
+        final merged = [...rewardTransactions, ...earnTransactions];
+        merged.sort((a, b) {
+          final dateA = DateTime.tryParse((a['created_at'] ?? '').toString());
+          final dateB = DateTime.tryParse((b['created_at'] ?? '').toString());
+          if (dateA == null && dateB == null) return 0;
+          if (dateA == null) return 1;
+          if (dateB == null) return -1;
+          return dateB.compareTo(dateA);
+        });
+        _allTransactions = merged;
+        _isLoading = false;
       });
-      _allTransactions = merged;
-      _isLoading = false;
-    });
+    } catch (e) {
+      debugPrint('❌ _loadRedemptionHistory error: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _loadAvailableRewards() async {
     final data = await RewardService.getAvailableRewards(widget.phoneNumber);
     if (!mounted) return;
-    final rewards = data['rewards'] as List? ?? [];
+    final rewardsRaw = data['rewards'];
+    final rewards = rewardsRaw is List ? rewardsRaw : [];
 
     // Build reward map for quick lookup (supports multiple key formats)
     final rewardMap = <String, String>{};
