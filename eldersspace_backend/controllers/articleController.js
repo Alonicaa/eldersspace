@@ -2,6 +2,19 @@ const pool   = require('../config/db');
 const multer = require('multer');
 const { uploadToStorage } = require('../config/supabaseStorage');
 
+const SUPABASE_STORAGE_BASE = process.env.SUPABASE_URL
+  ? `${process.env.SUPABASE_URL}/storage/v1/object/public/uploads`
+  : null;
+const BACKEND_URL = process.env.BACKEND_URL || 'https://eldersspace-backend.onrender.com';
+
+function resolveProfileUrl(pic) {
+  if (!pic) return null;
+  if (/^https?:\/\//i.test(pic)) return pic;
+  const clean = pic.replace(/^\/?(uploads\/)?/, '');
+  if (SUPABASE_STORAGE_BASE) return `${SUPABASE_STORAGE_BASE}/${clean}`;
+  return `${BACKEND_URL}/uploads/${clean}`;
+}
+
 // ── Multer (memory storage; cover images uploaded to Supabase Storage) ──────
 exports.upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } }).single('cover_image');
 
@@ -544,22 +557,19 @@ exports.getArticleComments = async (req, res) => {
   const conn = await pool.connect();
   try {
     await ensureArticlesTable(conn);
-    const backendUrl = process.env.BACKEND_URL || 'http://10.0.2.2:3000';
     const { rows } = await conn.query(
       `SELECT ac.comment_id, ac.article_id, ac.user_id, ac.content, ac.created_at,
-              u.full_name,
-              CASE WHEN u.profile_picture IS NULL OR u.profile_picture=''
-                   THEN NULL
-                   WHEN u.profile_picture LIKE 'http%' THEN u.profile_picture
-                   ELSE $1 || '/uploads/' || u.profile_picture
-              END AS profile_picture_url
+              u.full_name, u.profile_picture
        FROM article_comments ac
        JOIN users u ON u.user_id = ac.user_id
-       WHERE ac.article_id = $2 AND ac.is_deleted = 0
+       WHERE ac.article_id = $1 AND ac.is_deleted = 0
        ORDER BY ac.created_at ASC`,
-      [backendUrl, req.params.id]
+      [req.params.id]
     );
-    res.json(rows);
+    res.json(rows.map(r => ({
+      ...r,
+      profile_picture_url: resolveProfileUrl(r.profile_picture),
+    })));
   } catch (err) {
     console.error('[Articles] getArticleComments', err);
     res.status(500).json({ error: 'Server error' });
@@ -592,7 +602,6 @@ exports.addArticleComment = async (req, res) => {
       [req.params.id]
     );
 
-    const backendUrl = process.env.BACKEND_URL || 'http://10.0.2.2:3000';
     res.status(201).json({
       comment_id: ins[0].comment_id,
       article_id: Number(req.params.id),
@@ -600,8 +609,7 @@ exports.addArticleComment = async (req, res) => {
       content: content.trim(),
       created_at: new Date(),
       full_name: user.full_name,
-      profile_picture_url: user.profile_picture
-        ? (/^https?:\/\//i.test(user.profile_picture) ? user.profile_picture : `${backendUrl}/uploads/${user.profile_picture}`) : null,
+      profile_picture_url: resolveProfileUrl(user.profile_picture),
     });
   } catch (err) {
     console.error('[Articles] addArticleComment', err);

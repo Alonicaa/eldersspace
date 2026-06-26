@@ -58,7 +58,10 @@ router.get('/:id/posts', async (req, res) => {
 
     const visCond = visibilityCondition(viewerUserId);
 
-    const backendUrl = process.env.BACKEND_URL || 'http://10.0.2.2:3000';
+    const _supabaseBase = process.env.SUPABASE_URL
+      ? `${process.env.SUPABASE_URL}/storage/v1/object/public/uploads`
+      : null;
+    const _backendUrl = process.env.BACKEND_URL || 'https://eldersspace-backend.onrender.com';
     const postsResult = await conn.query(
       `SELECT
         p.*,
@@ -82,7 +85,9 @@ router.get('/:id/posts', async (req, res) => {
       const resolveUrl = (v) => {
         if (!v) return null;
         if (/^https?:\/\//i.test(v)) return v;
-        return `${backendUrl}/uploads/${v}`;
+        const clean = v.replace(/^\/?(uploads\/)?/, '');
+        if (_supabaseBase) return `${_supabaseBase}/${clean}`;
+        return `${_backendUrl}/uploads/${clean}`;
       };
       post.images = imgs.rows.map(i => resolveUrl(i.image_url));
       post.profile_picture_url = resolveUrl(post.profile_picture);

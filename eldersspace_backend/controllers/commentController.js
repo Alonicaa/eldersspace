@@ -1,6 +1,37 @@
 const pool = require('../config/db');
 const { assertUserCanInteract } = require('../services/moderationService');
 
+const SUPABASE_STORAGE_BASE = process.env.SUPABASE_URL
+  ? `${process.env.SUPABASE_URL}/storage/v1/object/public/uploads`
+  : null;
+const BACKEND_URL = process.env.BACKEND_URL || 'https://eldersspace-backend.onrender.com';
+
+function resolveProfileUrl(pic) {
+  if (!pic) return null;
+  if (/^https?:\/\//i.test(pic)) return pic;
+  const clean = pic.replace(/^\/?(uploads\/)?/, '');
+  if (SUPABASE_STORAGE_BASE) return `${SUPABASE_STORAGE_BASE}/${clean}`;
+  return `${BACKEND_URL}/uploads/${clean}`;
+}
+
+async function ensureCommentsSchema(conn) {
+  try {
+    await conn.query(
+      'ALTER TABLE comments ADD COLUMN IF NOT EXISTS is_deleted SMALLINT NOT NULL DEFAULT 0'
+    );
+  } catch (e) { /* already exists */ }
+  try {
+    await conn.query(
+      'ALTER TABLE comments ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP NULL'
+    );
+  } catch (e) { /* already exists */ }
+  try {
+    await conn.query(
+      'ALTER TABLE comments ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NULL'
+    );
+  } catch (e) { /* already exists */ }
+}
+
 async function ensureCommentReportsTable(conn) {
   await conn.query(
     `CREATE TABLE IF NOT EXISTS comment_reports (
@@ -17,49 +48,35 @@ async function ensureCommentReportsTable(conn) {
   );
 }
 
-exports.getComments = async (req,res)=>{
+exports.getComments = async (req, res) => {
+  const { postId } = req.params;
+  let conn;
+  try {
+    conn = await pool.connect();
+    await ensureCommentsSchema(conn);
 
- const {postId} = req.params;
- let conn;
+    const { rows: comments } = await conn.query(
+      `SELECT
+        c.comment_id, c.post_id, c.user_id, c.parent_id, c.content,
+        c.is_deleted, c.deleted_at, c.created_at, c.updated_at,
+        u.full_name, u.phone_number AS user_phone, u.profile_picture
+       FROM comments c
+       JOIN users u ON c.user_id = u.user_id
+       WHERE c.post_id = $1 AND c.is_deleted = 0
+       ORDER BY c.created_at ASC`,
+      [postId]
+    );
 
- try {
-   conn = await pool.connect();
-
-   const backendUrl = process.env.BACKEND_URL || 'http://10.0.2.2:3000';
-   const { rows: comments } = await conn.query(
-`SELECT
- c.comment_id,
- c.post_id,
- c.user_id,
- c.parent_id,
- c.content,
- c.is_deleted,
- c.deleted_at,
- c.created_at,
- c.updated_at,
- u.full_name,
- u.phone_number as user_phone,
- CASE
-   WHEN u.profile_picture IS NULL OR u.profile_picture='' THEN NULL
-   WHEN u.profile_picture LIKE 'http%' THEN u.profile_picture
-   ELSE $1 || '/uploads/' || u.profile_picture
- END as profile_picture_url
-FROM comments c
-JOIN users u ON c.user_id=u.user_id
-WHERE c.post_id=$2
-  AND c.is_deleted=0
-ORDER BY c.created_at ASC`,
-[backendUrl, postId]
-   );
-
-   res.json(comments);
- } catch (err) {
-   console.error(err);
-   res.status(500).json({ error: err.message });
- } finally {
-   if (conn) conn.release();
- }
-
+    res.json(comments.map(c => ({
+      ...c,
+      profile_picture_url: resolveProfileUrl(c.profile_picture),
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    if (conn) conn.release();
+  }
 };
 
 
