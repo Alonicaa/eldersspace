@@ -22,6 +22,12 @@ async function ensureHiddenPostsTable(conn) {
       'ALTER TABLE posts ADD COLUMN linked_article_id INT NULL DEFAULT NULL'
     );
   } catch (e) { /* already exists */ }
+  // ensure is_deleted on comments (MySQL migration used AFTER clause which fails on PostgreSQL)
+  try {
+    await conn.query(
+      'ALTER TABLE comments ADD COLUMN IF NOT EXISTS is_deleted SMALLINT NOT NULL DEFAULT 0'
+    );
+  } catch (e) { /* already exists */ }
 }
 
 async function ensurePostReportTable(conn) {
