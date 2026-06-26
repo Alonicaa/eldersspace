@@ -456,7 +456,12 @@ exports.getUserProfile = async (req, res) => {
       profile_picture_url: (() => {
         if (!u.profile_picture) return null;
         if (/^https?:\/\//i.test(u.profile_picture)) return u.profile_picture;
-        return `${process.env.BACKEND_URL || 'http://10.0.2.2:3000'}/uploads/${u.profile_picture}`;
+        const clean = u.profile_picture.replace(/\\/g, '/').replace(/^\/?(uploads\/)?/, '');
+        const supabaseBase = process.env.SUPABASE_URL
+          ? `${process.env.SUPABASE_URL}/storage/v1/object/public/uploads`
+          : null;
+        if (supabaseBase) return `${supabaseBase}/${clean}`;
+        return `${process.env.BACKEND_URL || 'http://10.0.2.2:3000'}/uploads/${clean}`;
       })(),
     });
 

@@ -63,6 +63,9 @@ function visibilityCondition(viewerUserId) {
   )`;
 }
 
+const SUPABASE_STORAGE_BASE = process.env.SUPABASE_URL
+  ? `${process.env.SUPABASE_URL}/storage/v1/object/public/uploads`
+  : null;
 const BACKEND_URL = process.env.BACKEND_URL || 'http://10.0.2.2:3000';
 
 // Resolve a stored image_url/profile_picture value to a full URL.
@@ -70,7 +73,9 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://10.0.2.2:3000';
 function resolveUrl(stored) {
   if (!stored) return null;
   if (/^https?:\/\//i.test(stored)) return stored;
-  return `${BACKEND_URL}/uploads/${stored}`;
+  const clean = stored.replace(/^\/?(uploads\/)?/, '');
+  if (SUPABASE_STORAGE_BASE) return `${SUPABASE_STORAGE_BASE}/${clean}`;
+  return `${BACKEND_URL}/uploads/${clean}`;
 }
 
 // ─── helper: ดึงโพสต์ต้นฉบับจริงๆ (chase chain จนถึง root) ───

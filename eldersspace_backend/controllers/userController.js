@@ -53,6 +53,9 @@ exports.updateProfilePicture = async (req, res) => {
 };
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://10.0.2.2:3000';
+const SUPABASE_STORAGE_BASE = process.env.SUPABASE_URL
+  ? `${process.env.SUPABASE_URL}/storage/v1/object/public/uploads`
+  : null;
 
 // Returns a full URL for a stored profile_picture value.
 // New uploads store the full Supabase public URL directly.
@@ -60,7 +63,9 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://10.0.2.2:3000';
 function resolveProfilePictureUrl(storedValue) {
   if (!storedValue) return null;
   if (/^https?:\/\//i.test(storedValue)) return storedValue;
-  return `${BACKEND_URL}/uploads/${storedValue.replace(/\\/g, '/')}`;
+  const clean = storedValue.replace(/\\/g, '/').replace(/^\/?(uploads\/)?/, '');
+  if (SUPABASE_STORAGE_BASE) return `${SUPABASE_STORAGE_BASE}/${clean}`;
+  return `${BACKEND_URL}/uploads/${clean}`;
 }
 
 // Get profile picture
