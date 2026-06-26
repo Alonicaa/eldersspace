@@ -34126,7 +34126,7 @@ J.fO(p,q)}return n},
 aZO(a,b){var s,r
 for(s=J.c7(a);s.A();){r=s.gP()
 if(b.$1(r))return r}return null},
-b1(){return"http://localhost:3000"},
+b1(){return"https://eldersspace-backend.onrender.com"},
 bl3(a,b,c,d,e,f,g,h,i){var s=null,r=v.G.firebase_core,q=c==null?s:c,p=d==null?s:d,o=i==null?s:i,n=e==null?s:e
 return A.aXW(r.initializeApp(t.SF.a({apiKey:a,authDomain:q,databaseURL:p,projectId:h,storageBucket:o,messagingSenderId:f,measurementId:n,appId:b}),"[DEFAULT]"))},
 aWd(a){var s=v.G

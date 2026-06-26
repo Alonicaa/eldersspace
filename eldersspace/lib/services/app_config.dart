@@ -13,8 +13,7 @@ class AppConfig {
     }
 
     if (kIsWeb) {
-      // Web: Use localhost
-      return 'http://localhost:3000';
+      return 'https://eldersspace-backend.onrender.com';
     }
 
     switch (defaultTargetPlatform) {
