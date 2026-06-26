@@ -118,7 +118,7 @@ exports.getApprovedArticles = async (req, res) => {
               a.like_count, a.comment_count, a.share_count, a.view_count,
               u.full_name AS submitter_name,
               ${userIdSub !== 'NULL'
-                ? `(SELECT COUNT(*) FROM article_likes WHERE article_id=a.article_id AND user_id=${userIdSub})`
+                ? `(SELECT COUNT(*) FROM article_likes WHERE article_id=a.article_id AND user_id=${userIdSub})::int`
                 : '0'
               } AS user_liked
        FROM articles a
@@ -129,7 +129,17 @@ exports.getApprovedArticles = async (req, res) => {
        LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
       params
     );
-    res.json(rows);
+    res.json(rows.map(r => ({
+      ...r,
+      cover_image: resolveProfileUrl(r.cover_image),
+      article_id: Number(r.article_id),
+      is_featured: Number(r.is_featured),
+      like_count: Number(r.like_count),
+      comment_count: Number(r.comment_count),
+      share_count: Number(r.share_count),
+      view_count: Number(r.view_count),
+      user_liked: Number(r.user_liked),
+    })));
   } catch (err) {
     console.error('[Articles] getApprovedArticles', err);
     res.status(500).json({ error: 'Server error' });
@@ -156,7 +166,7 @@ exports.getArticleById = async (req, res) => {
     const { rows } = await conn.query(
       `SELECT a.*, u.full_name AS submitter_name,
               ${userIdSub !== 'NULL'
-                ? `(SELECT COUNT(*) FROM article_likes WHERE article_id=a.article_id AND user_id=${userIdSub})`
+                ? `(SELECT COUNT(*) FROM article_likes WHERE article_id=a.article_id AND user_id=${userIdSub})::int`
                 : '0'
               } AS user_liked
        FROM articles a
@@ -165,7 +175,18 @@ exports.getArticleById = async (req, res) => {
       [req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Not found' });
-    res.json(rows[0]);
+    const r = rows[0];
+    res.json({
+      ...r,
+      cover_image: resolveProfileUrl(r.cover_image),
+      article_id: Number(r.article_id),
+      is_featured: Number(r.is_featured),
+      like_count: Number(r.like_count),
+      comment_count: Number(r.comment_count),
+      share_count: Number(r.share_count),
+      view_count: Number(r.view_count),
+      user_liked: Number(r.user_liked),
+    });
   } catch (err) {
     console.error('[Articles] getArticleById', err);
     res.status(500).json({ error: 'Server error' });
@@ -244,7 +265,7 @@ exports.getMyArticles = async (req, res) => {
        ORDER BY created_at DESC`,
       [userRows[0].user_id]
     );
-    res.json(rows);
+    res.json(rows.map(r => ({ ...r, cover_image: resolveProfileUrl(r.cover_image) })));
   } catch (err) {
     console.error('[Articles] getMyArticles', err);
     res.status(500).json({ error: 'Server error' });
@@ -674,7 +695,7 @@ exports.getArticlesByUser = async (req, res) => {
       ORDER BY a.created_at DESC
     `, [userId]);
 
-    res.json(rows);
+    res.json(rows.map(r => ({ ...r, cover_image: resolveProfileUrl(r.cover_image) })));
   } catch (err) {
     console.error('[Articles] getArticlesByUser', err);
     res.status(500).json({ error: 'Server error' });

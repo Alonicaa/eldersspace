@@ -164,13 +164,13 @@ class _HealthPageState extends State<HealthPage> {
         ? (a['partner_name']?.toString() ?? a['author_name']?.toString() ?? '')
         : (a['author_name']?.toString() ?? '');
     final coverUrl = _resolveImageUrl(a['cover_image']);
-    final isFeatured = (a['is_featured'] as int? ?? 0) == 1;
+    final isFeatured = _toInt(a['is_featured']) == 1;
     final accentColor = isPartner ? const Color(0xFF1565C0) : Colors.orange;
     final onTap = () => Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => ArticleDetailPage(
-              articleId: a['article_id'] as int,
+              articleId: _toInt(a['article_id']),
               phoneNumber: widget.phoneNumber,
             ),
           ),
@@ -417,9 +417,9 @@ class _HealthPageState extends State<HealthPage> {
     return Row(
       children: [
         Icon(
-          (a['user_liked'] as int? ?? 0) == 1 ? Icons.favorite : Icons.favorite_border,
+          _toInt(a['user_liked']) == 1 ? Icons.favorite : Icons.favorite_border,
           size: 14,
-          color: (a['user_liked'] as int? ?? 0) == 1 ? Colors.red : Colors.grey,
+          color: _toInt(a['user_liked']) == 1 ? Colors.red : Colors.grey,
         ),
         const SizedBox(width: 3),
         Text('${a['like_count'] ?? 0}',
@@ -473,6 +473,12 @@ class _HealthPageState extends State<HealthPage> {
         ),
       ),
     );
+  }
+
+  int _toInt(dynamic v) {
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse(v?.toString() ?? '') ?? 0;
   }
 
   String _resolveImageUrl(dynamic raw) {

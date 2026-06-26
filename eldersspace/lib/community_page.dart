@@ -476,7 +476,7 @@ class _CommunityPageState extends State<CommunityPage> {
 
       final res = await http.get(
         Uri.parse("$baseUrl/posts?phone=${widget.phoneNumber}"),
-      ).timeout(const Duration(seconds: 20));
+      ).timeout(const Duration(seconds: 30));
       if (res.statusCode != 200) {
         setState(() => loading = false);
         return;

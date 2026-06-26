@@ -58,9 +58,9 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
         _article = data;
         _loading = false;
         if (data != null) {
-          _liked = (data['user_liked'] as int? ?? 0) == 1;
-          _likeCount = data['like_count'] as int? ?? 0;
-          _commentCount = data['comment_count'] as int? ?? 0;
+          _liked = _toInt(data['user_liked']) == 1;
+          _likeCount = _toInt(data['like_count']);
+          _commentCount = _toInt(data['comment_count']);
         }
       });
     }
@@ -78,7 +78,7 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
     if (mounted && result.isNotEmpty) {
       setState(() {
         _liked = result['liked'] as bool? ?? _liked;
-        _likeCount = result['like_count'] as int? ?? _likeCount;
+        _likeCount = _toInt(result['like_count'] ?? _likeCount);
       });
     }
   }
@@ -857,6 +857,12 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
     final h = dt.hour.toString().padLeft(2, '0');
     final min = dt.minute.toString().padLeft(2, '0');
     return '$d/$m/$y $h:$min น.';
+  }
+
+  int _toInt(dynamic v) {
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse(v?.toString() ?? '') ?? 0;
   }
 
   String _resolveImageUrl(dynamic raw) {
