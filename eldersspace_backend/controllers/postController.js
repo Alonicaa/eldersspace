@@ -210,42 +210,57 @@ exports.getPosts = async (req, res) => {
         p.*,
         u.full_name, u.phone_number, u.profile_picture${extraSelect},
         g.name as group_name, g.color_hex as group_color, g.icon as group_icon,
-        (SELECT COUNT(*) FROM post_likes WHERE post_id=p.post_id AND type='like')    as likes,
-        (SELECT COUNT(*) FROM post_likes WHERE post_id=p.post_id AND type='dislike') as dislikes,
-          (SELECT COUNT(*) FROM comments    WHERE post_id=p.post_id AND is_deleted=0) as comments,
-        (SELECT COUNT(*) FROM posts sp WHERE sp.shared_post_id=p.post_id AND sp.is_deleted=0) as shares
+        (SELECT COUNT(*) FROM post_likes WHERE post_id=p.post_id AND type='like')::int    as likes,
+        (SELECT COUNT(*) FROM post_likes WHERE post_id=p.post_id AND type='dislike')::int as dislikes,
+        (SELECT COUNT(*) FROM comments    WHERE post_id=p.post_id AND is_deleted=0)::int  as comments,
+        (SELECT COUNT(*) FROM posts sp WHERE sp.shared_post_id=p.post_id AND sp.is_deleted=0)::int as shares
        FROM posts p
        JOIN users u ON p.user_id=u.user_id
        LEFT JOIN groups g ON p.group_id=g.group_id
        WHERE p.is_deleted=0 AND ${visCond}${viewerUserId ? `
          AND NOT EXISTS (SELECT 1 FROM hidden_posts WHERE user_id=${viewerUserId} AND post_id=p.post_id)` : ''}
-       ORDER BY p.created_at DESC`
+       ORDER BY p.created_at DESC
+       LIMIT 60`
     );
+
+    // Batch load all post images in one query instead of N queries
+    const postIds = posts.map(p => p.post_id);
+    const imgsByPost = {};
+    if (postIds.length > 0) {
+      const { rows: allImgs } = await conn.query(
+        'SELECT post_id, image_url FROM post_images WHERE post_id = ANY($1)',
+        [postIds]
+      );
+      for (const img of allImgs) {
+        if (!imgsByPost[img.post_id]) imgsByPost[img.post_id] = [];
+        imgsByPost[img.post_id].push(resolveUrl(img.image_url));
+      }
+    }
+
+    // Batch load linked articles
+    const linkedArticleIds = posts.filter(p => p.linked_article_id).map(p => p.linked_article_id);
+    const articlesByid = {};
+    if (linkedArticleIds.length > 0) {
+      const { rows: artRows } = await conn.query(
+        `SELECT article_id, title, author_name, cover_image, summary, category
+         FROM articles WHERE article_id = ANY($1) AND is_deleted = 0 AND status = 'approved'`,
+        [linkedArticleIds]
+      );
+      for (const art of artRows) {
+        art.cover_image_url = resolveUrl(art.cover_image);
+        articlesByid[art.article_id] = art;
+      }
+    }
 
     for (let post of posts) {
       if (post.created_at) {
         post.created_at = new Date(post.created_at).toISOString();
       }
 
-      const { rows: imgs } = await conn.query('SELECT image_url FROM post_images WHERE post_id=$1', [post.post_id]);
-      post.images = imgs.map(i => resolveUrl(i.image_url));
+      post.images = imgsByPost[post.post_id] || [];
       post.profile_picture_url = resolveUrl(post.profile_picture);
-
       post.shared_post = await getOriginalPost(conn, post.shared_post_id);
-
-      if (post.linked_article_id) {
-        const { rows: artRows } = await conn.query(
-          `SELECT article_id, title, author_name, cover_image, summary, category
-           FROM articles
-           WHERE article_id = $1 AND is_deleted = 0 AND status = 'approved'`,
-          [post.linked_article_id]
-        );
-        if (artRows.length) {
-          const art = artRows[0];
-          art.cover_image_url = resolveUrl(art.cover_image);
-          post.linked_article = art;
-        }
-      }
+      post.linked_article = post.linked_article_id ? (articlesByid[post.linked_article_id] || null) : null;
     }
 
     conn.release();
