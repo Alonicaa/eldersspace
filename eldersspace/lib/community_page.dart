@@ -57,6 +57,7 @@ class _CommunityPageState extends State<CommunityPage> {
   bool _isGroupMember = false;
   bool _groupStatusLoading = false;
   String? _groupNameOverride;
+  bool _loadError = false;
 
   bool get _isGroupMode => widget.groupId != null;
   int? get _activeGroupId => widget.groupId;
@@ -456,6 +457,7 @@ class _CommunityPageState extends State<CommunityPage> {
   }
 
   Future loadPosts() async {
+    if (mounted) setState(() => _loadError = false);
     try {
       await _loadModerationStatus();
 
@@ -488,6 +490,7 @@ class _CommunityPageState extends State<CommunityPage> {
       setState(() {
         posts = [];
         loading = false;
+        _loadError = true;
       });
     }
   }
@@ -2528,10 +2531,66 @@ class _CommunityPageState extends State<CommunityPage> {
                   const SizedBox(height: 8),
 
                   // ── Posts (with sponsored articles injected every 5 posts) ──
-                  ..._buildFeedWithAds(),
+                  if (posts.isEmpty)
+                    _buildEmptyFeed()
+                  else
+                    ..._buildFeedWithAds(),
                 ],
               ),
             ),
+    );
+  }
+
+  // ================= EMPTY FEED STATE =================
+
+  Widget _buildEmptyFeed() {
+    return Container(
+      color: Colors.white,
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _loadError ? Icons.wifi_off_outlined : Icons.forum_outlined,
+              size: 56,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _loadError ? 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้' : 'ยังไม่มีโพสต์',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _loadError
+                  ? 'เซิร์ฟเวอร์อาจเปิดตัวอยู่ กรุณารอสักครู่แล้วลองใหม่'
+                  : 'เป็นคนแรกที่แบ่งปันเรื่องราวในชุมชน',
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+              textAlign: TextAlign.center,
+            ),
+            if (_loadError) ...[
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: loadPosts,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('ลองใหม่'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF3B6FD4),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20)),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 

@@ -21,6 +21,7 @@ class _HealthPageState extends State<HealthPage> {
   late String _selectedCat;
   List<Map<String, dynamic>> _articles = [];
   bool _loading = true;
+  bool _loadError = false;
 
   @override
   void initState() {
@@ -30,12 +31,17 @@ class _HealthPageState extends State<HealthPage> {
   }
 
   Future<void> _fetchArticles() async {
-    setState(() => _loading = true);
+    setState(() { _loading = true; _loadError = false; });
     final data = await ApiService.getArticles(
       category: _selectedCat,
       phone: widget.phoneNumber,
     );
-    if (mounted) setState(() { _articles = data; _loading = false; });
+    if (mounted) {
+      setState(() {
+        _articles = data;
+        _loading = false;
+      });
+    }
   }
 
   void _changeCategory(String cat) {
@@ -450,6 +456,18 @@ class _HealthPageState extends State<HealthPage> {
             Text(
               'เป็นคนแรกที่แบ่งปันความรู้!',
               style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+            ),
+            const SizedBox(height: 20),
+            OutlinedButton.icon(
+              onPressed: _fetchArticles,
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('โหลดใหม่'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF1565C0),
+                side: const BorderSide(color: Color(0xFF1565C0)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20)),
+              ),
             ),
           ],
         ),

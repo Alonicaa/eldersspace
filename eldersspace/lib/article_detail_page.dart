@@ -299,7 +299,43 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
         backgroundColor: const Color(0xFF1565C0),
         foregroundColor: Colors.white,
       ),
-      body: const Center(child: Text('ไม่พบบทความ')),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.wifi_off_outlined, size: 56, color: Colors.grey[400]),
+              const SizedBox(height: 16),
+              Text(
+                'โหลดบทความไม่สำเร็จ',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[700]),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'เซิร์ฟเวอร์อาจเปิดตัวอยู่ กรุณารอสักครู่แล้วลองใหม่',
+                style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () {
+                  setState(() => _loading = true);
+                  _load();
+                },
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('ลองใหม่'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1565C0),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
