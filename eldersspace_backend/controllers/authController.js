@@ -349,7 +349,7 @@ exports.requestOtp = async (req, res) => {
     if (user.length === 0) {
       await conn.query(
         "INSERT INTO users (phone_number, role, is_verified) VALUES ($1, $2, $3)",
-        [phone_number, 'elder', false]
+        [phone_number, 'elder', 0]
       );
     }
 

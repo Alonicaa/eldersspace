@@ -17,7 +17,7 @@ exports.registerUser = async (req, res) => {
     await conn.query(
       `INSERT INTO users (full_name, phone_number, password, role, is_verified)
        VALUES ($1, $2, $3, $4, $5)`,
-      [full_name, phone_number, password, 'elder', false]
+      [full_name, phone_number, password, 'elder', 0]
     );
     conn.release();
     res.json({ message: 'User registered successfully' });
