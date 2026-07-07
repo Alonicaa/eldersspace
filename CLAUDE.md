@@ -47,7 +47,7 @@ Then `git add -f eldersspace/build/web/` and commit + push. Vercel picks up the 
 cd eldersspace
 
 flutter pub get                   # Install dependencies
-flutter run                       # Run (defaults to Cloud SQL backend)
+flutter run                       # Run (defaults to hosted backend, see Backend URL resolution below)
 flutter run --dart-define=BACKEND_HOST=http://10.0.2.2:3000  # Android emulator with local backend
 flutter run -d chrome             # Web
 flutter analyze                   # Lint
@@ -65,7 +65,7 @@ flutter build web --release       # Web
 **Entry flow:** `main.dart` → `LoginPage` → `OtpPage` → `OtpSuccessPage` → `SetNamePage` → `SetProfilePage` → `HomePage`
 
 **`lib/services/`** — all business logic lives here:
-- `app_config.dart` — single source of truth for backend URL and Cloud SQL connection details. The `BACKEND_HOST` dart-define overrides the default at runtime.
+- `app_config.dart` — single source of truth for backend URL. The `BACKEND_HOST` dart-define overrides the default at runtime.
 - `api_service.dart` — centralized HTTP client; all pages call through this, never raw `http` directly.
 - `app_settings_service.dart` — singleton wrapping SharedPreferences; manages font scale and TTS preferences that apply app-wide.
 - `tts_stt_service.dart` — Text-to-Speech and Speech-to-Text abstraction used for accessibility throughout the app.
@@ -123,11 +123,11 @@ node server.js  # Start server on 0.0.0.0:3000
 
 **Health check:** `GET http://localhost:3000/health`
 
-**Cloud SQL connectivity test:** `node test_cloud_sql_connection.js`
+**Database connectivity test:** `node test_cloud_sql_connection.js`
 
 ### Architecture
 
-Layered MVC: `routes/` → `controllers/` → `config/db.js` (MySQL2 promise pool).
+Layered MVC: `routes/` → `controllers/` → `config/db.js` (`pg` Pool, Supabase PostgreSQL).
 
 Key route groups:
 - `/api/auth/*` — OTP request/verify (Twilio SMS), admin login
@@ -149,9 +149,9 @@ Open `index.html` or `diagnostic.html` directly in a browser (no server needed).
 
 ## Database
 
-- Google Cloud SQL (MySQL 8.4.8) at `34.126.155.104:3306`, database `eldersspace`
+- Supabase (PostgreSQL), connected via `pg` Pool in `config/db.js`
 - Schema migrations live in `eldersspace_backend/migrations/`
-- Connection pooling: 5 connections, keep-alive every 30 s (`config/db.js`)
+- Connection pooling: max 5 connections (`DB_CONNECTION_LIMIT`), SSL required (`rejectUnauthorized: false`)
 
 ---
 
