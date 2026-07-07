@@ -979,8 +979,8 @@ class _SponsoredAdTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title       = ad['title']?.toString() ?? '';
-    final body        = ad['body']?.toString() ?? '';
+    final title       = AdService.sanitizeText(ad['title']?.toString());
+    final body        = AdService.sanitizeText(ad['body']?.toString());
     final partnerName = ad['partner_name']?.toString() ?? '';
     final logoUrl     = AdService.resolveImageUrl(ad['partner_logo']?.toString());
     final ctaText     = ad['cta_text']?.toString() ?? 'ดูเพิ่มเติม';

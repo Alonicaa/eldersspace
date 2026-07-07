@@ -28,8 +28,8 @@ class _AdDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final adId       = int.tryParse(ad['id']?.toString() ?? '') ?? 0;
-    final title      = ad['title']?.toString() ?? '';
-    final body       = ad['body']?.toString() ?? '';
+    final title      = AdService.sanitizeText(ad['title']?.toString());
+    final body       = AdService.sanitizeText(ad['body']?.toString());
     final ctaText    = ad['cta_text']?.toString() ?? 'ดูเพิ่มเติม';
     final imageUrl   = AdService.resolveImageUrl(ad['image_url']?.toString());
     final logoUrl    = AdService.resolveImageUrl(ad['partner_logo']?.toString());

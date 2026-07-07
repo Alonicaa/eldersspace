@@ -269,9 +269,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       final key = 'popup_shown_${adId}_$today';
       if (prefs.getBool(key) == true) continue;
 
-      final delaySec = ad['display_delay_seconds'] is int
+      final configuredDelay = ad['display_delay_seconds'] is int
           ? ad['display_delay_seconds'] as int
           : int.tryParse(ad['display_delay_seconds']?.toString() ?? '0') ?? 0;
+      // Give the home page a moment to render before an ad appears,
+      // even if the partner content wasn't configured with a delay.
+      const minDelaySec = 3;
+      final delaySec =
+          configuredDelay < minDelaySec ? minDelaySec : configuredDelay;
 
       final t = Timer(Duration(seconds: delaySec), () async {
         if (!mounted) return;

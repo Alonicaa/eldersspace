@@ -24,7 +24,7 @@ class ApiService {
 
       if (response.statusCode != 200) {
         return {
-          "error": body["error"] ?? "Failed to request OTP: ${response.statusCode}",
+          "error": body["error"] ?? "ขอ OTP ไม่สำเร็จ (${response.statusCode})",
           ...body,
         };
       }
@@ -34,9 +34,9 @@ class ApiService {
         ...body,
       };
     } on TimeoutException {
-      return {"error": "Request timeout. Please try again."};
+      return {"error": "หมดเวลาเชื่อมต่อ กรุณาลองใหม่อีกครั้ง"};
     } catch (e) {
-      return {"error": "Connection error: $e"};
+      return {"error": "เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"};
     }
   }
 
@@ -58,7 +58,7 @@ class ApiService {
 
       if (response.statusCode != 200) {
         return {
-          "error": body["error"] ?? "OTP verification failed: ${response.statusCode}",
+          "error": body["error"] ?? "ยืนยัน OTP ไม่สำเร็จ (${response.statusCode})",
           ...body,
         };
       }
@@ -68,9 +68,9 @@ class ApiService {
         ...body,
       };
     } on TimeoutException {
-      return {"error": "Request timeout. Please try again."};
+      return {"error": "หมดเวลาเชื่อมต่อ กรุณาลองใหม่อีกครั้ง"};
     } catch (e) {
-      return {"error": "Connection error: $e"};
+      return {"error": "เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"};
     }
   }
 

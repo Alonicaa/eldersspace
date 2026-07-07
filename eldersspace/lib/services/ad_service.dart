@@ -73,4 +73,16 @@ class AdService {
     final base = AppConfig.apiBaseUrl.replaceFirst('/api', '');
     return '$base$rawUrl';
   }
+
+  /// Some partner content is stored with literal escape sequences
+  /// (e.g. "\r\n" as four characters instead of an actual newline).
+  /// Convert those back to real line breaks before displaying.
+  static String sanitizeText(String? raw) {
+    if (raw == null || raw.isEmpty) return '';
+    return raw
+        .replaceAll(r'\r\n', '\n')
+        .replaceAll(r'\n', '\n')
+        .replaceAll(r'\r', '\n')
+        .trim();
+  }
 }

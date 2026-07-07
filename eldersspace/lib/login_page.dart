@@ -94,6 +94,8 @@ class _LoginPageState extends State<LoginPage> {
       data: media.copyWith(textScaler: TextScaler.linear(1.0)),
       child: Scaffold(
         body: Container(
+          width: double.infinity,
+          height: double.infinity,
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
