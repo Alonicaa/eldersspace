@@ -189,17 +189,19 @@ async function ensureShareActivityRewardsTable(conn) {
 
 async function getRewardsSchema(conn) {
   const { rows: columns } = await conn.query(
-    `SELECT COLUMN_NAME
+    `SELECT column_name
      FROM INFORMATION_SCHEMA.COLUMNS
      WHERE table_schema = current_schema() AND TABLE_NAME = 'rewards'`
   );
 
-  const colSet = new Set(columns.map((c) => c.COLUMN_NAME));
+  const colSet = new Set(columns.map((c) => c.column_name));
   const pointsColumn = colSet.has('reward_point')
     ? 'reward_point'
     : colSet.has('required_points')
         ? 'required_points'
-        : null;
+        : colSet.has('points_required')
+            ? 'points_required'
+            : null;
 
   return {
     pointsColumn,
@@ -214,12 +216,12 @@ async function getRewardsSchema(conn) {
 
 async function getUserRewardsSchema(conn) {
   const { rows: columns } = await conn.query(
-    `SELECT COLUMN_NAME
+    `SELECT column_name
      FROM INFORMATION_SCHEMA.COLUMNS
      WHERE table_schema = current_schema() AND TABLE_NAME = 'user_rewards'`
   );
 
-  const colSet = new Set(columns.map((c) => c.COLUMN_NAME));
+  const colSet = new Set(columns.map((c) => c.column_name));
   return {
     hasQuantity: colSet.has('quantity'),
     hasRedeemedAt: colSet.has('redeemed_at'),
