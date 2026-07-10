@@ -228,11 +228,15 @@ class _HealthPageState extends State<HealthPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(badgeLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
                                 color: accentColor)),
                         Text('โดย $authorDisplay',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                       ],
                     ),
@@ -259,6 +263,8 @@ class _HealthPageState extends State<HealthPage> {
                 children: [
                   Text(
                     a['title']?.toString() ?? '',
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, height: 1.3),
                   ),
                   if ((a['summary']?.toString() ?? '').isNotEmpty) ...[

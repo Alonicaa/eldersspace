@@ -55641,12 +55641,12 @@ m=p.Cc(m.h(a,"is_featured"))
 q=l?B.D:B.cs
 return p.afZ(a,l,j,s,r,m===1,q,new A.aFV(p,a))},
 afZ(a,b,c,d,e,f,a0,a1){var s,r,q,p,o,n,m=null,l="user_liked",k=A.z(16),j=A.aL(a0,B.n,2),i=A.a([new A.b2(0,B.G,B.t.au(0.07),B.bt,8)],t.V),h=b?B.bU:B.i_,g=t.p
-h=A.a([new A.Z(B.nM,A.a4(A.a([A.A(m,A.az(b?B.h0:B.oB,a0,m,14),B.e,m,m,new A.K(h,m,m,m,m,m,B.ao),m,m,m,B.Qv,m,m,m),B.bd,A.aC(A.R(A.a([A.t(c,m,m,m,A.S(m,m,a0,m,m,m,m,m,m,m,m,13,m,m,B.H,m,m,!0,m,m,m,m,m,m,m,m),m,m,m),A.t("\u0e42\u0e14\u0e22 "+d,m,m,m,A.S(m,m,B.B,m,m,m,m,m,m,m,m,12,m,m,m,m,m,!0,m,m,m,m,m,m,m,m),m,m,m)],g),B.p,B.d,B.f),1)],g),B.k,B.d,B.f,0,m),m),B.bC],g)
+h=A.a([new A.Z(B.nM,A.a4(A.a([A.A(m,A.az(b?B.h0:B.oB,a0,m,14),B.e,m,m,new A.K(h,m,m,m,m,m,B.ao),m,m,m,B.Qv,m,m,m),B.bd,A.aC(A.R(A.a([A.t(c,1,B.A,m,A.S(m,m,a0,m,m,m,m,m,m,m,m,13,m,m,B.H,m,m,!0,m,m,m,m,m,m,m,m),m,m,m),A.t("\u0e42\u0e14\u0e22 "+d,1,B.A,m,A.S(m,m,B.B,m,m,m,m,m,m,m,m,12,m,m,m,m,m,!0,m,m,m,m,m,m,m,m),m,m,m)],g),B.p,B.d,B.f),1)],g),B.k,B.d,B.f,0,m),m),B.bC],g)
 if(e.length!==0)h.push(A.cM(B.aM,A.cJ(e,B.y,new A.aFY(),B.at,190,m,1/0),B.a3))
 s=J.a2(a)
 r=s.h(a,"title")
 r=r==null?m:J.D(r)
-r=A.a([A.t(r==null?"":r,m,m,m,B.abf,m,m,m)],g)
+r=A.a([A.t(r==null?"":r,3,B.A,m,B.abf,m,m,m)],g)
 q=s.h(a,"summary")
 q=q==null?m:J.D(q)
 if((q==null?"":q).length!==0)B.b.K(r,A.a([B.I,A.t(J.D(s.h(a,"summary")),3,B.A,m,A.S(m,m,B.aq,m,m,m,m,m,m,m,m,15,m,m,m,m,1.5,!0,m,m,m,m,m,m,m,m),m,m,m)],g))
