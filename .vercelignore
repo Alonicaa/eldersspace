@@ -1,4 +1,7 @@
-eldersspace/
+eldersspace/*
+!eldersspace/build/
+eldersspace/build/*
+!eldersspace/build/web/
 eldersspace_backend/
 node_modules/
 .git/
