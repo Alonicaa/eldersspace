@@ -268,6 +268,8 @@ class _RewardHistoryPageState extends State<RewardHistoryPage> {
     return sourceType;
   }
 
+  String _clean(String s) => s.replaceAll(r'\r\n', '\n').replaceAll(r'\n', '\n').trim();
+
   String _formatDateTime(dynamic value) {
     if (value == null) return '-';
     try {
@@ -292,7 +294,7 @@ class _RewardHistoryPageState extends State<RewardHistoryPage> {
     final cost = (reward['points_required'] ?? 0).toInt();
     final currentPoints = (_summary?['total_points'] ?? 0).toInt();
     final remainingPoints = currentPoints - cost;
-    final description = (reward['description'] ?? '').toString();
+    final description = _clean((reward['description'] ?? '').toString());
     final imageUrl = _resolveRewardImageUrl(
       (reward['image_url'] ?? '').toString(),
     );
@@ -1743,24 +1745,6 @@ class _RewardHistoryPageState extends State<RewardHistoryPage> {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 14),
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.calendar_today,
-                                  size: 14,
-                                  color: Colors.blue.shade400,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'แต้มจะหมดอายุวันที่ 31 ส.ค. 2575',
-                                  style: TextStyle(
-                                    color: Colors.blue.shade400,
-                                    fontSize: 11,
-                                  ),
-                                ),
-                              ],
-                            ),
                           ],
                         ),
                       ),
@@ -1778,19 +1762,19 @@ class _RewardHistoryPageState extends State<RewardHistoryPage> {
                         ),
                         _buildMenuCard(
                           'แคมเปญ',
-                          'ใช้แต้มแลกรับรางวัลสวยๆและสิ่ค่า',
+                          'ใช้แต้มแลกรับสิทธิประโยชน์',
                           Icons.card_giftcard,
                           () => setState(() => _currentView = 2),
                         ),
                         _buildMenuCard(
                           'ประวัติการแลกแต้ม',
-                          'ตรวจสอบรายการอื่นหลังของคุณ',
+                          'ตรวจสอบประวัติการแลกของคุณ',
                           Icons.history,
                           () => setState(() => _currentView = 1),
                         ),
                         _buildMenuCard(
                           'วิธีสะสมแต้ม',
-                          'เรียนรู้วิธีแต่เพิ่มเพิ่มน้อยๆ',
+                          'เรียนรู้วิธีสะสมแต้มเพิ่มขึ้น',
                           Icons.info_outline,
                           () => setState(() => _currentView = 3),
                         ),
@@ -2192,6 +2176,8 @@ class _RewardHistoryPageState extends State<RewardHistoryPage> {
                                             children: [
                                               Text(
                                                 sourceLabel,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
                                                 style: const TextStyle(
                                                   fontWeight: FontWeight.w600,
                                                   fontSize: 14,
@@ -2575,6 +2561,8 @@ class _RewardHistoryPageState extends State<RewardHistoryPage> {
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
                 ],
