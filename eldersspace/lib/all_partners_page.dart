@@ -14,6 +14,11 @@ class _AllPartnersPageState extends State<AllPartnersPage> {
   bool _loading = true;
   String _searchQuery = '';
 
+  static String _clean(String? s) => (s ?? '')
+      .replaceAll(r'\r\n', '\n')
+      .replaceAll(r'\n', '\n')
+      .replaceAll(r'\r', '\n');
+
   @override
   void initState() {
     super.initState();
@@ -250,7 +255,7 @@ class _AllPartnersPageState extends State<AllPartnersPage> {
                   if ((p['description']?.toString() ?? '').isNotEmpty) ...[
                     const SizedBox(height: 6),
                     Text(
-                      p['description'].toString(),
+                      _clean(p['description']?.toString()),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(fontSize: 11, color: Colors.grey.shade600, height: 1.35),

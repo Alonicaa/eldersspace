@@ -16,6 +16,11 @@ class _PartnerPageState extends State<PartnerPage> {
   Map<String, dynamic>? _partner;
   bool _loading = true;
 
+  static String _clean(String? s) => (s ?? '')
+      .replaceAll(r'\r\n', '\n')
+      .replaceAll(r'\n', '\n')
+      .replaceAll(r'\r', '\n');
+
   @override
   void initState() {
     super.initState();
@@ -281,12 +286,12 @@ class _PartnerPageState extends State<PartnerPage> {
 
   Widget _buildAboutSection() {
     final p = _partner!;
-    final description = p['description']?.toString() ?? '';
+    final description = _clean(p['description']?.toString());
     final phone    = p['contact_phone']?.toString()    ?? '';
     final email    = p['contact_email']?.toString()    ?? '';
     final line     = p['contact_line']?.toString()     ?? '';
     final facebook = p['contact_facebook']?.toString() ?? '';
-    final address  = p['contact_address']?.toString()  ?? '';
+    final address  = _clean(p['contact_address']?.toString());
 
     final hasContact = phone.isNotEmpty || email.isNotEmpty ||
         line.isNotEmpty || facebook.isNotEmpty || address.isNotEmpty;
@@ -412,7 +417,7 @@ class _PartnerPageState extends State<PartnerPage> {
                           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                     if ((b['description']?.toString() ?? '').isNotEmpty) ...[
                       const SizedBox(height: 4),
-                      Text(b['description'].toString(),
+                      Text(_clean(b['description']?.toString()),
                           style: const TextStyle(fontSize: 13, color: Colors.grey)),
                     ],
                   ],
@@ -566,7 +571,7 @@ class _PartnerPageState extends State<PartnerPage> {
                       if ((p['description']?.toString() ?? '').isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(
-                          p['description'].toString(),
+                          _clean(p['description']?.toString()),
                           style: const TextStyle(
                               fontSize: 12,
                               height: 1.5,
