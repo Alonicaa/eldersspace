@@ -8,6 +8,10 @@ Future<void> playWebAudio(Uint8List bytes) async {
   final completer = Completer<void>();
   final audio = html.AudioElement();
   audio.src = 'data:audio/mpeg;base64,${base64Encode(bytes)}';
+  audio.style.display = 'none';
+
+  // เพิ่ม element เข้า DOM เพื่อกันไม่ให้ Dart GC เก็บทิ้งก่อน onEnded fire
+  html.document.body?.append(audio);
 
   StreamSubscription? endSub;
   StreamSubscription? errSub;
@@ -15,6 +19,7 @@ Future<void> playWebAudio(Uint8List bytes) async {
   void done() {
     endSub?.cancel();
     errSub?.cancel();
+    audio.remove();
     if (!completer.isCompleted) completer.complete();
   }
 
