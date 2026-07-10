@@ -6,6 +6,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'app_settings_service.dart';
 import 'app_config.dart';
+import 'tts_web_player_stub.dart' if (dart.library.html) 'tts_web_player.dart';
 
 // ════════════════════════════════════════════════════════
 //  TTS / STT Service  –  Google Cloud TTS + native STT
@@ -120,16 +121,30 @@ class TtsSttService {
 
   // ─── เล่น 1 chunk แล้วรอจนจบ ─────────────────────────────────────────────
   Future<void> _playChunkAndWait(Uint8List bytes) async {
+    // audioplayers บน Flutter Web มี 30s internal timeout และ completion events ไม่ fire
+    // ใช้ dart:html AudioElement โดยตรงแทน
+    if (kIsWeb) {
+      await playWebAudio(bytes);
+      return;
+    }
+
     final completer = Completer<void>();
-    late StreamSubscription<PlayerState> sub;
-    sub = _audioPlayer.onPlayerStateChanged.listen((state) {
-      if (state == PlayerState.completed || state == PlayerState.stopped) {
-        sub.cancel();
-        if (!completer.isCompleted) completer.complete();
-      }
+    StreamSubscription<PlayerState>? stateSub;
+    StreamSubscription<void>? doneSub;
+
+    void done() {
+      stateSub?.cancel();
+      doneSub?.cancel();
+      if (!completer.isCompleted) completer.complete();
+    }
+
+    stateSub = _audioPlayer.onPlayerStateChanged.listen((state) {
+      if (state == PlayerState.completed || state == PlayerState.stopped) done();
     });
+    doneSub = _audioPlayer.onPlayerComplete.listen((_) => done());
+
     await _audioPlayer.play(BytesSource(bytes));
-    await completer.future;
+    await completer.future.timeout(const Duration(minutes: 3));
   }
 
   // ─── เรียก Google Cloud TTS API ──────────────────────────────────────────
