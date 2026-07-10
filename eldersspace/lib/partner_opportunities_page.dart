@@ -116,9 +116,9 @@ class PartnerOpportunitiesPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(j['title']?.toString() ?? '', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                      Text(j['title']?.toString() ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                       const SizedBox(height: 2),
-                      Text(partnerName, style: const TextStyle(fontSize: 12, color: green, fontWeight: FontWeight.w500)),
+                      Text(partnerName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: green, fontWeight: FontWeight.w500)),
                       const SizedBox(height: 4),
                       Row(
                         children: [

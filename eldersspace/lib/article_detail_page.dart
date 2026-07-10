@@ -426,27 +426,33 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              badgeLabel,
-                              style: TextStyle(
-                                fontSize: isElder ? 13 : 11,
-                                fontWeight: FontWeight.w600,
-                                color: isPartner
-                                    ? const Color(0xFF1565C0)
-                                    : Colors.orange[700],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                badgeLabel,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: isElder ? 13 : 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: isPartner
+                                      ? const Color(0xFF1565C0)
+                                      : Colors.orange[700],
+                                ),
                               ),
-                            ),
-                            Text(
-                              'โดย $authorDisplay',
-                              style: TextStyle(
-                                fontSize: isElder ? 12 : 11,
-                                color: Colors.grey[600],
+                              Text(
+                                'โดย $authorDisplay',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: isElder ? 12 : 11,
+                                  color: Colors.grey[600],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ],
                     ),

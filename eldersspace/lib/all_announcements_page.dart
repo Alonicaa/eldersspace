@@ -130,7 +130,7 @@ class _AllAnnouncementsPageState extends State<AllAnnouncementsPage> {
                         children: [
                           const Icon(Icons.store_outlined, size: 14, color: Color(0xFF1565C0)),
                           const SizedBox(width: 4),
-                          Text(b['partner_name'].toString(), style: const TextStyle(fontSize: 12, color: Color(0xFF1565C0), fontWeight: FontWeight.w500)),
+                          Expanded(child: Text(b['partner_name'].toString(), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: Color(0xFF1565C0), fontWeight: FontWeight.w500))),
                         ],
                       ),
                     ],

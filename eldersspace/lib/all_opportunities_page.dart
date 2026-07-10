@@ -148,9 +148,9 @@ class _AllOpportunitiesPageState extends State<AllOpportunitiesPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(j['title']?.toString() ?? '', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                      Text(j['title']?.toString() ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                       const SizedBox(height: 2),
-                      Text(j['partner_name']?.toString() ?? '', style: const TextStyle(fontSize: 12, color: green, fontWeight: FontWeight.w500)),
+                      Text(j['partner_name']?.toString() ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: green, fontWeight: FontWeight.w500)),
                       const SizedBox(height: 4),
                       Row(
                         children: [

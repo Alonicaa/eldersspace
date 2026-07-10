@@ -287,6 +287,8 @@ class _CommunityPageState extends State<CommunityPage> {
                 if (partnerName.isNotEmpty)
                   Text(
                     partnerName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -333,6 +335,8 @@ class _CommunityPageState extends State<CommunityPage> {
               children: [
                 Text(
                   title,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,

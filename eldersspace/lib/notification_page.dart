@@ -1069,6 +1069,8 @@ class _SponsoredAdTile extends StatelessWidget {
                     const SizedBox(height: 5),
                     Text(
                       title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                           fontSize: 14, fontWeight: FontWeight.w600),
                     ),

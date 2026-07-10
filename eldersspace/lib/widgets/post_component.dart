@@ -137,6 +137,8 @@ class PostCard extends StatelessWidget {
                           children: [
                             Text(
                               post["full_name"] ?? "",
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 15,
@@ -813,6 +815,8 @@ class _SharedPostPreview extends StatelessWidget {
                       children: [
                         Text(
                           post['full_name'] ?? '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
