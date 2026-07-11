@@ -204,7 +204,7 @@
             </div>
 
             <div id="page-reports" class="page-content">
-                <h1 class="page-title"><i class="fas fa-shield-halved page-title-icon"></i> Moderation Queue</h1>
+                <h1 class="page-title"><i class="fas fa-shield-halved page-title-icon"></i> Report Queue</h1>
                 <small class="page-title-sub">รายงานโพสต์ที่รอตรวจสอบและดำเนินการ</small>
                 <div class="white-box">
                     <div class="moderation-filter-bar">
@@ -221,7 +221,7 @@
             </div>
 
             <div id="page-companies" class="page-content">
-                <h1 class="page-title"><i class="fas fa-user-shield page-title-icon"></i> Elder Account Center</h1>
+                <h1 class="page-title"><i class="fas fa-user-shield page-title-icon"></i> Elder Accounts</h1>
                 <small class="page-title-sub">จัดการและดูข้อมูลบัญชีผู้ใช้งานทั้งหมด</small>
                 <div class="white-box">
                     <div class="moderation-search-wrap company-search-wrap">
@@ -1418,13 +1418,6 @@
                 <h1 class="page-title"><i class="fas fa-receipt page-title-icon"></i> Redemption History</h1>
                 <small class="page-title-sub">มุมมองสรุปแบบรายคน: ใครแลกรางวัลอะไร กี่ครั้ง ใช้แต้มเท่าไหร่ และมาจากแคมเปญไหนบ้าง</small>
 
-                <div class="redemption-section-tabs">
-                    <a href="#redemption-filters" class="redemption-section-tab">Filters</a>
-                    <a href="#redemption-summary" class="redemption-section-tab">KPI Summary</a>
-                    <a href="#redemption-users" class="redemption-section-tab">User Cards</a>
-                    <a href="#redemption-analytics" class="redemption-section-tab">Analytics</a>
-                </div>
-                
                 <div id="redemption-filters" class="white-box redemption-filter-panel">
                     <div class="box-header"><div class="box-title">Filter & Search</div></div>
                     <div class="redemption-filter-grid">
@@ -1486,24 +1479,26 @@
                     </div>
                 </div>
 
-                <!-- Quick Filters + KPI summary -->
-                <div class="redemption-sticky-surface" style="display:flex; gap:1rem; flex-wrap:wrap; margin-top:1rem; align-items:stretch;">
-                    <div style="flex: 1 1 320px; min-width: 280px;">
-                        <div class="quick-filter-wrap">
-                            <button class="btn btn-ghost redemption-chip-btn" onclick="setQuickRange('today')">วันนี้</button>
-                            <button class="btn btn-ghost redemption-chip-btn" onclick="setQuickRange('7d')">7 วันล่าสุด</button>
-                            <button class="btn btn-ghost redemption-chip-btn" onclick="setQuickRange('month')">เดือนนี้</button>
-                            <button class="btn btn-ghost redemption-chip-btn" onclick="setQuickRange('expiring')">ใกล้หมดอายุ</button>
-                            <button class="btn btn-ghost redemption-chip-btn" onclick="setQuickFilter('used')">ใช้แล้ว</button>
-                            <button class="btn btn-ghost redemption-chip-btn" onclick="setQuickFilter('pending')">รอดำเนินการ</button>
-                        </div>
-                    </div>
-                    <div style="flex: 2 1 520px; min-width: 320px;">
-                        <div id="redemption-summary" class="white-box redemption-summary-shell"></div>
-                    </div>
+                <!-- Quick date/status filter chips -->
+                <div class="quick-filter-wrap" style="margin-top:1rem;">
+                    <button class="btn btn-ghost redemption-chip-btn" onclick="setQuickRange('today')">วันนี้</button>
+                    <button class="btn btn-ghost redemption-chip-btn" onclick="setQuickRange('7d')">7 วันล่าสุด</button>
+                    <button class="btn btn-ghost redemption-chip-btn" onclick="setQuickRange('month')">เดือนนี้</button>
+                    <button class="btn btn-ghost redemption-chip-btn" onclick="setQuickRange('expiring')">ใกล้หมดอายุ</button>
                 </div>
-                
-                <div id="redemption-users" class="white-box" style="margin-top: 2rem;">
+
+                <div style="display:flex; gap:0.75rem; margin: 1.25rem 0; flex-wrap:wrap;">
+                    <button class="btn btn-toggle active" id="redemption-tab-summary" onclick="redemptionShowTab('summary')"><i class="fas fa-chart-simple"></i> KPI Summary</button>
+                    <button class="btn btn-toggle" id="redemption-tab-users" onclick="redemptionShowTab('users')"><i class="fas fa-users"></i> User Cards</button>
+                    <button class="btn btn-toggle" id="redemption-tab-analytics" onclick="redemptionShowTab('analytics')"><i class="fas fa-chart-line"></i> Analytics</button>
+                </div>
+
+                <div id="redemption-panel-summary">
+                    <div id="redemption-summary" class="white-box redemption-summary-shell"></div>
+                </div>
+
+                <div id="redemption-panel-users" style="display:none;">
+                <div id="redemption-users" class="white-box">
                     <div class="box-header"><div class="box-title">Grouped Redemption Records by Person</div></div>
                     <div class="redemption-table-wrap">
                         <table class="redemption-table">
@@ -1530,9 +1525,11 @@
 
                 <!-- Card layout for mobile / analytics-first view -->
                 <div id="redemptions-cards" class="redemption-cards-grid"></div>
+                </div>
 
                 <!-- Analytics table -->
-                <div id="redemption-analytics" class="white-box" style="margin-top:1.25rem;">
+                <div id="redemption-panel-analytics" style="display:none;">
+                <div id="redemption-analytics" class="white-box">
                     <div class="box-header" style="justify-content:space-between; gap:1rem; flex-wrap:wrap; align-items:center;">
                         <div class="box-title">Analytics</div>
                         <div class="redemption-analytics-toolbar">
@@ -1579,9 +1576,10 @@
                         </table>
                     </div>
                 </div>
+                </div>
 
             </div>
-            
+
             <!-- Scan QR Page -->
             <div id="page-scan-qr" class="page-content">
                 <h1 class="page-title"><i class="fas fa-qrcode page-title-icon"></i> Scan / Verify QR</h1>

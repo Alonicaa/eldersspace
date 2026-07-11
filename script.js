@@ -1022,8 +1022,17 @@ function navTo(page, targetElement) {
         }
 
         if (page === 'redemptions') {
+            redemptionShowTab('summary');
             initRedemptionFilters();
             loadRedemptions();
+        }
+
+        if (page === 'scan-qr') {
+            loadQRStats();
+        }
+
+        if (page === 'companies') {
+            loadAllElderAccounts();
         }
 
         if (page === 'articles') {
@@ -1080,6 +1089,61 @@ function navToCampaignsTab(tab) {
     campaignsShowTab(tab);
 }
 
+function redemptionShowTab(tab) {
+    ['summary', 'users', 'analytics'].forEach((t) => {
+        const panel = document.getElementById('redemption-panel-' + t);
+        const btn = document.getElementById('redemption-tab-' + t);
+        if (panel) panel.style.display = (t === tab) ? 'block' : 'none';
+        if (btn) btn.classList.toggle('active', t === tab);
+    });
+}
+
+let elderAccountsLoaded = false;
+
+// The dashboard-summary payload only carries the latest 20 users for the home page preview.
+// Elder Accounts needs the full list so search/scroll actually reaches everyone, not just the newest 20.
+async function loadAllElderAccounts() {
+    if (elderAccountsLoaded) return;
+    setEmptyRow('company-table', 5, 'กำลังโหลดผู้ใช้งานทั้งหมด...');
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/users`, {
+            headers: getAuthHeaders()
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        companySourceRows = Array.isArray(data.users) ? data.users : [];
+        elderAccountsLoaded = true;
+        applyCompanyFilters();
+    } catch (error) {
+        console.error('Failed to load elder accounts:', error);
+        setEmptyRow('company-table', 5, 'โหลดรายชื่อผู้ใช้งานไม่สำเร็จ กรุณารีเฟรชหน้า');
+    }
+}
+
+async function loadQRStats() {
+    const totalEl = document.getElementById('stat-total-qr');
+    const availableEl = document.getElementById('stat-available-qr');
+    const usedEl = document.getElementById('stat-used-qr');
+    if (!totalEl || !availableEl || !usedEl) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/promo-codes/stats`, {
+            headers: getAuthHeaders()
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        const stats = data.data || {};
+        totalEl.textContent = formatNumber(Number(stats.total || 0));
+        availableEl.textContent = formatNumber(Number(stats.available || 0));
+        usedEl.textContent = formatNumber(Number(stats.used || 0));
+    } catch (error) {
+        console.error('Failed to load QR stats:', error);
+        totalEl.textContent = '-';
+        availableEl.textContent = '-';
+        usedEl.textContent = '-';
+    }
+}
+
 function getPostStatusDisplay(row = {}) {
     const normalizedStatus = String(row.status || '').toLowerCase();
     const reportCount = Number(row.reportCount || row.pendingReportCount || 0);
@@ -1106,6 +1170,12 @@ function escapeHtml(text) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+}
+
+// Some legacy content was saved with literal "\r\n"/"\n" characters instead of real line breaks.
+// Escapes the text for safe HTML, then renders both real and literal line breaks as <br>.
+function escapeHtmlMultiline(text) {
+    return escapeHtml(text).replace(/\\r\\n|\\n|\r\n|\n/g, '<br>');
 }
 
 function formatDate(value) {
@@ -3853,7 +3923,7 @@ async function loadPartnerAds(partnerId) {
                     <span style="background:${fmtColor};color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;flex-shrink:0">${escapeHtml(fmtLabel)}</span>
                     <div style="flex:1;min-width:0">
                         <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(ad.title)}${delayNote}</div>
-                        ${ad.body ? `<div style="font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(ad.body)}</div>` : ''}
+                        ${ad.body ? `<div style="font-size:11px;color:var(--text-muted);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.4">${escapeHtmlMultiline(ad.body)}</div>` : ''}
                     </div>
                     <span style="font-size:10px;font-weight:600;color:${statusColor};background:${statusColor}18;padding:1px 6px;border-radius:10px;white-space:nowrap;flex-shrink:0">${statusLabel}</span>
                 </div>
@@ -5271,7 +5341,7 @@ async function loadRewardsCatalog(partnerId) {
                 </td>
                 <td style="text-align: left; padding: 1rem;">
                     <strong style="color: var(--text-primary); font-weight: 600;">${reward.reward_name}</strong>
-                    ${reward.description ? `<br><small style="color: var(--text-secondary); display: block; margin-top: 0.3rem; line-height: 1.4;">${reward.description}</small>` : ''}
+                    ${reward.description ? `<br><small style="color: var(--text-secondary); display: block; margin-top: 0.3rem; line-height: 1.4;">${escapeHtmlMultiline(reward.description)}</small>` : ''}
                 </td>
                 <td style="text-align: center; padding: 1rem; color: var(--text-secondary);">${reward.category ? `<span style="display: inline-block; background: var(--bg-card-alt); padding: 0.35rem 0.7rem; border-radius: 20px; font-size: 0.85rem; border: 1px solid var(--border);">${reward.category}</span>` : '<span style="color: var(--text-muted);">-</span>'}</td>
                 <td style="text-align: center; padding: 1rem; font-weight: 600; color: var(--blue);">${reward.required_points}</td>
@@ -6320,14 +6390,19 @@ function renderPartnersSidebar(list) {
         el.innerHTML = '<div style="color:#aaa;text-align:center;padding:30px;font-size:13px">ยังไม่มีพาร์ทเนอร์</div>';
         return;
     }
-    el.innerHTML = list.map(p => {
+    const sorted = [...list].sort((a, b) => Number(b.is_active) - Number(a.is_active));
+    el.innerHTML = sorted.map(p => {
         const logo = p.logo_url ? resolveMediaUrl(p.logo_url) : '';
         const isSelected = window._selectedPartnerId === p.id;
-        const statusDot = p.is_active
+        const isActive = !!p.is_active;
+        const statusDot = isActive
             ? '<span style="color:#43A047;font-size:8px">●</span>'
             : '<span style="color:#ef4444;font-size:8px">●</span>';
+        const inactiveBadge = !isActive
+            ? '<span style="font-size:9px;padding:1px 6px;border-radius:4px;font-weight:700;background:#F5F5F5;color:#9E9E9E;border:1px solid #E0E0E0">ปิดใช้งาน</span>'
+            : '';
         return `
-        <div class="partner-sidebar-card${isSelected ? ' selected' : ''}" onclick="selectPartner(${p.id})" id="sidebar-partner-${p.id}">
+        <div class="partner-sidebar-card${isSelected ? ' selected' : ''}" onclick="selectPartner(${p.id})" id="sidebar-partner-${p.id}" style="${isActive ? '' : 'opacity:0.55'}">
             <div class="partner-sidebar-logo">
                 ${logo
                     ? `<img src="${logo}" style="width:100%;height:100%;object-fit:contain" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-store\\' style=\\'color:#aaa;font-size:16px\\'></i>'">`
@@ -6340,6 +6415,7 @@ function renderPartnersSidebar(list) {
                 <div class="pt-item-sub" style="display:flex;align-items:center;gap:4px">
                     ${escHtml(p.category || '—')}
                     ${p.tier && p.tier !== 'none' ? `<span style="font-size:9px;padding:1px 5px;border-radius:4px;font-weight:700;background:${p.tier==='platinum'?'#ECEFF1':p.tier==='gold'?'#FFF8E1':'#F5F5F5'};color:${p.tier==='platinum'?'#546E7A':p.tier==='gold'?'#E65100':'#616161'};border:1px solid ${p.tier==='platinum'?'#B0BEC5':p.tier==='gold'?'#F9A825':'#9E9E9E'}">${p.tier==='platinum'?'💎':p.tier==='gold'?'🥇':'🥈'}</span>` : ''}
+                    ${inactiveBadge}
                 </div>
             </div>
         </div>`;
@@ -8603,7 +8679,7 @@ async function loadVerifierRewardCodes(rewardId, targetPage = 1) {
                     </div>
                     <div class="verifier-cell detail">
                         <div class="verifier-reward-name">${rewardLabel}</div>
-                        ${code.description && code.reward_name && code.description !== code.reward_name ? `<div class="verifier-reward-sub">${code.description}</div>` : ''}
+                        ${code.description && code.reward_name && code.description !== code.reward_name ? `<div class="verifier-reward-sub">${escapeHtmlMultiline(code.description)}</div>` : ''}
                     </div>
                     <div class="verifier-cell meta">${code.created_at ? formatDate(code.created_at) : '-'}</div>
                     <div class="verifier-cell meta">${code.used_at ? formatDate(code.used_at) : '-'}</div>

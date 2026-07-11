@@ -126,6 +126,9 @@ const promoCodeCtrl = require('../controllers/promoCodeController');
 // GET /api/admin/promo-codes   → ดึงรายการโค้ดทั้งหมด (with filters: reward_id, status, search)
 router.get('/promo-codes', adminTokenAuth, promoCodeCtrl.getPromoCodes);
 
+// GET /api/admin/promo-codes/stats → สรุปจำนวนโค้ดทั้งหมด/พร้อมใช้/ใช้แล้ว
+router.get('/promo-codes/stats', adminTokenAuth, promoCodeCtrl.getPromoStats);
+
 // POST /api/admin/promo-codes/upload-csv → upload promo codes via CSV file
 router.post('/promo-codes/upload-csv', adminTokenAuth, upload.uploadCsv.single('file'), promoCodeCtrl.uploadPromoCodesFromCsv);
 
