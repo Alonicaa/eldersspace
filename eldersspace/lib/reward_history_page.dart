@@ -4224,7 +4224,7 @@ class _QRCodeRedemptionDialogState extends State<_QRCodeRedemptionDialog> {
                           ),
                           const SizedBox(height: 12),
                           Container(
-                            height: 80,
+                            height: 110,
                             width: double.infinity,
                             decoration: BoxDecoration(
                               color: Colors.white,
