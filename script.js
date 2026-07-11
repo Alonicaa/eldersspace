@@ -1072,21 +1072,22 @@ function campaignsShowTab(tab) {
         if (btn) btn.classList.toggle('active', t === tab);
     });
     if (tab === 'codes') {
-        loadRewardsForUpload();
         const csvTemplateBtn = document.getElementById('promo-csv-template-btn');
         const csvUploadBtn = document.getElementById('promo-csv-upload-btn');
         if (csvTemplateBtn) csvTemplateBtn.onclick = downloadCsvTemplate;
         if (csvUploadBtn) csvUploadBtn.onclick = uploadPromoCodesToCampaign;
+        return loadRewardsForUpload();
     }
     if (tab === 'verifier') {
-        initPromoVerifier();
+        return initPromoVerifier();
     }
+    return Promise.resolve();
 }
 
 function navToCampaignsTab(tab) {
     const navItem = findNavItemByPage('reward-catalog');
     navTo('reward-catalog', navItem);
-    campaignsShowTab(tab);
+    return campaignsShowTab(tab);
 }
 
 function redemptionShowTab(tab) {
@@ -5363,6 +5364,12 @@ async function loadRewardsCatalog(partnerId) {
                         <button class="btn btn-ghost" onclick="editReward(${reward.reward_id})" style="padding: 0.35rem 0.7rem; font-size: 0.85rem; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--text-secondary); cursor: pointer; transition: 0.15s;" onmouseover="this.style.background='var(--bg-card-alt)'; this.style.color='var(--blue)';" onmouseout="this.style.background='transparent'; this.style.color='var(--text-secondary)';">
                             <i class="fas fa-edit"></i> แก้ไข
                         </button>
+                        <button class="btn btn-ghost" onclick="goToPartnerPromoCodes(${reward.reward_id}, '${escapeHtml(reward.reward_name || '').replace(/'/g, "\\'")}')" style="padding: 0.35rem 0.7rem; font-size: 0.85rem; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--text-secondary); cursor: pointer; transition: 0.15s;" onmouseover="this.style.background='var(--bg-card-alt)'; this.style.color='var(--blue)';" onmouseout="this.style.background='transparent'; this.style.color='var(--text-secondary)';">
+                            <i class="fas fa-ticket-alt"></i> โค้ด
+                        </button>
+                        <button class="btn btn-ghost" onclick="goToPartnerVerifier(${reward.reward_id})" style="padding: 0.35rem 0.7rem; font-size: 0.85rem; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--text-secondary); cursor: pointer; transition: 0.15s;" onmouseover="this.style.background='var(--bg-card-alt)'; this.style.color='var(--blue)';" onmouseout="this.style.background='transparent'; this.style.color='var(--text-secondary)';">
+                            <i class="fas fa-shield-halved"></i> ตรวจ
+                        </button>
                         <button class="btn btn-del" onclick="deleteReward(${reward.reward_id})" style="padding: 0.35rem 0.7rem; font-size: 0.85rem; border: 1px solid rgba(239,68,68,0.3); border-radius: 6px; background: rgba(239,68,68,0.1); color: var(--red); cursor: pointer; transition: 0.15s;" onmouseover="this.style.background='rgba(239,68,68,0.2)';" onmouseout="this.style.background='rgba(239,68,68,0.1)';">
                             <i class="fas fa-trash"></i> ลบ
                         </button>
@@ -6519,21 +6526,16 @@ function switchPartnerTab(tab) {
 
 // ── Partner Campaigns tab (uses the shared reward create/list functions, scoped by partner_id) ──
 
-function goToPartnerPromoCodes(rewardId, rewardName) {
-    navToCampaignsTab('codes');
-    setTimeout(async () => {
-        await loadPromoRewards();
-        const sel = document.getElementById('promo-reward-select');
-        if (sel) { sel.value = rewardId; sel.dispatchEvent(new Event('change')); }
-    }, 400);
+async function goToPartnerPromoCodes(rewardId, rewardName) {
+    await navToCampaignsTab('codes');
+    const sel = document.getElementById('promo-reward-select');
+    if (sel) { sel.value = rewardId; sel.dispatchEvent(new Event('change')); }
 }
 
-function goToPartnerVerifier(rewardId) {
-    navToCampaignsTab('verifier');
-    setTimeout(() => {
-        const sel = document.getElementById('verifier-reward-select');
-        if (sel) { sel.value = rewardId; sel.dispatchEvent(new Event('change')); }
-    }, 600);
+async function goToPartnerVerifier(rewardId) {
+    await navToCampaignsTab('verifier');
+    const sel = document.getElementById('verifier-reward-select');
+    if (sel) { sel.value = rewardId; sel.dispatchEvent(new Event('change')); }
 }
 
 // ── Tab list loaders ──
@@ -8783,7 +8785,7 @@ function openVerifierStatusEditor(codeId) {
 
 // Initialize verifier page
 function initPromoVerifier() {
-    loadRewardsForVerifier();
+    return loadRewardsForVerifier();
 }
 
 // Dynamically load optional admin helper if it exists to avoid 404 / MIME errors
