@@ -627,7 +627,7 @@ exports.getDashboardData = async (req, res) => {
               (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.post_id) AS comments
        FROM posts p
        JOIN users u ON u.user_id = p.user_id
-       LEFT JOIN \`groups\` g ON g.group_id = p.group_id
+       LEFT JOIN groups g ON g.group_id = p.group_id
        WHERE p.is_deleted = 0
        ORDER BY (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.post_id AND pl.type='like') DESC,
                 (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.post_id) DESC,
