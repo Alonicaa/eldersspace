@@ -56,7 +56,7 @@
 
             <div class="nav-label">Finance & Campaigns</div>
             <div class="nav-item" data-page-label="Points & Rewards" onclick="navTo('points', this)"><i class="fas fa-fw fa-coins"></i> Points & Rewards</div>
-            <div class="nav-item" data-page-label="Campaigns & Promo Codes" onclick="navTo('reward-catalog', this)"><i class="fas fa-fw fa-tag"></i> Campaigns & Promo Codes</div>
+            <div class="nav-item" data-page-label="Redemption Codes" onclick="navTo('reward-catalog', this)"><i class="fas fa-fw fa-ticket-alt"></i> Redemption Codes</div>
             <div class="nav-item" data-page-label="Redemption History" onclick="navTo('redemptions', this)"><i class="fas fa-fw fa-receipt"></i> Redemption History</div>
             <div class="nav-item" data-page-label="Scan / Verify QR" onclick="navTo('scan-qr', this)"><i class="fas fa-fw fa-qrcode"></i> Scan/Verify QR</div>
 
@@ -854,52 +854,108 @@
                                     </div>
                                 </div>
 
-                                <!-- Tab: Campaigns -->
+                                <!-- Tab: Campaigns (rewards scoped to this partner) -->
                                 <div id="tab-campaigns" class="ptab-content" style="display:none;padding:18px">
-                                    <div class="partner-tab-grid" style="display:grid;grid-template-columns:minmax(280px,340px) minmax(0,1fr);gap:20px;align-items:start">
-                                        <!-- Form -->
-                                        <div style="background:var(--bg-2,#f8fafc);border:1px solid var(--border,#e8ecf0);border-radius:12px;padding:16px">
-                                            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted,#888);margin-bottom:12px">สร้าง Campaign ใหม่</div>
-                                            <div style="display:flex;flex-direction:column;gap:10px">
-                                                <div>
-                                                    <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">ชื่อ Campaign *</label>
-                                                    <input id="pc-name" type="text" placeholder="เช่น สิทธิพิเศษผู้สูงอายุ" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none">
+                                    <div class="box-header" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                                        <div class="box-title"><i class="fas fa-gift"></i> จัดการแคมเปญ/ส่วนลด</div>
+                                        <button class="btn btn-check" onclick="showCreateRewardForm()" style="padding: 0.5rem 1rem; font-size: 0.9rem; white-space: nowrap;">
+                                            <i class="fas fa-plus"></i> เพิ่มรางวัลใหม่
+                                        </button>
+                                    </div>
+
+                                    <!-- Reward Creation Form -->
+                                    <div id="reward-create-form" class="section-box" style="display:none;">
+                                        <h4 style="margin: 0 0 1.2rem 0; font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">สร้างรางวัลใหม่</h4>
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem;">
+                                            <div>
+                                                <label class="field-label">ชื่อรางวัล *</label>
+                                                <input type="text" id="reward-name" placeholder="เช่น บัตรสตาร์บัคส์ 100 บาท" class="field-input">
+                                            </div>
+                                            <div>
+                                                <label class="field-label">จำนวนแต้มที่ต้อง *</label>
+                                                <input type="number" id="reward-points" placeholder="500" min="1" class="field-input">
+                                            </div>
+                                            <div>
+                                                <label class="field-label">หมวดหมู่</label>
+                                                <div style="display: flex; gap: 0.6rem; align-items: flex-start;">
+                                                    <select id="reward-category" class="field-input" style="flex: 1;"><option value="">-- เลือกจากหมวดหมู่ที่มีอยู่ --</option></select>
+                                                    <button type="button" class="btn btn-ghost" id="reward-category-mode-btn" onclick="toggleRewardCategoryMode()" style="white-space: nowrap; margin-top: 0.3rem;">พิมพ์ใหม่</button>
                                                 </div>
-                                                <div>
-                                                    <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">แต้มที่ต้องใช้ *</label>
-                                                    <input id="pc-points" type="number" min="1" placeholder="100" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none">
+                                                <input type="text" id="reward-category-custom" placeholder="พิมพ์หมวดหมู่ใหม่หากไม่มีในรายการ" class="field-input" style="display:none; margin-top:0.5rem;">
+                                            </div>
+                                            <div>
+                                                <label class="field-label">รูปภาพ (อัพโหลด)</label>
+                                                <input type="file" id="reward-image" accept="image/*" class="field-input">
+                                                <div id="reward-image-preview" style="margin-top: 0.5rem; max-width: 100px; border-radius: 6px; overflow: hidden; display: none;">
+                                                    <img id="reward-image-preview-img" src="" alt="Preview" style="width: 100%; height: auto; border-radius: 6px;">
                                                 </div>
-                                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                                                    <div>
-                                                        <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">วันเริ่ม</label>
-                                                        <input id="pc-start" type="date" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:12px;background:var(--bg,#fff);color:var(--text,#222);outline:none">
-                                                    </div>
-                                                    <div>
-                                                        <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">วันสิ้นสุด</label>
-                                                        <input id="pc-end" type="date" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:12px;background:var(--bg,#fff);color:var(--text,#222);outline:none">
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">คำอธิบาย</label>
-                                                    <textarea id="pc-desc" rows="2" placeholder="รายละเอียด Campaign..." style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none;resize:vertical;font-family:inherit"></textarea>
-                                                </div>
-                                                <div>
-                                                    <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">รูปประกอบ</label>
-                                                    <input id="pc-image" type="file" accept="image/jpeg,image/jpg,image/png,image/webp" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1.5px dashed var(--border,#dde3ea);border-radius:8px;font-size:12px;background:var(--bg,#fff);color:var(--text,#555);cursor:pointer">
-                                                </div>
-                                                <button type="button" onclick="submitPartnerCampaign()" style="width:100%;padding:10px;background:#1565c0;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
-                                                    <i class="fas fa-plus"></i> สร้าง Campaign
+                                            </div>
+                                            <div style="grid-column: 1 / -1;">
+                                                <label class="field-label">คำอธิบาย</label>
+                                                <textarea id="reward-description" placeholder="รายละเอียดรางวัล" rows="3" class="field-input" style="font-family: inherit;"></textarea>
+                                            </div>
+                                            <div style="grid-column: 1 / -1;">
+                                                <label class="field-label">วิธีใช้รหัส / เงื่อนไขการใช้งาน</label>
+                                                <textarea id="reward-usage-instructions" placeholder="เช่น นำรหัสนี้ไปแสดงที่ร้านสตาร์บัคส์ เพื่อรับสิทธิ์ลดราคา" rows="3" class="field-input" style="font-family: inherit;"></textarea>
+                                            </div>
+                                            <div>
+                                                <label class="field-label">ระยะเวลาใช้ได้ (ชั่วโมง)</label>
+                                                <input type="number" id="reward-validity-hours" placeholder="1" min="1" value="1" class="field-input">
+                                            </div>
+                                            <div>
+                                                <label class="field-label">วันเริ่มแคมเปญ</label>
+                                                <input type="datetime-local" id="reward-campaign-start" class="field-input">
+                                            </div>
+                                            <div>
+                                                <label class="field-label">วันสิ้นสุดแคมเปญ</label>
+                                                <input type="datetime-local" id="reward-campaign-end" class="field-input">
+                                            </div>
+                                            <div>
+                                                <label class="field-label">Limit ต่อผู้ใช้ (-1 = Unlimited)</label>
+                                                <input type="number" id="reward-user-limit" min="-1" placeholder="-1" class="field-input">
+                                            </div>
+                                            <div>
+                                                <label style="display: flex; align-items: center; font-size: 0.9rem; color: var(--text-primary); gap: 0.6rem; margin-top: 0.8rem; cursor: pointer;">
+                                                    <input type="checkbox" id="reward-active" checked style="cursor: pointer;">
+                                                    <span>เปิดใช้งาน</span>
+                                                </label>
+                                            </div>
+                                            <div style="grid-column: 1 / -1; display: flex; gap: 0.8rem; margin-top: 0.5rem;">
+                                                <button class="btn btn-check btn-full" onclick="saveNewReward()">
+                                                    <i class="fas fa-save"></i> บันทึกรางวัล
                                                 </button>
-                                                <div id="pc-msg" style="font-size:12px;text-align:center;min-height:16px"></div>
+                                                <button class="btn btn-ghost btn-full" onclick="closeCreateRewardForm()">
+                                                    <i class="fas fa-times"></i> ยกเลิก
+                                                </button>
                                             </div>
                                         </div>
-                                        <!-- List -->
-                                        <div>
-                                            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted,#888);margin-bottom:12px">รายการ Campaign</div>
-                                            <div id="partner-campaigns-list" style="display:flex;flex-direction:column;gap:8px">
-                                                <div style="color:#bbb;font-size:13px;text-align:center;padding:30px">เลือกพาร์ทเนอร์ก่อน</div>
-                                            </div>
-                                        </div>
+                                    </div>
+
+                                    <!-- Rewards Table -->
+                                    <div style="margin-top: 1.5rem; overflow-x: auto; border-radius: 8px; border: 1px solid var(--border);">
+                                        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                                            <thead style="background: var(--bg-card-alt); border-bottom: 2px solid var(--border);">
+                                                <tr>
+                                                    <th style="text-align: left; padding: 1rem; font-weight: 600; color: var(--text-primary);">รูป</th>
+                                                    <th style="text-align: left; padding: 1rem; font-weight: 600; color: var(--text-primary);">ชื่อรางวัล</th>
+                                                    <th style="text-align: center; padding: 1rem; font-weight: 600; color: var(--text-primary);">หมวดหมู่</th>
+                                                    <th style="text-align: center; padding: 1rem; font-weight: 600; color: var(--text-primary);">แต้ม</th>
+                                                    <th style="text-align: center; padding: 1rem; font-weight: 600; color: var(--text-primary);">แลกแล้ว</th>
+                                                    <th style="text-align: center; padding: 1rem; font-weight: 600; color: var(--text-primary);">Limit/คน</th>
+                                                    <th style="text-align: center; padding: 1rem; font-weight: 600; color: var(--text-primary);">เริ่ม</th>
+                                                    <th style="text-align: center; padding: 1rem; font-weight: 600; color: var(--text-primary);">สิ้นสุด</th>
+                                                    <th style="text-align: center; padding: 1rem; font-weight: 600; color: var(--text-primary);">สถานะ</th>
+                                                    <th style="text-align: center; padding: 1rem; font-weight: 600; color: var(--text-primary);">จัดการ</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="rewards-list-table" style="text-align: center;">
+                                                <tr class="reward-table-state-row" style="text-align: center; border-top: 1px solid var(--border);">
+                                                    <td colspan="10" style="padding: 2rem; color: var(--text-muted); font-size: 0.95rem;">
+                                                        <div class="reward-table-state"><i class="fas fa-spinner fa-spin"></i> กำลังโหลดข้อมูลแคมเปญ...</div>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
 
@@ -1216,122 +1272,15 @@
             </div>
 
             <div id="page-reward-catalog" class="page-content">
-                <h1 class="page-title"><i class="fas fa-tag page-title-icon"></i> Campaigns & Promo Codes</h1>
-                <small class="page-title-sub">จัดการแคมเปญ/รางวัล อัพโหลดโค้ดส่วนลด และตรวจสอบโค้ด</small>
+                <h1 class="page-title"><i class="fas fa-ticket-alt page-title-icon"></i> Redemption Codes</h1>
+                <small class="page-title-sub">อัพโหลดโค้ดส่วนลด และตรวจสอบโค้ด (จัดการแคมเปญ/รางวัลได้ที่หน้า Partners ของแต่ละราย)</small>
 
                 <div style="display:flex; gap:0.75rem; margin-bottom:1.25rem; flex-wrap:wrap;">
-                    <button class="btn btn-toggle active" id="campaign-tab-catalog" onclick="campaignsShowTab('catalog')"><i class="fas fa-gift"></i> แคมเปญ/รางวัล</button>
-                    <button class="btn btn-toggle" id="campaign-tab-codes" onclick="campaignsShowTab('codes')"><i class="fas fa-upload"></i> อัพโหลดโค้ด</button>
+                    <button class="btn btn-toggle active" id="campaign-tab-codes" onclick="campaignsShowTab('codes')"><i class="fas fa-upload"></i> อัพโหลดโค้ด</button>
                     <button class="btn btn-toggle" id="campaign-tab-verifier" onclick="campaignsShowTab('verifier')"><i class="fas fa-shield-halved"></i> ตรวจสอบโค้ด</button>
                 </div>
 
-                <div id="campaign-panel-catalog">
-                <div class="white-box">
-                    <div class="box-header" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-                        <div class="box-title"><i class="fas fa-gift"></i> จัดการแคมเปญ/ส่วนลด</div>
-                        <button class="btn btn-check" onclick="showCreateRewardForm()" style="padding: 0.5rem 1rem; font-size: 0.9rem; white-space: nowrap;">
-                            <i class="fas fa-plus"></i> เพิ่มรางวัลใหม่
-                        </button>
-                    </div>
-                    
-                    <!-- Reward Creation Form -->
-                    <div id="reward-create-form" class="section-box" style="display:none;">
-                        <h4 style="margin: 0 0 1.2rem 0; font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">สร้างรางวัลใหม่</h4>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem;">
-                            <div>
-                                <label class="field-label">ชื่อรางวัล *</label>
-                                <input type="text" id="reward-name" placeholder="เช่น บัตรสตาร์บัคส์ 100 บาท" class="field-input">
-                            </div>
-                            <div>
-                                <label class="field-label">จำนวนแต้มที่ต้อง *</label>
-                                <input type="number" id="reward-points" placeholder="500" min="1" class="field-input">
-                            </div>
-                            <div>
-                                <label class="field-label">หมวดหมู่</label>
-                                <div style="display: flex; gap: 0.6rem; align-items: flex-start;">
-                                    <select id="reward-category" class="field-input" style="flex: 1;"><option value="">-- เลือกจากหมวดหมู่ที่มีอยู่ --</option></select>
-                                    <button type="button" class="btn btn-ghost" id="reward-category-mode-btn" onclick="toggleRewardCategoryMode()" style="white-space: nowrap; margin-top: 0.3rem;">พิมพ์ใหม่</button>
-                                </div>
-                                <input type="text" id="reward-category-custom" placeholder="พิมพ์หมวดหมู่ใหม่หากไม่มีในรายการ" class="field-input" style="display:none; margin-top:0.5rem;">
-                            </div>
-                            <div>
-                                <label class="field-label">รูปภาพ (อัพโหลด)</label>
-                                <input type="file" id="reward-image" accept="image/*" class="field-input">
-                                <div id="reward-image-preview" style="margin-top: 0.5rem; max-width: 100px; border-radius: 6px; overflow: hidden; display: none;">
-                                    <img id="reward-image-preview-img" src="" alt="Preview" style="width: 100%; height: auto; border-radius: 6px;">
-                                </div>
-                            </div>
-                            <div style="grid-column: 1 / -1;">
-                                <label class="field-label">คำอธิบาย</label>
-                                <textarea id="reward-description" placeholder="รายละเอียดรางวัล" rows="3" class="field-input" style="font-family: inherit;"></textarea>
-                            </div>
-                            <div style="grid-column: 1 / -1;">
-                                <label class="field-label">วิธีใช้รหัส / เงื่อนไขการใช้งาน</label>
-                                <textarea id="reward-usage-instructions" placeholder="เช่น นำรหัสนี้ไปแสดงที่ร้านสตาร์บัคส์ เพื่อรับสิทธิ์ลดราคา" rows="3" class="field-input" style="font-family: inherit;"></textarea>
-                            </div>
-                            <div>
-                                <label class="field-label">ระยะเวลาใช้ได้ (ชั่วโมง)</label>
-                                <input type="number" id="reward-validity-hours" placeholder="1" min="1" value="1" class="field-input">
-                            </div>
-                            <div>
-                                <label class="field-label">วันเริ่มแคมเปญ</label>
-                                <input type="datetime-local" id="reward-campaign-start" class="field-input">
-                            </div>
-                            <div>
-                                <label class="field-label">วันสิ้นสุดแคมเปญ</label>
-                                <input type="datetime-local" id="reward-campaign-end" class="field-input">
-                            </div>
-                            <div>
-                                <label class="field-label">Limit ต่อผู้ใช้ (-1 = Unlimited)</label>
-                                <input type="number" id="reward-user-limit" min="-1" placeholder="-1" class="field-input">
-                            </div>
-                            <div>
-                                <label style="display: flex; align-items: center; font-size: 0.9rem; color: var(--text-primary); gap: 0.6rem; margin-top: 0.8rem; cursor: pointer;">
-                                    <input type="checkbox" id="reward-active" checked style="cursor: pointer;">
-                                    <span>เปิดใช้งาน</span>
-                                </label>
-                            </div>
-                            <div style="grid-column: 1 / -1; display: flex; gap: 0.8rem; margin-top: 0.5rem;">
-                                <button class="btn btn-check btn-full" onclick="saveNewReward()">
-                                    <i class="fas fa-save"></i> บันทึกรางวัล
-                                </button>
-                                <button class="btn btn-ghost btn-full" onclick="closeCreateRewardForm()">
-                                    <i class="fas fa-times"></i> ยกเลิก
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Rewards Table -->
-                    <div style="margin-top: 1.5rem; overflow-x: auto; border-radius: 8px; border: 1px solid var(--border);">
-                        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
-                            <thead style="background: var(--bg-card-alt); border-bottom: 2px solid var(--border);">
-                                <tr>
-                                    <th style="text-align: left; padding: 1rem; font-weight: 600; color: var(--text-primary);">รูป</th>
-                                    <th style="text-align: left; padding: 1rem; font-weight: 600; color: var(--text-primary);">ชื่อรางวัล</th>
-                                    <th style="text-align: center; padding: 1rem; font-weight: 600; color: var(--text-primary);">หมวดหมู่</th>
-                                    <th style="text-align: center; padding: 1rem; font-weight: 600; color: var(--text-primary);">แต้ม</th>
-                                    <th style="text-align: center; padding: 1rem; font-weight: 600; color: var(--text-primary);">แลกแล้ว</th>
-                                    <th style="text-align: center; padding: 1rem; font-weight: 600; color: var(--text-primary);">Limit/คน</th>
-                                    <th style="text-align: center; padding: 1rem; font-weight: 600; color: var(--text-primary);">เริ่ม</th>
-                                    <th style="text-align: center; padding: 1rem; font-weight: 600; color: var(--text-primary);">สิ้นสุด</th>
-                                    <th style="text-align: center; padding: 1rem; font-weight: 600; color: var(--text-primary);">สถานะ</th>
-                                    <th style="text-align: center; padding: 1rem; font-weight: 600; color: var(--text-primary);">จัดการ</th>
-                                </tr>
-                            </thead>
-                            <tbody id="rewards-list-table" style="text-align: center;">
-                                <tr class="reward-table-state-row" style="text-align: center; border-top: 1px solid var(--border);">
-                                    <td colspan="10" style="padding: 2rem; color: var(--text-muted); font-size: 0.95rem;">
-                                        <div class="reward-table-state"><i class="fas fa-spinner fa-spin"></i> กำลังโหลดข้อมูลแคมเปญ...</div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                </div>
-
-                <div id="campaign-panel-codes" style="display:none;">
+                <div id="campaign-panel-codes">
                 <div class="white-box">
                     <div class="box-header">
                         <div class="box-title"><i class="fas fa-upload"></i> อัพโหลดโค้ดสำหรับแคมเปญ</div>

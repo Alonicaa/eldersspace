@@ -1014,7 +1014,7 @@ function navTo(page, targetElement) {
         }
 
         if (page === 'reward-catalog') {
-            campaignsShowTab('catalog');
+            campaignsShowTab('codes');
         }
 
         if (page === 'partners') {
@@ -1056,16 +1056,12 @@ function pointsShowTab(tab) {
 }
 
 function campaignsShowTab(tab) {
-    ['catalog', 'codes', 'verifier'].forEach((t) => {
+    ['codes', 'verifier'].forEach((t) => {
         const panel = document.getElementById('campaign-panel-' + t);
         const btn = document.getElementById('campaign-tab-' + t);
         if (panel) panel.style.display = (t === tab) ? 'block' : 'none';
         if (btn) btn.classList.toggle('active', t === tab);
     });
-    if (tab === 'catalog') {
-        loadRewardCategories();
-        loadRewardsCatalog();
-    }
     if (tab === 'codes') {
         loadRewardsForUpload();
         const csvTemplateBtn = document.getElementById('promo-csv-template-btn');
@@ -5141,6 +5137,12 @@ async function saveNewReward() {
             await updateReward(rewardId);
             return;
         }
+        const partnerId = window._selectedPartnerId;
+        if (!partnerId) {
+            alert('ไม่พบพาร์ทเนอร์ที่เลือกอยู่ กรุณาเปิดหน้ารายละเอียดพาร์ทเนอร์ก่อนสร้างรางวัล');
+            return;
+        }
+
         // Always use FormData for multipart upload (handles both with and without image)
         const formData = new FormData();
         formData.append('reward_name', name);
@@ -5154,6 +5156,7 @@ async function saveNewReward() {
         formData.append('user_limit', user_limit);
         formData.append('usage_instructions', usage_instructions || '');
         formData.append('validity_hours', validity_hours);
+        formData.append('partner_id', partnerId);
 
         if (imageFile) {
             formData.append('image', imageFile);
@@ -5192,14 +5195,15 @@ async function saveNewReward() {
 
         alert('บันทึกรางวัลสำเร็จ');
         closeCreateRewardForm();
-        loadRewardsCatalog();
+        loadRewardsCatalog(partnerId);
     } catch (err) {
         console.error('Save reward error:', err);
         alert('เกิดข้อผิดพลาดในการบันทึก: ' + err.message);
     }
 }
 
-async function loadRewardsCatalog() {
+async function loadRewardsCatalog(partnerId) {
+    const id = partnerId || window._selectedPartnerId;
     const tableBody = document.getElementById('rewards-list-table');
     if (!tableBody) return;
 
@@ -5213,11 +5217,16 @@ async function loadRewardsCatalog() {
         `;
     };
 
+    if (!id) {
+        renderStateRow('<div class="reward-table-state">เลือกพาร์ทเนอร์ก่อนเพื่อดูรางวัล</div>');
+        return;
+    }
+
     renderStateRow('<div class="reward-table-state"><i class="fas fa-spinner fa-spin"></i> กำลังโหลดข้อมูลแคมเปญ...</div>');
 
     try {
-        console.log('Loading rewards from:', `${API_BASE_URL}/api/admin/rewards?limit=100`);
-        const response = await fetch(`${API_BASE_URL}/api/admin/rewards?limit=100`, {
+        console.log('Loading rewards from:', `${API_BASE_URL}/api/admin/rewards?limit=100&partner_id=${id}`);
+        const response = await fetch(`${API_BASE_URL}/api/admin/rewards?limit=100&partner_id=${id}`, {
             headers: {
                 ...getAuthHeaders()
             }
@@ -5240,6 +5249,7 @@ async function loadRewardsCatalog() {
         const data = await response.json();
         console.log('Rewards data:', data);
         const rewards = data.data || [];
+        setTabCount('campaigns', rewards.length);
 
         if (rewards.length === 0) {
             renderStateRow(`
@@ -6427,110 +6437,11 @@ function switchPartnerTab(tab) {
     if (tab === 'projects')      loadPartnerProjects(id);
     if (tab === 'ads')           loadPartnerAds(id);
     if (tab === 'banners')       loadPartnerBanners(id);
-    if (tab === 'campaigns')     loadPartnerCampaigns(id);
+    if (tab === 'campaigns')     { loadRewardCategories(); loadRewardsCatalog(id); }
     if (tab === 'articles')      loadPartnerArticles(id);
 }
 
-// ── Partner Campaigns tab ──
-
-async function loadPartnerCampaigns(partnerId) {
-    const el = document.getElementById('partner-campaigns-list');
-    if (!el) return;
-    el.innerHTML = '<div style="color:#aaa;font-size:12px"><i class="fas fa-spinner fa-spin"></i> โหลด...</div>';
-    try {
-        const res = await fetch(`${API_BASE_URL}/api/admin/rewards?partner_id=${partnerId}&limit=100`, { headers: getAuthHeaders() });
-        const data = await res.json();
-        const list = data.data || [];
-        setTabCount('campaigns', list.length);
-        if (!list.length) {
-            el.innerHTML = '<div style="color:#aaa;font-size:13px;text-align:center;padding:20px">ยังไม่มี Campaign<br><small style="color:#ccc">กดสร้างได้ที่แบบฟอร์มด้านซ้าย</small></div>';
-            return;
-        }
-        el.innerHTML = list.map(r => {
-            const active = r.is_active
-                ? '<span style="background:#e8f5e9;color:#2e7d32;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700">Active</span>'
-                : '<span style="background:#f5f5f5;color:#aaa;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700">Inactive</span>';
-            const start = r.campaign_start_date ? r.campaign_start_date.toString().slice(0, 10) : '';
-            const end   = r.campaign_end_date   ? r.campaign_end_date.toString().slice(0, 10)   : '';
-            const dateRange = (start || end) ? `<div style="font-size:10px;color:#999;margin-top:3px">${start}${start && end ? ' → ' : ''}${end}</div>` : '';
-            const safeName = escHtml(r.reward_name || '').replace(/'/g, "\\'");
-            return `
-            <div class="pt-item">
-                <div class="pt-item-top">
-                    <div class="pt-item-info" style="flex:1;min-width:0">
-                        <div class="pt-item-name">${escHtml(r.reward_name || '')}</div>
-                        <div style="display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap">
-                            <span style="background:#e3f2fd;color:#1565c0;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600">
-                                <i class="fas fa-coins" style="font-size:9px"></i> ${r.required_points} pts
-                            </span>
-                            ${active}
-                        </div>
-                        ${dateRange}
-                    </div>
-                    <div class="pt-item-actions" style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
-                        <button class="btn btn-check" style="font-size:10px;padding:3px 9px;white-space:nowrap"
-                            onclick="goToPartnerPromoCodes(${r.reward_id}, '${safeName}')">
-                            <i class="fas fa-ticket-alt"></i> Promo Codes
-                        </button>
-                        <button style="font-size:10px;padding:3px 9px;white-space:nowrap;background:#6c47d4;color:#fff;border:none;border-radius:6px;cursor:pointer"
-                            onclick="goToPartnerVerifier(${r.reward_id})">
-                            <i class="fas fa-shield-halved"></i> Verify
-                        </button>
-                    </div>
-                </div>
-            </div>`;
-        }).join('');
-    } catch (e) {
-        el.innerHTML = '<div style="color:#e74c3c;font-size:12px">โหลดไม่ได้</div>';
-    }
-}
-
-async function submitPartnerCampaign() {
-    const partnerId = window._selectedPartnerId;
-    if (!partnerId) return;
-    const name   = document.getElementById('pc-name')?.value?.trim() || '';
-    const points = parseInt(document.getElementById('pc-points')?.value || 0);
-    const start  = document.getElementById('pc-start')?.value || '';
-    const end    = document.getElementById('pc-end')?.value   || '';
-    const desc   = document.getElementById('pc-desc')?.value?.trim() || '';
-    const imgFile = document.getElementById('pc-image')?.files[0];
-    const msgEl  = document.getElementById('pc-msg');
-
-    if (!name || !points || points < 1) {
-        if (msgEl) { msgEl.style.color = '#e74c3c'; msgEl.textContent = 'กรุณากรอกชื่อและแต้ม'; }
-        return;
-    }
-
-    const fd = new FormData();
-    fd.append('reward_name', name);
-    fd.append('required_points', points);
-    fd.append('description', desc);
-    fd.append('campaign_start_date', start);
-    fd.append('campaign_end_date', end);
-    fd.append('partner_id', partnerId);
-    fd.append('is_active', 1);
-    fd.append('validity_hours', 24);
-    if (imgFile) fd.append('image', imgFile);
-
-    try {
-        if (msgEl) { msgEl.style.color = '#888'; msgEl.textContent = '⏳ กำลังบันทึก...'; }
-        const res = await fetch(`${API_BASE_URL}/api/admin/rewards`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: fd,
-        });
-        if (!res.ok) throw new Error();
-        if (msgEl) { msgEl.style.color = '#2e7d32'; msgEl.textContent = '✓ สร้าง Campaign สำเร็จ'; }
-        ['pc-name', 'pc-points', 'pc-start', 'pc-end', 'pc-desc'].forEach(id => {
-            const el = document.getElementById(id); if (el) el.value = '';
-        });
-        const imgInput = document.getElementById('pc-image');
-        if (imgInput) imgInput.value = '';
-        loadPartnerCampaigns(partnerId);
-    } catch {
-        if (msgEl) { msgEl.style.color = '#e74c3c'; msgEl.textContent = 'เกิดข้อผิดพลาด กรุณาลองใหม่'; }
-    }
-}
+// ── Partner Campaigns tab (uses the shared reward create/list functions, scoped by partner_id) ──
 
 function goToPartnerPromoCodes(rewardId, rewardName) {
     navToCampaignsTab('codes');
