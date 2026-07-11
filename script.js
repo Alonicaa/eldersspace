@@ -426,20 +426,6 @@ async function bootstrapAuth() {
     updateAdminHeader();
     showDashboard();
     await loadDashboardSummary();
-    
-    // Setup reward settings page
-    const navGroup = document.querySelector('.nav-group');
-    if (navGroup) {
-        navGroup.addEventListener('click', async (e) => {
-            if (e.target.closest('[onclick*="navTo(\'rewards\'"]')) {
-                await loadRewardSettings();
-                await loadDailyLoginSettings();
-                await loadStreakMilestoneSettings();
-                await loadActivityRewardSettings();
-                await loadBonusEvents();
-            }
-        });
-    }
 }
 
 // ============================================================
@@ -1022,30 +1008,13 @@ function navTo(page, targetElement) {
     const target = document.getElementById('page-' + page);
     if (target) {
         target.classList.add('active');
-        // Load reward settings when navigating to rewards page
-        if (page === 'rewards') {
-            loadRewardSettings();
-            loadDailyLoginSettings();
-            loadStreakMilestoneSettings();
-            loadActivityRewardSettings();
-            loadBonusEvents();
+
+        if (page === 'points') {
+            pointsShowTab('leaderboard');
         }
 
         if (page === 'reward-catalog') {
-            loadRewardCategories();
-            loadRewardsCatalog();
-        }
-
-        if (page === 'promo-codes') {
-            loadRewardsForUpload();
-            const csvTemplateBtn = document.getElementById('promo-csv-template-btn');
-            const csvUploadBtn = document.getElementById('promo-csv-upload-btn');
-            if (csvTemplateBtn) csvTemplateBtn.onclick = downloadCsvTemplate;
-            if (csvUploadBtn) csvUploadBtn.onclick = uploadPromoCodesToCampaign;
-        }
-
-        if (page === 'promo-verifier') {
-            initPromoVerifier();  // Load campaigns for verifier
+            campaignsShowTab('catalog');
         }
 
         if (page === 'partners') {
@@ -1068,6 +1037,51 @@ function navTo(page, targetElement) {
 
 function findNavItemByPage(page) {
     return document.querySelector(`.nav-item[onclick*="navTo('${page}'"]`);
+}
+
+function pointsShowTab(tab) {
+    ['leaderboard', 'settings'].forEach((t) => {
+        const panel = document.getElementById('points-panel-' + t);
+        const btn = document.getElementById('points-tab-' + t);
+        if (panel) panel.style.display = (t === tab) ? 'block' : 'none';
+        if (btn) btn.classList.toggle('active', t === tab);
+    });
+    if (tab === 'settings') {
+        loadRewardSettings();
+        loadDailyLoginSettings();
+        loadStreakMilestoneSettings();
+        loadActivityRewardSettings();
+        loadBonusEvents();
+    }
+}
+
+function campaignsShowTab(tab) {
+    ['catalog', 'codes', 'verifier'].forEach((t) => {
+        const panel = document.getElementById('campaign-panel-' + t);
+        const btn = document.getElementById('campaign-tab-' + t);
+        if (panel) panel.style.display = (t === tab) ? 'block' : 'none';
+        if (btn) btn.classList.toggle('active', t === tab);
+    });
+    if (tab === 'catalog') {
+        loadRewardCategories();
+        loadRewardsCatalog();
+    }
+    if (tab === 'codes') {
+        loadRewardsForUpload();
+        const csvTemplateBtn = document.getElementById('promo-csv-template-btn');
+        const csvUploadBtn = document.getElementById('promo-csv-upload-btn');
+        if (csvTemplateBtn) csvTemplateBtn.onclick = downloadCsvTemplate;
+        if (csvUploadBtn) csvUploadBtn.onclick = uploadPromoCodesToCampaign;
+    }
+    if (tab === 'verifier') {
+        initPromoVerifier();
+    }
+}
+
+function navToCampaignsTab(tab) {
+    const navItem = findNavItemByPage('reward-catalog');
+    navTo('reward-catalog', navItem);
+    campaignsShowTab(tab);
 }
 
 function getPostStatusDisplay(row = {}) {
@@ -5534,8 +5548,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // ========== SHOW REWARD CODES MODAL ==========
 async function showRewardCodes(rewardId, rewardName) {
     try {
-        // Navigate to Promo Code Manager page
-        navTo('promo-codes', document.querySelector('[data-page="promo-codes"]'));
+        // Navigate to Campaigns & Promo Codes page, "อัพโหลดโค้ด" tab
+        navToCampaignsTab('codes');
         
         // Wait a bit for page to render
         setTimeout(async () => {
@@ -5793,7 +5807,7 @@ async function loadRewardUploadHistory(rewardId) {
                     <div style="color: var(--blue); font-weight: 600;">${count} โค้ด</div>
                     <div style="color: var(--text-secondary);">ใช้แล้ว: <span style="color: ${usedCount > 0 ? 'var(--green)' : 'var(--text-muted)'};">${usedCount}</span></div>
                     <div style="color: ${lowStock ? 'var(--red)' : 'var(--text-secondary)'}; font-weight: ${lowStock ? '600' : '400'};">คงเหลือ: ${availCount}${lowStock ? ' ⚠️' : ''}</div>
-                    <a href="#" onclick="navTo('promo-verifier'); setTimeout(()=>{ const s=document.getElementById('verifier-reward-select'); if(s){ s.value='${rewardId2}'; loadVerifierRewardCodes('${rewardId2}',1); } },400); return false;" style="margin-left:auto; font-size:0.8rem; color:var(--blue); text-decoration:underline;">ดูโค้ดทั้งหมด →</a>
+                    <a href="#" onclick="navToCampaignsTab('verifier'); setTimeout(()=>{ const s=document.getElementById('verifier-reward-select'); if(s){ s.value='${rewardId2}'; loadVerifierRewardCodes('${rewardId2}',1); } },400); return false;" style="margin-left:auto; font-size:0.8rem; color:var(--blue); text-decoration:underline;">ดูโค้ดทั้งหมด →</a>
                 </div>
             `;
         }).join('');
@@ -6519,7 +6533,7 @@ async function submitPartnerCampaign() {
 }
 
 function goToPartnerPromoCodes(rewardId, rewardName) {
-    navTo('promo-codes', null);
+    navToCampaignsTab('codes');
     setTimeout(async () => {
         await loadPromoRewards();
         const sel = document.getElementById('promo-reward-select');
@@ -6528,7 +6542,7 @@ function goToPartnerPromoCodes(rewardId, rewardName) {
 }
 
 function goToPartnerVerifier(rewardId) {
-    navTo('promo-verifier', null);
+    navToCampaignsTab('verifier');
     setTimeout(() => {
         const sel = document.getElementById('verifier-reward-select');
         if (sel) { sel.value = rewardId; sel.dispatchEvent(new Event('change')); }
@@ -8230,9 +8244,9 @@ document.addEventListener('DOMContentLoaded', () => {
         promoRewardSelect.addEventListener('change', showPromoRewardInfo);
     }
 
-    // Load rewards on initial page load (if user is already on promo-codes page)
-    const promoPagesDiv = document.getElementById('page-promo-codes');
-    if (promoPagesDiv && promoPagesDiv.classList.contains('active')) {
+    // Load rewards on initial page load (if user is already on the codes tab)
+    const campaignCodesPanel = document.getElementById('campaign-panel-codes');
+    if (campaignCodesPanel && campaignCodesPanel.style.display !== 'none') {
         loadPromoRewards();
     }
 });

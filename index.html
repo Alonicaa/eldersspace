@@ -55,11 +55,8 @@
             <div class="nav-item" data-page-label="Partners" onclick="navTo('partners', this)"><i class="fas fa-fw fa-handshake"></i> Partners</div>
 
             <div class="nav-label">Finance & Campaigns</div>
-            <div class="nav-item" data-page-label="Points & Redemption" onclick="navTo('points', this)"><i class="fas fa-fw fa-coins"></i> Points & Redemption</div>
-            <div class="nav-item" data-page-label="Points Management" onclick="navTo('rewards', this)"><i class="fas fa-fw fa-gift"></i> Points Management</div>
-            <div class="nav-item" data-page-label="Campaign Catalog" onclick="navTo('reward-catalog', this)"><i class="fas fa-fw fa-tag"></i> Campaign Catalog</div>
-            <div class="nav-item" data-page-label="Promo Code Manager" onclick="navTo('promo-codes', this)"><i class="fas fa-fw fa-code"></i> Promo Code Manager</div>
-            <div class="nav-item" data-page-label="Promo Code Verifier" onclick="navTo('promo-verifier', this)"><i class="fas fa-fw fa-shield-halved"></i> Promo Code Verifier</div>
+            <div class="nav-item" data-page-label="Points & Rewards" onclick="navTo('points', this)"><i class="fas fa-fw fa-coins"></i> Points & Rewards</div>
+            <div class="nav-item" data-page-label="Campaigns & Promo Codes" onclick="navTo('reward-catalog', this)"><i class="fas fa-fw fa-tag"></i> Campaigns & Promo Codes</div>
             <div class="nav-item" data-page-label="Redemption History" onclick="navTo('redemptions', this)"><i class="fas fa-fw fa-receipt"></i> Redemption History</div>
             <div class="nav-item" data-page-label="Scan / Verify QR" onclick="navTo('scan-qr', this)"><i class="fas fa-fw fa-qrcode"></i> Scan/Verify QR</div>
 
@@ -243,8 +240,15 @@
             </div>
 
             <div id="page-points" class="page-content">
-                <h1 class="page-title"><i class="fas fa-coins page-title-icon"></i> Points & Redemption</h1>
-                <small class="page-title-sub">ตารางคะแนนสะสมและอันดับผู้ใช้งาน</small>
+                <h1 class="page-title"><i class="fas fa-coins page-title-icon"></i> Points & Rewards</h1>
+                <small class="page-title-sub">อันดับแต้มผู้ใช้งาน และตั้งค่าระบบแต้ม/รางวัล</small>
+
+                <div style="display:flex; gap:0.75rem; margin-bottom:1.25rem; flex-wrap:wrap;">
+                    <button class="btn btn-toggle active" id="points-tab-leaderboard" onclick="pointsShowTab('leaderboard')"><i class="fas fa-ranking-star"></i> อันดับ/แต้มผู้ใช้</button>
+                    <button class="btn btn-toggle" id="points-tab-settings" onclick="pointsShowTab('settings')"><i class="fas fa-gear"></i> ตั้งค่าระบบแต้ม</button>
+                </div>
+
+                <div id="points-panel-leaderboard">
                 <div class="white-box">
                     <div class="points-toolbar">
                         <div class="points-search-wrap">
@@ -288,6 +292,120 @@
                         </thead>
                         <tbody id="points-table"></tbody>
                     </table>
+                </div>
+                </div>
+
+                <div id="points-panel-settings" style="display:none;">
+                <div class="dashboard-row">
+                    <div class="white-box box-flex">
+                        <div class="box-header"><div class="box-title"><i class="fas fa-gear"></i> Reward Settings (ตั้งค่าแต้ม)</div></div>
+                        <small id="reward-settings-current" class="rwd-hint">ค่าปัจจุบันจากระบบ: กำลังโหลด...</small>
+                        <div style="margin-top: 1rem;">
+                            <div class="form-field">
+                                <label>นาทีต่อโบนัส:</label>
+                                <input type="number" id="session-bonus-threshold" min="1" class="rwd-input">
+                            </div>
+                            <div class="form-field">
+                                <label>แต้มต่อโบนัส:</label>
+                                <input type="number" id="session-bonus-points" min="1" class="rwd-input">
+                            </div>
+                            <div class="form-field">
+                                <label>โบนัสสูงสุดต่อวัน:</label>
+                                <input type="number" id="usage-reward-daily-limit-count" min="1" class="rwd-input">
+                            </div>
+                            <div class="rwd-info-box">
+                                รีเซ็ตโควตา: ทุกวัน 00:00 (เวลาไทย)
+                            </div>
+                            <button class="btn btn-check btn-full" onclick="saveRewardSettings()"><i class="fas fa-floppy-disk"></i> บันทึกการตั้งค่าแต้มเวลาใช้งาน</button>
+                        </div>
+                    </div>
+
+                    <div class="white-box box-flex">
+                        <div class="box-header"><div class="box-title"><i class="fas fa-chart-bar"></i> Bonus Events (อีเว้นแจกแต้ม)</div></div>
+                        <div style="margin-top: 1rem;">
+                            <button class="btn btn-check btn-full" onclick="showBonusEventForm()" style="margin-bottom:1rem;"><i class="fas fa-plus"></i> สร้างอีเว้นใหม่</button>
+                            <div id="bonus-events-list" style="max-height:300px; overflow-y:auto;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-row" style="margin-top: 2rem;">
+                    <div class="white-box box-flex">
+                        <div class="box-header"><div class="box-title"><i class="fas fa-key"></i> Daily Login Rewards (แต้มเช็คอินรายวัน)</div></div>
+                        <small id="daily-login-current" class="rwd-hint">ค่าปัจจุบันจากระบบ: กำลังโหลด...</small>
+                        <div style="margin-top: 1rem;">
+                            <div class="form-field">
+                                <label>แต้มต่อการเข้าสู่ระบบรายวัน:</label>
+                                <input type="number" id="daily-login-bonus" min="1" class="rwd-input">
+                            </div>
+                            <div class="form-field">
+                                <label>Streak ขั้นต่ำก่อนได้ตัวคูณแต้ม (วัน):</label>
+                                <input type="number" id="daily-login-3x-threshold" min="1" class="rwd-input">
+                            </div>
+                            <div class="form-field">
+                                <label>ตัวคูณแต้มเช็คอิน (เช่น 1.2 = ×1.2):</label>
+                                <input type="number" id="daily-login-3x-multiplier" min="1" step="0.1" class="rwd-input">
+                            </div>
+                            <div class="rwd-info-box">
+                                ผู้ใช้ได้รับแต้มนี้เมื่อเข้าสู่ระบบครั้งแรกในแต่ละวัน — เมื่อ streak ถึงจำนวนวันที่กำหนด แต้มจะถูกคูณด้วยตัวคูณ
+                            </div>
+                            <button class="btn btn-check btn-full" onclick="saveDailyLoginSettings()"><i class="fas fa-floppy-disk"></i> บันทึกการตั้งค่าแต้มเช็คอิน</button>
+                        </div>
+                    </div>
+
+                    <div class="white-box box-flex">
+                        <div class="box-header"><div class="box-title"><i class="fas fa-fire"></i> Streak Milestone Rewards (โบนัสลำดับวัน)</div></div>
+                        <small id="streak-milestone-current" class="rwd-hint">ค่าปัจจุบันจากระบบ: กำลังโหลด...</small>
+                        <div style="margin-top: 1rem;">
+                            <div class="form-field">
+                                <label>ล็อคอินติดต่อกันกี่วัน:</label>
+                                <input type="number" id="streak-milestone-days" min="1" class="rwd-input">
+                            </div>
+                            <div class="form-field">
+                                <label>แต้มโบนัสที่ได้:</label>
+                                <input type="number" id="streak-milestone-bonus" min="1" class="rwd-input">
+                            </div>
+                            <div class="rwd-info-box">
+                                ผู้ใช้ได้รับแต้มโบนัสเพิ่มเติมเมื่อเข้าสู่ระบบติดต่อกันถึงจำนวนวันที่กำหนด
+                            </div>
+                            <button class="btn btn-check btn-full" onclick="saveStreakMilestoneSettings()"><i class="fas fa-floppy-disk"></i> บันทึกการตั้งค่าลำดับวัน</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-row" style="margin-top: 2rem;">
+                    <div class="white-box box-flex">
+                        <div class="box-header"><div class="box-title"><i class="fas fa-list-check"></i> Activity Reward Settings (ตั้งค่าแต้มกิจกรรม)</div></div>
+                        <small id="activity-reward-current" class="rwd-hint">ค่าปัจจุบันจากระบบ: กำลังโหลด...</small>
+                        <div style="margin-top: 1rem;">
+                            <div class="form-field">
+                                <label>แต้มกรอกโปรไฟล์ครบ (ครั้งเดียว):</label>
+                                <input type="number" id="profile-completion-points" min="0" class="rwd-input">
+                            </div>
+                            <div class="form-field">
+                                <label>โพสต์พร้อมรูปขั้นต่ำต่อวัน:</label>
+                                <input type="number" id="post-activity-required-posts" min="1" class="rwd-input">
+                            </div>
+                            <div class="form-field">
+                                <label>แต้มเมื่อโพสต์ครบเงื่อนไข:</label>
+                                <input type="number" id="post-activity-points" min="0" class="rwd-input">
+                            </div>
+                            <div class="form-field">
+                                <label>แต้มต่อคอมเมนต์:</label>
+                                <input type="number" id="comment-activity-points" min="0" class="rwd-input">
+                            </div>
+                            <div class="form-field">
+                                <label>คอมเมนต์สูงสุดที่ได้แต้ม/วัน:</label>
+                                <input type="number" id="comment-activity-daily-limit-count" min="1" class="rwd-input">
+                            </div>
+                            <div class="form-field">
+                                <label>แต้มแชร์กิจกรรม (1 ครั้งต่อโพสต์ต้นฉบับ):</label>
+                                <input type="number" id="share-activity-points" min="0" class="rwd-input">
+                            </div>
+                            <button class="btn btn-check btn-full" onclick="saveActivityRewardSettings()"><i class="fas fa-floppy-disk"></i> บันทึกการตั้งค่าแต้มกิจกรรม</button>
+                        </div>
+                    </div>
+                </div>
                 </div>
             </div>
 
@@ -1097,126 +1215,17 @@
                 </div>
             </div>
 
-            <div id="page-rewards" class="page-content">
-                <h1 class="page-title"><i class="fas fa-gift page-title-icon"></i> Points Management</h1>
-                <small class="page-title-sub">ตั้งค่าระบบแต้ม รางวัล และอีเว้นพิเศษ</small>
-                
-                <div class="dashboard-row">
-                    <div class="white-box box-flex">
-                        <div class="box-header"><div class="box-title"><i class="fas fa-gear"></i> Reward Settings (ตั้งค่าแต้ม)</div></div>
-                        <small id="reward-settings-current" class="rwd-hint">ค่าปัจจุบันจากระบบ: กำลังโหลด...</small>
-                        <div style="margin-top: 1rem;">
-                            <div class="form-field">
-                                <label>นาทีต่อโบนัส:</label>
-                                <input type="number" id="session-bonus-threshold" min="1" class="rwd-input">
-                            </div>
-                            <div class="form-field">
-                                <label>แต้มต่อโบนัส:</label>
-                                <input type="number" id="session-bonus-points" min="1" class="rwd-input">
-                            </div>
-                            <div class="form-field">
-                                <label>โบนัสสูงสุดต่อวัน:</label>
-                                <input type="number" id="usage-reward-daily-limit-count" min="1" class="rwd-input">
-                            </div>
-                            <div class="rwd-info-box">
-                                รีเซ็ตโควตา: ทุกวัน 00:00 (เวลาไทย)
-                            </div>
-                            <button class="btn btn-check btn-full" onclick="saveRewardSettings()"><i class="fas fa-floppy-disk"></i> บันทึกการตั้งค่าแต้มเวลาใช้งาน</button>
-                        </div>
-                    </div>
-
-                    <div class="white-box box-flex">
-                        <div class="box-header"><div class="box-title"><i class="fas fa-chart-bar"></i> Bonus Events (อีเว้นแจกแต้ม)</div></div>
-                        <div style="margin-top: 1rem;">
-                            <button class="btn btn-check btn-full" onclick="showBonusEventForm()" style="margin-bottom:1rem;"><i class="fas fa-plus"></i> สร้างอีเว้นใหม่</button>
-                            <div id="bonus-events-list" style="max-height:300px; overflow-y:auto;"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="dashboard-row" style="margin-top: 2rem;">
-                    <div class="white-box box-flex">
-                        <div class="box-header"><div class="box-title"><i class="fas fa-key"></i> Daily Login Rewards (แต้มเช็คอินรายวัน)</div></div>
-                        <small id="daily-login-current" class="rwd-hint">ค่าปัจจุบันจากระบบ: กำลังโหลด...</small>
-                        <div style="margin-top: 1rem;">
-                            <div class="form-field">
-                                <label>แต้มต่อการเข้าสู่ระบบรายวัน:</label>
-                                <input type="number" id="daily-login-bonus" min="1" class="rwd-input">
-                            </div>
-                            <div class="form-field">
-                                <label>Streak ขั้นต่ำก่อนได้ตัวคูณแต้ม (วัน):</label>
-                                <input type="number" id="daily-login-3x-threshold" min="1" class="rwd-input">
-                            </div>
-                            <div class="form-field">
-                                <label>ตัวคูณแต้มเช็คอิน (เช่น 1.2 = ×1.2):</label>
-                                <input type="number" id="daily-login-3x-multiplier" min="1" step="0.1" class="rwd-input">
-                            </div>
-                            <div class="rwd-info-box">
-                                ผู้ใช้ได้รับแต้มนี้เมื่อเข้าสู่ระบบครั้งแรกในแต่ละวัน — เมื่อ streak ถึงจำนวนวันที่กำหนด แต้มจะถูกคูณด้วยตัวคูณ
-                            </div>
-                            <button class="btn btn-check btn-full" onclick="saveDailyLoginSettings()"><i class="fas fa-floppy-disk"></i> บันทึกการตั้งค่าแต้มเช็คอิน</button>
-                        </div>
-                    </div>
-
-                    <div class="white-box box-flex">
-                        <div class="box-header"><div class="box-title"><i class="fas fa-fire"></i> Streak Milestone Rewards (โบนัสลำดับวัน)</div></div>
-                        <small id="streak-milestone-current" class="rwd-hint">ค่าปัจจุบันจากระบบ: กำลังโหลด...</small>
-                        <div style="margin-top: 1rem;">
-                            <div class="form-field">
-                                <label>ล็อคอินติดต่อกันกี่วัน:</label>
-                                <input type="number" id="streak-milestone-days" min="1" class="rwd-input">
-                            </div>
-                            <div class="form-field">
-                                <label>แต้มโบนัสที่ได้:</label>
-                                <input type="number" id="streak-milestone-bonus" min="1" class="rwd-input">
-                            </div>
-                            <div class="rwd-info-box">
-                                ผู้ใช้ได้รับแต้มโบนัสเพิ่มเติมเมื่อเข้าสู่ระบบติดต่อกันถึงจำนวนวันที่กำหนด
-                            </div>
-                            <button class="btn btn-check btn-full" onclick="saveStreakMilestoneSettings()"><i class="fas fa-floppy-disk"></i> บันทึกการตั้งค่าลำดับวัน</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="dashboard-row" style="margin-top: 2rem;">
-                    <div class="white-box box-flex">
-                        <div class="box-header"><div class="box-title"><i class="fas fa-list-check"></i> Activity Reward Settings (ตั้งค่าแต้มกิจกรรม)</div></div>
-                        <small id="activity-reward-current" class="rwd-hint">ค่าปัจจุบันจากระบบ: กำลังโหลด...</small>
-                        <div style="margin-top: 1rem;">
-                            <div class="form-field">
-                                <label>แต้มกรอกโปรไฟล์ครบ (ครั้งเดียว):</label>
-                                <input type="number" id="profile-completion-points" min="0" class="rwd-input">
-                            </div>
-                            <div class="form-field">
-                                <label>โพสต์พร้อมรูปขั้นต่ำต่อวัน:</label>
-                                <input type="number" id="post-activity-required-posts" min="1" class="rwd-input">
-                            </div>
-                            <div class="form-field">
-                                <label>แต้มเมื่อโพสต์ครบเงื่อนไข:</label>
-                                <input type="number" id="post-activity-points" min="0" class="rwd-input">
-                            </div>
-                            <div class="form-field">
-                                <label>แต้มต่อคอมเมนต์:</label>
-                                <input type="number" id="comment-activity-points" min="0" class="rwd-input">
-                            </div>
-                            <div class="form-field">
-                                <label>คอมเมนต์สูงสุดที่ได้แต้ม/วัน:</label>
-                                <input type="number" id="comment-activity-daily-limit-count" min="1" class="rwd-input">
-                            </div>
-                            <div class="form-field">
-                                <label>แต้มแชร์กิจกรรม (1 ครั้งต่อโพสต์ต้นฉบับ):</label>
-                                <input type="number" id="share-activity-points" min="0" class="rwd-input">
-                            </div>
-                            <button class="btn btn-check btn-full" onclick="saveActivityRewardSettings()"><i class="fas fa-floppy-disk"></i> บันทึกการตั้งค่าแต้มกิจกรรม</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
             <div id="page-reward-catalog" class="page-content">
-                <h1 class="page-title"><i class="fas fa-tag page-title-icon"></i> Campaign Catalog</h1>
-                <small class="page-title-sub">จัดการแคมเปญและรางวัลสำหรับผู้ใช้งาน</small>
-                
+                <h1 class="page-title"><i class="fas fa-tag page-title-icon"></i> Campaigns & Promo Codes</h1>
+                <small class="page-title-sub">จัดการแคมเปญ/รางวัล อัพโหลดโค้ดส่วนลด และตรวจสอบโค้ด</small>
+
+                <div style="display:flex; gap:0.75rem; margin-bottom:1.25rem; flex-wrap:wrap;">
+                    <button class="btn btn-toggle active" id="campaign-tab-catalog" onclick="campaignsShowTab('catalog')"><i class="fas fa-gift"></i> แคมเปญ/รางวัล</button>
+                    <button class="btn btn-toggle" id="campaign-tab-codes" onclick="campaignsShowTab('codes')"><i class="fas fa-upload"></i> อัพโหลดโค้ด</button>
+                    <button class="btn btn-toggle" id="campaign-tab-verifier" onclick="campaignsShowTab('verifier')"><i class="fas fa-shield-halved"></i> ตรวจสอบโค้ด</button>
+                </div>
+
+                <div id="campaign-panel-catalog">
                 <div class="white-box">
                     <div class="box-header" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                         <div class="box-title"><i class="fas fa-gift"></i> จัดการแคมเปญ/ส่วนลด</div>
@@ -1320,8 +1329,141 @@
                         </table>
                     </div>
                 </div>
+                </div>
+
+                <div id="campaign-panel-codes" style="display:none;">
+                <div class="white-box">
+                    <div class="box-header">
+                        <div class="box-title"><i class="fas fa-upload"></i> อัพโหลดโค้ดสำหรับแคมเปญ</div>
+                    </div>
+
+                    <!-- Reward Selection -->
+                    <div class="section-box">
+                        <h5>ขั้นที่ 1: เลือกรางวัล *</h5>
+                        <div>
+                            <label class="field-label">🎁 เลือกรางวัล</label>
+                            <select id="promo-reward-select" class="field-input" onchange="showRewardDetails(); loadRewardUploadHistory(this.value)">
+                                <option value="">-- เลือกรางวัล --</option>
+                            </select>
+                        </div>
+                        <div id="promo-reward-info" class="card-hint hidden">
+                            <div id="reward-details-content"></div>
+                        </div>
+                        <div class="info-note">
+                            <i class="fas fa-lightbulb"></i> โค้ดที่อัพโหลดจะถูกผูกกับรางวัลที่เลือก จำนวนโค้ดในระบบจะอัพเดทอัตโนมัติจากไฟล์ที่อัพโหลด
+                        </div>
+                    </div>
+
+                    <!-- Upload history for selected reward -->
+                    <div id="promo-upload-history" class="section-box hidden" style="margin-top: 1.5rem;">
+                        <h5><i class="fas fa-history"></i> ประวัติการอัพโหลดโค้ดสำหรับรางวัลนี้</h5>
+                        <div id="promo-upload-history-content" style="font-size: 0.85rem; color: var(--text-secondary);"></div>
+                    </div>
+
+                    <!-- File Upload - CSV only -->
+                    <div class="section-box-dashed">
+                        <h5>ขั้นที่ 2: อัพโหลดไฟล์โค้ด (CSV)</h5>
+                        <div style="text-align:center;">
+                            <p style="color:var(--text-secondary); margin-bottom:0.75rem;">
+                                <i class="fas fa-file-csv" style="font-size:2rem; color:var(--blue); margin-bottom:0.4rem; display:block;"></i>
+                                อัพโหลด CSV — ง่าย รวดเร็ว รองรับโค้ดจำนวนมาก
+                            </p>
+                            <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:0.75rem; text-align:left; background:var(--bg-card); padding:0.75rem; border-radius:6px;">
+                                <strong>Format ไฟล์ CSV:</strong><br>
+                                Header row: <code>code,description</code><br>
+                                ตัวอย่าง: <code>PROMO001,ส่วนลด 50 บาท</code><br>
+                                <em>* description ไม่บังคับ</em>
+                            </p>
+                            <button id="promo-csv-template-btn" class="btn btn-ghost" style="margin-bottom:0.75rem;">
+                                <i class="fas fa-download"></i> ดาวน์โหลด Template CSV
+                            </button>
+                            <input type="file" id="promo-csv-upload" accept=".csv" class="field-input" style="margin-bottom:1rem; cursor:pointer;">
+                            <button class="btn btn-check btn-full" id="promo-csv-upload-btn">
+                                <i class="fas fa-cloud-upload-alt"></i> อัพโหลดโค้ดเข้าแคมเปญ
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="promo-upload-result" class="upload-result">
+                        <div id="promo-upload-message" style="margin-bottom: 0.5rem;"></div>
+                        <div id="promo-upload-details" style="font-size: 0.85rem; color: var(--text-secondary);"></div>
+                    </div>
+                </div>
+                </div>
+
+                <div id="campaign-panel-verifier" style="display:none;">
+                <div class="white-box">
+                    <div class="box-header"><div class="box-title"><i class="fas fa-bullhorn"></i> เลือกแคมเปญที่ต้องการตรวจสอบ</div></div>
+                    <div class="pv-ctrl">
+                        <label class="field-label">เลือกรางวัล</label>
+                        <select id="verifier-reward-select" class="field-input" onchange="loadVerifierRewardCodes(this.value)">
+                            <option value="">-- เลือกรางวัล --</option>
+                        </select>
+                    </div>
+                    <div id="verifier-campaign-detail" class="card-hint hidden" style="margin-top: 1rem;">
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; font-size: 0.85rem;">
+                            <div>
+                                <span style="color: var(--text-secondary);">รางวัล:</span>
+                                <span id="vcd-reward-name" style="font-weight: 600; color: var(--text-primary); margin-left: 0.4rem;"></span>
+                            </div>
+                            <div>
+                                <span style="color: var(--text-secondary);">เริ่ม:</span>
+                                <span id="vcd-start" style="font-weight: 600; color: var(--text-primary); margin-left: 0.4rem;"></span>
+                            </div>
+                            <div>
+                                <span style="color: var(--text-secondary);">สิ้นสุด:</span>
+                                <span id="vcd-end" style="font-weight: 600; color: var(--text-primary); margin-left: 0.4rem;"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="white-box" style="margin-top: 2rem;">
+                    <div class="box-header" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                        <div class="box-title"><i class="fas fa-list"></i> รายการโค้ดทั้งหมด</div>
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                            <select id="verifier-page-size" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem;" onchange="changeVerifierPageSize(this.value)">
+                                <option value="10">10 / หน้า</option>
+                                <option value="20">20 / หน้า</option>
+                                <option value="50">50 / หน้า</option>
+                                <option value="100" selected>100 / หน้า</option>
+                            </select>
+                            <input type="text" id="verifier-search" placeholder="ค้นหาโค้ด..." style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem; width: 200px;">
+                            <select id="verifier-status-filter" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem;">
+                                <option value="">ทุกสถานะ</option>
+                                <option value="available">พร้อมใช้งาน</option>
+                                <option value="used">ใช้งานแล้ว</option>
+                                <option value="manual_redeemed">ใช้งานโดยแอดมิน</option>
+                                <option value="expired">หมดอายุ</option>
+                                <option value="cancelled">ยกเลิกแล้ว</option>
+                                <option value="reserved">จองแล้ว</option>
+                                <option value="refunded">คืนแต้มแล้ว</option>
+                            </select>
+                            <div style="display: flex; align-items: center; gap: 0.3rem;">
+                                <label style="font-size: 0.82rem; color: var(--text-secondary); white-space:nowrap;">วันที่แลก:</label>
+                                <input type="date" id="verifier-used-from" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem;">
+                                <span style="color: var(--text-secondary); font-size: 0.85rem;">ถึง</span>
+                                <input type="date" id="verifier-used-to" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem;">
+                            </div>
+                            <button class="btn btn-check" onclick="applyVerifierFilters()" style="padding: 0.5rem 1rem;"><i class="fas fa-search"></i> ค้นหา</button>
+                            <button class="btn btn-ghost" onclick="resetVerifierFilters()" style="padding: 0.5rem 1rem; font-size: 0.85rem;"><i class="fas fa-undo"></i> รีเซ็ต</button>
+                        </div>
+                    </div>
+
+                    <!-- Stats Container -->
+                    <div id="verifier-stats" style="margin-top: 1.5rem;"></div>
+
+                    <!-- Codes Table Grouped by Batch -->
+                    <div id="verifier-batches-container" style="margin-top: 1.5rem;">
+                        <div style="padding: 3rem; text-align: center; color: var(--text-muted);">
+                            <i class="fas fa-mouse-pointer" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
+                            เลือกแคมเปญด้านบนเพื่อดูรายการโค้ด
+                        </div>
+                    </div>
+                </div>
+                </div>
             </div>
-            
+
             <!-- Redemption History Page -->
             <div id="page-redemptions" class="page-content">
                 <h1 class="page-title"><i class="fas fa-receipt page-title-icon"></i> Redemption History</h1>
@@ -1543,146 +1685,6 @@
                         <div class="qr-stat-card">
                             <div class="qr-stat-num" style="color: var(--red);" id="stat-used-qr">-</div>
                             <div class="qr-stat-lbl">Used QR</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Promo Code Management Page -->
-            <div id="page-promo-codes" class="page-content">
-                <h1 class="page-title"><i class="fas fa-code page-title-icon"></i> Promo Code Manager</h1>
-                <small class="page-title-sub">อัพโหลดและจัดการโค้ดส่วนลดสำหรับแคมเปญ</small>
-                
-                <div class="white-box">
-                    <div class="box-header">
-                        <div class="box-title"><i class="fas fa-upload"></i> อัพโหลดโค้ดสำหรับแคมเปญ</div>
-                    </div>
-
-                    <!-- Reward Selection -->
-                    <div class="section-box">
-                        <h5>ขั้นที่ 1: เลือกรางวัล *</h5>
-                        <div>
-                            <label class="field-label">🎁 เลือกรางวัล</label>
-                            <select id="promo-reward-select" class="field-input" onchange="showRewardDetails(); loadRewardUploadHistory(this.value)">
-                                <option value="">-- เลือกรางวัล --</option>
-                            </select>
-                        </div>
-                        <div id="promo-reward-info" class="card-hint hidden">
-                            <div id="reward-details-content"></div>
-                        </div>
-                        <div class="info-note">
-                            <i class="fas fa-lightbulb"></i> โค้ดที่อัพโหลดจะถูกผูกกับรางวัลที่เลือก จำนวนโค้ดในระบบจะอัพเดทอัตโนมัติจากไฟล์ที่อัพโหลด
-                        </div>
-                    </div>
-
-                    <!-- Upload history for selected reward -->
-                    <div id="promo-upload-history" class="section-box hidden" style="margin-top: 1.5rem;">
-                        <h5><i class="fas fa-history"></i> ประวัติการอัพโหลดโค้ดสำหรับรางวัลนี้</h5>
-                        <div id="promo-upload-history-content" style="font-size: 0.85rem; color: var(--text-secondary);"></div>
-                    </div>
-
-                    <!-- File Upload - CSV only -->
-                    <div class="section-box-dashed">
-                        <h5>ขั้นที่ 2: อัพโหลดไฟล์โค้ด (CSV)</h5>
-                        <div style="text-align:center;">
-                            <p style="color:var(--text-secondary); margin-bottom:0.75rem;">
-                                <i class="fas fa-file-csv" style="font-size:2rem; color:var(--blue); margin-bottom:0.4rem; display:block;"></i>
-                                อัพโหลด CSV — ง่าย รวดเร็ว รองรับโค้ดจำนวนมาก
-                            </p>
-                            <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:0.75rem; text-align:left; background:var(--bg-card); padding:0.75rem; border-radius:6px;">
-                                <strong>Format ไฟล์ CSV:</strong><br>
-                                Header row: <code>code,description</code><br>
-                                ตัวอย่าง: <code>PROMO001,ส่วนลด 50 บาท</code><br>
-                                <em>* description ไม่บังคับ</em>
-                            </p>
-                            <button id="promo-csv-template-btn" class="btn btn-ghost" style="margin-bottom:0.75rem;">
-                                <i class="fas fa-download"></i> ดาวน์โหลด Template CSV
-                            </button>
-                            <input type="file" id="promo-csv-upload" accept=".csv" class="field-input" style="margin-bottom:1rem; cursor:pointer;">
-                            <button class="btn btn-check btn-full" id="promo-csv-upload-btn">
-                                <i class="fas fa-cloud-upload-alt"></i> อัพโหลดโค้ดเข้าแคมเปญ
-                            </button>
-                        </div>
-                    </div>
-
-                    <div id="promo-upload-result" class="upload-result">
-                        <div id="promo-upload-message" style="margin-bottom: 0.5rem;"></div>
-                        <div id="promo-upload-details" style="font-size: 0.85rem; color: var(--text-secondary);"></div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Promo Code Verifier Page -->
-            <div id="page-promo-verifier" class="page-content">
-                <h1 class="page-title"><i class="fas fa-shield-halved page-title-icon"></i> ระบบตรวจสอบโค้ดส่วนลด</h1>
-                <small class="page-title-sub">ตรวจสอบสถานะ ใช้งานแทนลูกค้า และดู Audit Log ของโค้ดส่วนลดทั้งหมด</small>
-                
-                <div class="white-box">
-                    <div class="box-header"><div class="box-title"><i class="fas fa-bullhorn"></i> เลือกแคมเปญที่ต้องการตรวจสอบ</div></div>
-                    <div class="pv-ctrl">
-                        <label class="field-label">เลือกรางวัล</label>
-                        <select id="verifier-reward-select" class="field-input" onchange="loadVerifierRewardCodes(this.value)">
-                            <option value="">-- เลือกรางวัล --</option>
-                        </select>
-                    </div>
-                    <div id="verifier-campaign-detail" class="card-hint hidden" style="margin-top: 1rem;">
-                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; font-size: 0.85rem;">
-                            <div>
-                                <span style="color: var(--text-secondary);">รางวัล:</span>
-                                <span id="vcd-reward-name" style="font-weight: 600; color: var(--text-primary); margin-left: 0.4rem;"></span>
-                            </div>
-                            <div>
-                                <span style="color: var(--text-secondary);">เริ่ม:</span>
-                                <span id="vcd-start" style="font-weight: 600; color: var(--text-primary); margin-left: 0.4rem;"></span>
-                            </div>
-                            <div>
-                                <span style="color: var(--text-secondary);">สิ้นสุด:</span>
-                                <span id="vcd-end" style="font-weight: 600; color: var(--text-primary); margin-left: 0.4rem;"></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="white-box" style="margin-top: 2rem;">
-                    <div class="box-header" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-                        <div class="box-title"><i class="fas fa-list"></i> รายการโค้ดทั้งหมด</div>
-                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-                            <select id="verifier-page-size" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem;" onchange="changeVerifierPageSize(this.value)">
-                                <option value="10">10 / หน้า</option>
-                                <option value="20">20 / หน้า</option>
-                                <option value="50">50 / หน้า</option>
-                                <option value="100" selected>100 / หน้า</option>
-                            </select>
-                            <input type="text" id="verifier-search" placeholder="ค้นหาโค้ด..." style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem; width: 200px;">
-                            <select id="verifier-status-filter" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem;">
-                                <option value="">ทุกสถานะ</option>
-                                <option value="available">พร้อมใช้งาน</option>
-                                <option value="used">ใช้งานแล้ว</option>
-                                <option value="manual_redeemed">ใช้งานโดยแอดมิน</option>
-                                <option value="expired">หมดอายุ</option>
-                                <option value="cancelled">ยกเลิกแล้ว</option>
-                                <option value="reserved">จองแล้ว</option>
-                                <option value="refunded">คืนแต้มแล้ว</option>
-                            </select>
-                            <div style="display: flex; align-items: center; gap: 0.3rem;">
-                                <label style="font-size: 0.82rem; color: var(--text-secondary); white-space:nowrap;">วันที่แลก:</label>
-                                <input type="date" id="verifier-used-from" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem;">
-                                <span style="color: var(--text-secondary); font-size: 0.85rem;">ถึง</span>
-                                <input type="date" id="verifier-used-to" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem;">
-                            </div>
-                            <button class="btn btn-check" onclick="applyVerifierFilters()" style="padding: 0.5rem 1rem;"><i class="fas fa-search"></i> ค้นหา</button>
-                            <button class="btn btn-ghost" onclick="resetVerifierFilters()" style="padding: 0.5rem 1rem; font-size: 0.85rem;"><i class="fas fa-undo"></i> รีเซ็ต</button>
-                        </div>
-                    </div>
-                    
-                    <!-- Stats Container -->
-                    <div id="verifier-stats" style="margin-top: 1.5rem;"></div>
-                    
-                    <!-- Codes Table Grouped by Batch -->
-                    <div id="verifier-batches-container" style="margin-top: 1.5rem;">
-                        <div style="padding: 3rem; text-align: center; color: var(--text-muted);">
-                            <i class="fas fa-mouse-pointer" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
-                            เลือกแคมเปญด้านบนเพื่อดูรายการโค้ด
                         </div>
                     </div>
                 </div>
