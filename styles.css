@@ -1637,6 +1637,7 @@ tr:hover td { background: #F8F9FB; color: #1A2332; }
 
     #page-partners .partner-sidebar-shell {
         width: 100% !important;
+        position: static;
     }
 
     #page-partners .partner-detail-stack {
