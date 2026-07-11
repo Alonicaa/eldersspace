@@ -514,7 +514,8 @@ async function buildSummaryAndActivity(conn, options = {}) {
     );
 
     postsWeeklyMap = postWeekRows.reduce((acc, row) => {
-      acc[String(row.day_key).slice(0, 10)] = Number(row.total || 0);
+      const key = row.day_key instanceof Date ? toYmd(row.day_key) : String(row.day_key).slice(0, 10);
+      acc[key] = Number(row.total || 0);
       return acc;
     }, {});
   }
@@ -531,7 +532,8 @@ async function buildSummaryAndActivity(conn, options = {}) {
   );
 
   activeUsersWeeklyMap = activeWeekRows.reduce((acc, row) => {
-    acc[String(row.day_key).slice(0, 10)] = Number(row.total || 0);
+    const key = row.day_key instanceof Date ? toYmd(row.day_key) : String(row.day_key).slice(0, 10);
+    acc[key] = Number(row.total || 0);
     return acc;
   }, {});
 
