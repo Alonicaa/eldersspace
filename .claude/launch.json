@@ -12,6 +12,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "8792", "--directory", "eldersspace/build/web"],
       "port": 8792
+    },
+    {
+      "name": "eldersspace-backend",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["--env-file=eldersspace_backend/.env", "eldersspace_backend/server.js"],
+      "port": 3000
     }
   ]
 }

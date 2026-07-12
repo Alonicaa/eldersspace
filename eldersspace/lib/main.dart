@@ -85,7 +85,10 @@ Future<void> _initFirebase() async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AppSettingsService.instance.load();
-  await _initFirebase();
+  await _initFirebase().timeout(
+    const Duration(seconds: 8),
+    onTimeout: () {},
+  );
   runApp(const MyApp());
 }
 
