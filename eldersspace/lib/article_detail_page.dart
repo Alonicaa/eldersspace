@@ -802,6 +802,8 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
                     c['content']?.toString() ?? '',
                     style: TextStyle(
                         fontSize: isElder ? 14 : 13, height: 1.4),
+                    maxLines: 20,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),

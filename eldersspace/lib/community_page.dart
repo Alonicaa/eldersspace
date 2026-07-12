@@ -3048,7 +3048,10 @@ class _ReportPostDialogState extends State<_ReportPostDialog> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 400),
+        constraints: BoxConstraints(
+          maxWidth: 400,
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -3103,9 +3106,10 @@ class _ReportPostDialogState extends State<_ReportPostDialog> {
               ),
             ),
             // Content
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -3202,6 +3206,7 @@ class _ReportPostDialogState extends State<_ReportPostDialog> {
                     ),
                   ),
                 ],
+                ),
               ),
             ),
             // Actions

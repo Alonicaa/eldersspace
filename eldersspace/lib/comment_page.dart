@@ -453,8 +453,16 @@ class _CommentPageState extends State<CommentPage> {
 
                 return ListTile(
                   leading: CircleAvatar(child: Text(c["full_name"][0])),
-                  title: Text(c["full_name"]),
-                  subtitle: Text(c["content"]),
+                  title: Text(
+                    c["full_name"],
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(
+                    c["content"],
+                    maxLines: 10,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 );
               },
             ),

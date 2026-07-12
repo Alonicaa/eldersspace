@@ -188,12 +188,16 @@ class PostCard extends StatelessWidget {
                                         color: Color(0xFF3B6FD4),
                                       ),
                                       const SizedBox(width: 4),
-                                      Text(
-                                        post["group_name"] as String,
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          color: Color(0xFF3B6FD4),
-                                          fontWeight: FontWeight.w500,
+                                      Flexible(
+                                        child: Text(
+                                          post["group_name"] as String,
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: Color(0xFF3B6FD4),
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                     ],

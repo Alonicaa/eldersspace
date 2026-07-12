@@ -33,6 +33,7 @@ dependencies:
   image_cropper: ^9.1.0
   audioplayers: ^6.0.0
   speech_to_text: 7.3.0
+  web: ^1.1.0
   shared_preferences: ^2.3.2
   qr_flutter: ^4.1.0
   barcode: ^2.2.3

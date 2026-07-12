@@ -181,7 +181,7 @@ class _AllOpportunitiesPageState extends State<AllOpportunitiesPage> {
                           children: [
                             Icon(Icons.payments_outlined, size: 12, color: Colors.green.shade700),
                             const SizedBox(width: 3),
-                            Text(j['salary_range'].toString(), style: TextStyle(fontSize: 11, color: Colors.green.shade700, fontWeight: FontWeight.w500)),
+                            Flexible(child: Text(j['salary_range'].toString(), style: TextStyle(fontSize: 11, color: Colors.green.shade700, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis)),
                           ],
                         ),
                       ],
