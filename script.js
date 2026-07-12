@@ -254,6 +254,22 @@ function getAuthHeaders() {
     return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+const ADMIN_AUTH_ERROR_MESSAGES = {
+    'phone_number is required': 'กรุณากรอกเบอร์โทรศัพท์',
+    'phone_number and otp_code are required': 'กรุณากรอกเบอร์โทรและรหัส OTP',
+    'Forbidden: admin role required': 'เบอร์นี้ไม่มีสิทธิ์เข้าใช้งานระบบผู้ดูแล',
+    'Invalid or expired OTP': 'รหัส OTP ไม่ถูกต้องหรือหมดอายุ กรุณาขอรหัสใหม่',
+    'Failed to send OTP via SMS': 'ส่ง OTP ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง'
+};
+
+function friendlyAdminAuthError(rawMessage) {
+    return ADMIN_AUTH_ERROR_MESSAGES[rawMessage] || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง';
+}
+
+function isValidAdminPhone(value) {
+    return /^0\d{9}$/.test(value);
+}
+
 function showLogin(message = '') {
     const loginScreen = document.getElementById('login-screen');
     const dashboardApp = document.getElementById('dashboard-app');
@@ -319,6 +335,16 @@ async function handleAdminLogin(event) {
         return;
     }
 
+    if (!isValidAdminPhone(phone_number)) {
+        if (loginError) loginError.textContent = 'เบอร์โทรศัพท์ไม่ถูกต้อง กรุณากรอกตัวเลข 10 หลัก';
+        return;
+    }
+
+    if (!/^\d{6}$/.test(otp_code)) {
+        if (loginError) loginError.textContent = 'รหัส OTP ต้องเป็นตัวเลข 6 หลัก';
+        return;
+    }
+
     if (!adminOtpRequestedPhone || adminOtpRequestedPhone !== phone_number) {
         if (loginError) loginError.textContent = 'กรุณากดขอ OTP ก่อน';
         return;
@@ -337,7 +363,7 @@ async function handleAdminLogin(event) {
 
         const data = await response.json();
         if (!response.ok) {
-            throw new Error(data?.error || 'เข้าสู่ระบบไม่สำเร็จ');
+            throw new Error(friendlyAdminAuthError(data?.error));
         }
 
         if (String(data?.admin?.role || '').toLowerCase() !== 'admin') {
@@ -375,6 +401,11 @@ async function handleRequestAdminOtp() {
         return;
     }
 
+    if (!isValidAdminPhone(phone_number)) {
+        if (loginError) loginError.textContent = 'เบอร์โทรศัพท์ไม่ถูกต้อง กรุณากรอกตัวเลข 10 หลัก';
+        return;
+    }
+
     if (requestBtn) requestBtn.disabled = true;
     if (loginError) loginError.textContent = '';
 
@@ -387,7 +418,7 @@ async function handleRequestAdminOtp() {
 
         const data = await response.json();
         if (!response.ok) {
-            throw new Error(data?.error || 'ขอ OTP ไม่สำเร็จ');
+            throw new Error(friendlyAdminAuthError(data?.error));
         }
 
         adminOtpRequestedPhone = phone_number;
@@ -397,9 +428,7 @@ async function handleRequestAdminOtp() {
         }
         if (verifyBtn) verifyBtn.disabled = false;
         if (otpHint) {
-            otpHint.textContent = data?.otp
-                ? `OTP : ${data.otp} | หมดอายุใน 5 นาที`
-                : 'ส่ง OTP แล้ว กรุณาตรวจสอบอุปกรณ์ของคุณ';
+            otpHint.textContent = 'ส่ง OTP แล้ว กรุณาตรวจสอบอุปกรณ์ของคุณ';
         }
     } catch (error) {
         if (loginError) loginError.textContent = error.message || 'ขอ OTP ไม่สำเร็จ';
@@ -4697,6 +4726,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const loginForm = document.getElementById('admin-login-form');
     const logoutBtn = document.getElementById('logout-btn');
     const requestOtpBtn = document.getElementById('request-otp-btn');
+    const adminPhoneInput = document.getElementById('admin-phone');
+    if (adminPhoneInput) {
+        adminPhoneInput.addEventListener('input', () => {
+            adminPhoneInput.value = adminPhoneInput.value.replace(/\D/g, '').slice(0, 10);
+        });
+    }
     const adsTable = document.getElementById('ads-table');
     const statsGrid = document.querySelector('.stats-grid');
     const companyTable = document.getElementById('company-table');

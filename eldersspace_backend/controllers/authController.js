@@ -235,7 +235,7 @@ exports.requestAdminOtp = async (req, res) => {
         isDevelopment: smsResult.isDevelopment
       };
 
-      if (smsResult.isDevelopment) {
+      if (smsResult.isDevelopment && process.env.NODE_ENV !== 'production') {
         response.otp = otp;
         console.log(`[DEBUG] OTP sent in development mode: ${otp}`);
       }
@@ -385,7 +385,7 @@ exports.requestOtp = async (req, res) => {
         isDevelopment: smsResult.isDevelopment
       };
 
-      if (smsResult.isDevelopment) {
+      if (smsResult.isDevelopment && process.env.NODE_ENV !== 'production') {
         response.otp = otp;
       }
 
