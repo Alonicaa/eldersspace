@@ -492,6 +492,7 @@ class ImageGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final n = images.length;
+    if (n == 0) return const SizedBox.shrink();
 
     Widget cell(String url, int i, {double height = 220}) => GestureDetector(
       onTap: () => onImageTap?.call(images, i),

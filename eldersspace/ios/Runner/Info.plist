@@ -7,8 +7,6 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>ต้องการเข้าถึงรูปภาพเพื่ออัพโหลดรูปโปรไฟล์</string>
 	<string>Eldersspace</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
@@ -28,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>ต้องการเข้าถึงกล้องเพื่อถ่ายรูปโปรไฟล์และรูปโพสต์</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ต้องการเข้าถึงรูปภาพเพื่ออัพโหลดรูปโปรไฟล์และรูปโพสต์</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

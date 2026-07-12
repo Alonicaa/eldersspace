@@ -495,10 +495,46 @@ class _CommunityPageState extends State<CommunityPage> {
 
   // ================= PICK + CROP IMAGES =================
 
+  Future<ImageSource?> _pickImageSource() {
+    return showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('ถ่ายรูป'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('เลือกจากคลังภาพ'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> pickImages() async {
+    final source = await _pickImageSource();
+    if (source == null) return;
+
     final picker = ImagePicker();
-    final imgs = await picker.pickMultiImage(imageQuality: 85);
-    if (imgs.isEmpty) return;
+    final List<XFile> imgs;
+    if (source == ImageSource.camera) {
+      final shot = await picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+      );
+      if (shot == null) return;
+      imgs = [shot];
+    } else {
+      imgs = await picker.pickMultiImage(imageQuality: 85);
+      if (imgs.isEmpty) return;
+    }
 
     List<File> cropped = [];
     for (final img in imgs) {
