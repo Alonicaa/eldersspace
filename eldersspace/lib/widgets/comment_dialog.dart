@@ -157,66 +157,75 @@ class _CommentDialogState extends State<CommentDialog> {
     await _tts.stop();
     setState(() => _isListening = false);
 
-    if (_editingCommentId != null) {
-      final response = await http.put(
-        Uri.parse('${widget.baseUrl}/comments/item/$_editingCommentId'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'phone': widget.currentUserPhone,
-          'content': text,
-        }),
-      );
+    try {
+      if (_editingCommentId != null) {
+        final response = await http.put(
+          Uri.parse('${widget.baseUrl}/comments/item/$_editingCommentId'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'phone': widget.currentUserPhone,
+            'content': text,
+          }),
+        );
 
-      if (response.statusCode != 200) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('แก้ไขคอมเมนต์ไม่สำเร็จ')),
-          );
-        }
-        return;
-      }
-    } else {
-      final userPhone =
-          widget.userPhoneForCommentCreation ?? widget.currentUserPhone;
-
-      final response = await http.post(
-        Uri.parse('${widget.baseUrl}/comments/${widget.postId}'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'phone': userPhone,
-          'content': text,
-          'parent_id': _replyToCommentId,
-        }),
-      );
-
-      if (response.statusCode == 403) {
-        String message = 'บัญชีนี้ถูกจำกัดการมีส่วนร่วมชั่วคราว';
-        try {
-          final data = jsonDecode(response.body);
-          if (data is Map && (data['error'] ?? '').toString().isNotEmpty) {
-            message = data['error'].toString();
+        if (response.statusCode != 200) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('แก้ไขคอมเมนต์ไม่สำเร็จ')),
+            );
           }
-        } catch (_) {}
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(message)),
-          );
+          return;
         }
-        return;
-      }
+      } else {
+        final userPhone =
+            widget.userPhoneForCommentCreation ?? widget.currentUserPhone;
 
-      if (response.statusCode != 200) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('ส่งคอมเมนต์ไม่สำเร็จ')),
-          );
+        final response = await http.post(
+          Uri.parse('${widget.baseUrl}/comments/${widget.postId}'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'phone': userPhone,
+            'content': text,
+            'parent_id': _replyToCommentId,
+          }),
+        );
+
+        if (response.statusCode == 403) {
+          String message = 'บัญชีนี้ถูกจำกัดการมีส่วนร่วมชั่วคราว';
+          try {
+            final data = jsonDecode(response.body);
+            if (data is Map && (data['error'] ?? '').toString().isNotEmpty) {
+              message = data['error'].toString();
+            }
+          } catch (_) {}
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(message)),
+            );
+          }
+          return;
         }
-        return;
-      }
 
-      // trigger reward ทันทีหลังคอมเมนต์สำเร็จ (fire-and-forget)
-      RewardService.checkCommentActivity(userPhone);
+        if (response.statusCode != 200) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('ส่งคอมเมนต์ไม่สำเร็จ')),
+            );
+          }
+          return;
+        }
+
+        // trigger reward ทันทีหลังคอมเมนต์สำเร็จ (fire-and-forget)
+        RewardService.checkCommentActivity(userPhone);
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('ไม่สามารถเชื่อมต่อได้ กรุณาลองใหม่')),
+        );
+      }
+      return;
     }
 
     commentController.clear();
@@ -230,16 +239,25 @@ class _CommentDialogState extends State<CommentDialog> {
   }
 
   Future<void> _deleteComment(int commentId) async {
-    final response = await http.delete(
-      Uri.parse('${widget.baseUrl}/comments/item/$commentId'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'phone': widget.currentUserPhone}),
-    );
+    try {
+      final response = await http.delete(
+        Uri.parse('${widget.baseUrl}/comments/item/$commentId'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'phone': widget.currentUserPhone}),
+      );
 
-    if (response.statusCode != 200) {
+      if (response.statusCode != 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('ลบคอมเมนต์ไม่สำเร็จ')),
+          );
+        }
+        return;
+      }
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('ลบคอมเมนต์ไม่สำเร็จ')),
+          const SnackBar(content: Text('ไม่สามารถเชื่อมต่อได้ กรุณาลองใหม่')),
         );
       }
       return;

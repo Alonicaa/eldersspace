@@ -115,9 +115,10 @@ class PostCard extends StatelessWidget {
                             : null,
                         child: avatarUrl == null
                             ? Text(
-                                (post["full_name"] ?? "?")
-                                    .toString()
-                                    .substring(0, 1)
+                                (post["full_name"]?.toString().isNotEmpty ==
+                                        true
+                                    ? post["full_name"].toString()[0]
+                                    : "?")
                                     .toUpperCase(),
                                 style: const TextStyle(
                                   color: Color(0xFF3B6FD4),
@@ -800,9 +801,9 @@ class _SharedPostPreview extends StatelessWidget {
                         : null,
                     child: avatarUrl == null
                         ? Text(
-                            (post['full_name'] ?? '?')
-                                .toString()
-                                .substring(0, 1)
+                            (post['full_name']?.toString().isNotEmpty == true
+                                ? post['full_name'].toString()[0]
+                                : '?')
                                 .toUpperCase(),
                             style: const TextStyle(
                               color: Color(0xFF1877F2),

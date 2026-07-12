@@ -639,9 +639,9 @@ class _PostPreviewCard extends StatelessWidget {
                       : null,
                   child: post['profile_picture_url'] == null
                       ? Text(
-                          (post['full_name'] ?? '?')
-                              .toString()
-                              .substring(0, 1)
+                          (post['full_name']?.toString().isNotEmpty == true
+                              ? post['full_name'].toString()[0]
+                              : '?')
                               .toUpperCase(),
                           style: const TextStyle(
                             color: Color(0xFF1877F2),

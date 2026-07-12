@@ -206,9 +206,12 @@ class _PostDetailPageState extends State<PostDetailPage> {
                                     : null,
                                 child: avatarUrl == null
                                     ? Text(
-                                        (_post['full_name'] ?? '?')
-                                            .toString()
-                                            .substring(0, 1)
+                                        (_post['full_name']
+                                                    ?.toString()
+                                                    .isNotEmpty ==
+                                                true
+                                            ? _post['full_name'].toString()[0]
+                                            : '?')
                                             .toUpperCase(),
                                         style: const TextStyle(
                                           color: Color(0xFF3B6FD4),

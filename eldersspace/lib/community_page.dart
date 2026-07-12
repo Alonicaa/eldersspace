@@ -208,12 +208,6 @@ class _CommunityPageState extends State<CommunityPage> {
     }
   }
 
-  int _toInt(dynamic value) {
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    return int.tryParse(value?.toString() ?? '') ?? 0;
-  }
-
   // ================= ADS =================
 
   Future<void> _loadArticleAds() async {
@@ -1258,14 +1252,20 @@ class _CommunityPageState extends State<CommunityPage> {
 
   Future savePost(int postId) async {
     try {
-      await http.post(
+      final res = await http.post(
         Uri.parse("$baseUrl/posts/$postId/save"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"phone": widget.phoneNumber}),
       );
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("เซฟโพสต์แล้ว")));
+      if (res.statusCode == 200) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("เซฟโพสต์แล้ว")));
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("เซฟโพสต์ไม่สำเร็จ")));
+      }
     } catch (_) {}
   }
 
@@ -2224,191 +2224,6 @@ class _CommunityPageState extends State<CommunityPage> {
     );
   }
 
-  // ================= IMAGE GRID =================
-
-  // ── เปิดดูรูปแบบ fullscreen ──
-  void _openImageViewer(List<String> images, int startIndex) {
-    Navigator.of(context).push(
-      PageRouteBuilder(
-        opaque: false,
-        barrierColor: Colors.black,
-        pageBuilder: (_, _, _) =>
-            _ImageViewerPage(images: images, initialIndex: startIndex),
-      ),
-    );
-  }
-
-  Widget imageGrid(List images) {
-    final List<String> urls = List<String>.from(images);
-    final int count = urls.length;
-
-    // helper: รูป 1 ช่อง
-    Widget cell(
-      String url,
-      int index, {
-      BorderRadius? radius,
-      double height = 200,
-    }) {
-      return GestureDetector(
-        onTap: () => _openImageViewer(urls, index),
-        child: ClipRRect(
-          borderRadius: radius ?? BorderRadius.zero,
-          child: SizedBox(
-            height: height,
-            width: double.infinity,
-            child: Image.network(
-              url,
-              fit: BoxFit.cover,
-              loadingBuilder: (_, child, progress) => progress == null
-                  ? child
-                  : Container(
-                      color: Colors.grey.shade200,
-                      child: const Center(
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    ),
-              errorBuilder: (_, _, _) => Container(
-                color: Colors.grey.shade200,
-                child: const Icon(Icons.broken_image, color: Colors.grey),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    // 1 รูป
-    if (count == 1) {
-      return cell(urls[0], 0, radius: BorderRadius.zero, height: 280);
-    }
-
-    // 2 รูป
-    if (count == 2) {
-      return SizedBox(
-        height: 220,
-        child: Row(
-          children: [
-            Expanded(
-              child: cell(urls[0], 0, radius: BorderRadius.zero, height: 220),
-            ),
-            const SizedBox(width: 2),
-            Expanded(
-              child: cell(urls[1], 1, radius: BorderRadius.zero, height: 220),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // 3 รูป
-    if (count == 3) {
-      return SizedBox(
-        height: 220,
-        child: Row(
-          children: [
-            Expanded(
-              flex: 2,
-              child: cell(urls[0], 0, radius: BorderRadius.zero, height: 220),
-            ),
-            const SizedBox(width: 2),
-            Expanded(
-              child: Column(
-                children: [
-                  Expanded(child: cell(urls[1], 1, height: 109)),
-                  const SizedBox(height: 2),
-                  Expanded(child: cell(urls[2], 2, height: 109)),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // 4 รูป
-    if (count == 4) {
-      return SizedBox(
-        height: 220,
-        child: Column(
-          children: [
-            Expanded(
-              child: Row(
-                children: [
-                  Expanded(child: cell(urls[0], 0, height: 109)),
-                  const SizedBox(width: 2),
-                  Expanded(child: cell(urls[1], 1, height: 109)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 2),
-            Expanded(
-              child: Row(
-                children: [
-                  Expanded(child: cell(urls[2], 2, height: 109)),
-                  const SizedBox(width: 2),
-                  Expanded(child: cell(urls[3], 3, height: 109)),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // 5+ รูป — แสดง 5 ช่อง ช่องสุดท้ายมี overlay "+N"
-    return SizedBox(
-      height: 220,
-      child: Column(
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                Expanded(child: cell(urls[0], 0, height: 109)),
-                const SizedBox(width: 2),
-                Expanded(child: cell(urls[1], 1, height: 109)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 2),
-          Expanded(
-            child: Row(
-              children: [
-                Expanded(child: cell(urls[2], 2, height: 109)),
-                const SizedBox(width: 2),
-                Expanded(child: cell(urls[3], 3, height: 109)),
-                const SizedBox(width: 2),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => _openImageViewer(urls, 4),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Image.network(urls[4], fit: BoxFit.cover),
-                        Container(
-                          color: Colors.black54,
-                          child: Center(
-                            child: Text(
-                              "+${count - 4}",
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -2826,132 +2641,6 @@ class _CommunityPageState extends State<CommunityPage> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ================= IMAGE VIEWER (Fullscreen) =================
-
-class _ImageViewerPage extends StatefulWidget {
-  final List<String> images;
-  final int initialIndex;
-
-  const _ImageViewerPage({required this.images, required this.initialIndex});
-
-  @override
-  State<_ImageViewerPage> createState() => _ImageViewerPageState();
-}
-
-class _ImageViewerPageState extends State<_ImageViewerPage> {
-  late PageController _pageController;
-  late int _current;
-
-  @override
-  void initState() {
-    super.initState();
-    _current = widget.initialIndex;
-    _pageController = PageController(initialPage: widget.initialIndex);
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          // ── PageView รูปภาพ ──
-          PageView.builder(
-            controller: _pageController,
-            itemCount: widget.images.length,
-            onPageChanged: (i) => setState(() => _current = i),
-            itemBuilder: (_, i) => InteractiveViewer(
-              minScale: 0.5,
-              maxScale: 4.0,
-              child: Center(
-                child: Image.network(
-                  widget.images[i],
-                  fit: BoxFit.contain,
-                  loadingBuilder: (_, child, progress) => progress == null
-                      ? child
-                      : const Center(
-                          child: CircularProgressIndicator(color: Colors.white),
-                        ),
-                  errorBuilder: (_, _, _) => const Icon(
-                    Icons.broken_image,
-                    color: Colors.white54,
-                    size: 60,
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // ── Top bar ──
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  const Spacer(),
-                  if (widget.images.length > 1)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black45,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        "${_current + 1} / ${widget.images.length}",
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  const SizedBox(width: 8),
-                ],
-              ),
-            ),
-          ),
-
-          // ── Dot indicators ──
-          if (widget.images.length > 1)
-            Positioned(
-              bottom: 24,
-              left: 0,
-              right: 0,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  widget.images.length,
-                  (i) => AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: _current == i ? 20 : 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: _current == i ? Colors.white : Colors.white38,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
       ),
     );
   }

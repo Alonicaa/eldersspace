@@ -580,7 +580,15 @@ class _PartnerPageState extends State<PartnerPage> {
                       ],
                       const SizedBox(height: 8),
                       GestureDetector(
-                        onTap: () {},
+                        onTap: () async {
+                          final link = p['link_url']?.toString() ?? '';
+                          if (link.isEmpty) return;
+                          final uri = Uri.tryParse(link);
+                          if (uri != null && await canLaunchUrl(uri)) {
+                            await launchUrl(uri,
+                                mode: LaunchMode.externalApplication);
+                          }
+                        },
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 6),
