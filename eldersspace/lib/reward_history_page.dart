@@ -2815,6 +2815,9 @@ class _RewardHistoryPageState extends State<RewardHistoryPage> {
     final canRedeem = totalPoints >= cost && !isExpired;
     final nameMaxLines = textScale > 1.3 ? 3 : 2;
     final descriptionMaxLines = textScale > 1.15 ? 2 : 1;
+    // โลโก้พาร์ทเนอร์ไม่ได้ออกแบบมาให้ครอปเต็มกรอบเหมือนภาพถ่ายสินค้า
+    // ให้แสดงแบบ contain ลอยกลางบนพื้นขาวแทนการ cover ให้ล้นขอบ
+    final isPartnerLogo = imageUrl.contains('/partners/');
 
     return Container(
       decoration: BoxDecoration(
@@ -2844,11 +2847,14 @@ class _RewardHistoryPageState extends State<RewardHistoryPage> {
                 children: [
                   Positioned.fill(
                     child: Container(
-                      color: Colors.grey.shade100,
+                      color: isPartnerLogo ? Colors.white : Colors.grey.shade100,
+                      padding: isPartnerLogo
+                          ? const EdgeInsets.symmetric(horizontal: 28, vertical: 20)
+                          : EdgeInsets.zero,
                       child: imageUrl.isNotEmpty
                           ? Image.network(
                               imageUrl,
-                              fit: BoxFit.cover,
+                              fit: isPartnerLogo ? BoxFit.contain : BoxFit.cover,
                               width: double.infinity,
                               height: double.infinity,
                               loadingBuilder: (context, child, loadingProgress) {
