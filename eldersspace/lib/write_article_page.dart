@@ -30,7 +30,7 @@ class _WriteArticlePageState extends State<WriteArticlePage> {
   final _bodyCtrl        = TextEditingController();
   final _conclusionCtrl  = TextEditingController();
 
-  static const _cats = ['สุขภาพ', 'โภชนาการ', 'สมาธิ', 'จิตใจ'];
+  static const _cats = ['ทั่วไป', 'สุขภาพ', 'โภชนาการ', 'จิตใจ'];
   late String _category;
   File? _coverImage;
   bool _submitting = false;

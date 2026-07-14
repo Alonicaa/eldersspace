@@ -16,7 +16,7 @@ class HealthPage extends StatefulWidget {
 }
 
 class _HealthPageState extends State<HealthPage> {
-  static const _cats = ['สุขภาพ', 'โภชนาการ', 'สมาธิ', 'จิตใจ'];
+  static const _cats = ['ทั่วไป', 'สุขภาพ', 'โภชนาการ', 'จิตใจ'];
 
   late String _selectedCat;
   List<Map<String, dynamic>> _articles = [];

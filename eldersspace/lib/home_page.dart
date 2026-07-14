@@ -72,7 +72,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   List<Map<String, dynamic>> _socialProjects = [];
   List<Map<String, dynamic>> _popularHealthArticles = [];
   List<Map<String, dynamic>> _popularNutritionArticles = [];
-  List<Map<String, dynamic>> _popularMeditationArticles = [];
+  List<Map<String, dynamic>> _popularGeneralArticles = [];
   List<Map<String, dynamic>> _popularMindArticles = [];
   bool _loadingBanners = true;
 
@@ -217,7 +217,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       PartnerService.getHomeBanners(type: 'general'),
       ApiService.getArticles(sort: 'popular', limit: 6, category: 'สุขภาพ'),
       ApiService.getArticles(sort: 'popular', limit: 6, category: 'โภชนาการ'),
-      ApiService.getArticles(sort: 'popular', limit: 6, category: 'สมาธิ'),
+      ApiService.getArticles(sort: 'popular', limit: 6, category: 'ทั่วไป'),
       ApiService.getArticles(sort: 'popular', limit: 6, category: 'จิตใจ'),
       PartnerService.getPartners(),
       PartnerService.getAllSocialProjects(),
@@ -234,7 +234,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         _generalBanners = results[5];
         _popularHealthArticles = results[6];
         _popularNutritionArticles = results[7];
-        _popularMeditationArticles = results[8];
+        _popularGeneralArticles = results[8];
         _popularMindArticles = results[9];
         _partners = results[10];
         _socialProjects = results[11];
@@ -611,11 +611,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           const SizedBox(height: 12),
           _buildHealthCategoriesSection(),
           const SizedBox(height: 12),
+          _buildPopularArticlesSection('บทความทั่วไปที่คนสนใจ', _popularGeneralArticles, 'ทั่วไป'),
+          const SizedBox(height: 12),
           _buildPopularArticlesSection('บทความสุขภาพที่คนสนใจ', _popularHealthArticles, 'สุขภาพ'),
           const SizedBox(height: 12),
           _buildPopularArticlesSection('บทความโภชนาการที่คนสนใจ', _popularNutritionArticles, 'โภชนาการ'),
-          const SizedBox(height: 12),
-          _buildPopularArticlesSection('บทความสมาธิที่คนสนใจ', _popularMeditationArticles, 'สมาธิ'),
           const SizedBox(height: 12),
           _buildPopularArticlesSection('บทความจิตใจที่คนสนใจ', _popularMindArticles, 'จิตใจ'),
           const SizedBox(height: 12),
@@ -2023,9 +2023,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   Widget _buildHealthCategoriesSection() {
     const cats = [
+      {'icon': Icons.grid_view_rounded, 'label': 'ทั่วไป', 'color': 0xFF1E88E5},
       {'icon': Icons.favorite, 'label': 'สุขภาพ', 'color': 0xFFE53935},
       {'icon': Icons.restaurant_menu, 'label': 'โภชนาการ', 'color': 0xFFF4511E},
-      {'icon': Icons.self_improvement, 'label': 'สมาธิ', 'color': 0xFF388E3C},
       {'icon': Icons.psychology, 'label': 'จิตใจ', 'color': 0xFF4CAF50},
     ];
     return Column(

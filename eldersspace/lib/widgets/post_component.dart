@@ -642,9 +642,9 @@ class _ArticleCard extends StatelessWidget {
   const _ArticleCard({required this.article, required this.phoneNumber});
 
   static const Map<String, Color> _catColors = {
+    'ทั่วไป':    Color(0xFF0277BD),
     'สุขภาพ':    Color(0xFF1B5E20),
     'โภชนาการ':  Color(0xFF2E7D32),
-    'สมาธิ':     Color(0xFF0277BD),
     'จิตใจ':     Color(0xFF6A1B9A),
   };
 
