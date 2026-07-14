@@ -689,7 +689,8 @@
 
                                 <!-- Tab: ประชาสัมพันธ์ -->
                                 <div id="tab-announcements" class="ptab-content" style="padding:18px">
-                                    <div class="partner-tab-grid" style="display:grid;grid-template-columns:minmax(220px,300px) minmax(170px,200px) minmax(160px,1fr);gap:20px;align-items:start;width:100%;min-width:0">
+                                    <div style="display:flex;flex-direction:column;gap:20px;width:100%;min-width:0">
+                                    <div style="display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px;align-items:start">
                                         <!-- Form -->
                                         <div style="background:var(--bg-2,#f8fafc);border:1px solid var(--border,#e8ecf0);border-radius:12px;padding:16px">
                                             <input type="hidden" id="ann-edit-id" value="">
@@ -750,19 +751,21 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <!-- List -->
-                                        <div>
-                                            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted,#888);margin-bottom:12px">รายการ</div>
-                                            <div id="ann-list" style="display:flex;flex-direction:column;gap:8px">
-                                                <div style="color:#bbb;font-size:13px;text-align:center;padding:30px">เลือกพาร์ทเนอร์ก่อน</div>
-                                            </div>
+                                    </div>
+                                    <!-- List -->
+                                    <div>
+                                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted,#888);margin-bottom:12px">รายการ</div>
+                                        <div id="ann-list" style="display:flex;flex-direction:column;gap:8px">
+                                            <div style="color:#bbb;font-size:13px;text-align:center;padding:30px">เลือกพาร์ทเนอร์ก่อน</div>
                                         </div>
+                                    </div>
                                     </div>
                                 </div>
 
                                 <!-- Tab: บริการ -->
                                 <div id="tab-services" class="ptab-content" style="display:none;padding:18px">
-                                    <div class="partner-tab-grid" style="display:grid;grid-template-columns:minmax(220px,300px) minmax(170px,200px) minmax(160px,1fr);gap:20px;align-items:start">
+                                    <div style="display:flex;flex-direction:column;gap:20px;width:100%;min-width:0">
+                                    <div style="display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px;align-items:start">
                                         <div style="background:var(--bg-2,#f8fafc);border:1px solid var(--border,#e8ecf0);border-radius:12px;padding:16px">
                                             <input type="hidden" id="service-edit-id" value="">
                                             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -804,18 +807,20 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div>
-                                            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted,#888);margin-bottom:12px">รายการ</div>
-                                            <div id="service-list" style="display:flex;flex-direction:column;gap:8px">
-                                                <div style="color:#bbb;font-size:13px;text-align:center;padding:30px">เลือกพาร์ทเนอร์ก่อน</div>
-                                            </div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted,#888);margin-bottom:12px">รายการ</div>
+                                        <div id="service-list" style="display:flex;flex-direction:column;gap:8px">
+                                            <div style="color:#bbb;font-size:13px;text-align:center;padding:30px">เลือกพาร์ทเนอร์ก่อน</div>
                                         </div>
+                                    </div>
                                     </div>
                                 </div>
 
                                 <!-- Tab: งาน -->
                                 <div id="tab-jobs" class="ptab-content" style="display:none;padding:18px">
-                                    <div class="partner-tab-grid" style="display:grid;grid-template-columns:minmax(220px,300px) minmax(170px,200px) minmax(160px,1fr);gap:20px;align-items:start">
+                                    <div style="display:flex;flex-direction:column;gap:20px;width:100%;min-width:0">
+                                    <div style="display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px;align-items:start">
                                         <div style="background:var(--bg-2,#f8fafc);border:1px solid var(--border,#e8ecf0);border-radius:12px;padding:16px">
                                             <input type="hidden" id="job-edit-id" value="">
                                             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -882,18 +887,20 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div>
-                                            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted,#888);margin-bottom:12px">รายการ</div>
-                                            <div id="job-list" style="display:flex;flex-direction:column;gap:8px">
-                                                <div style="color:#bbb;font-size:13px;text-align:center;padding:30px">เลือกพาร์ทเนอร์ก่อน</div>
-                                            </div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted,#888);margin-bottom:12px">รายการ</div>
+                                        <div id="job-list" style="display:flex;flex-direction:column;gap:8px">
+                                            <div style="color:#bbb;font-size:13px;text-align:center;padding:30px">เลือกพาร์ทเนอร์ก่อน</div>
                                         </div>
+                                    </div>
                                     </div>
                                 </div>
 
                                 <!-- Tab: โครงการ -->
                                 <div id="tab-projects" class="ptab-content" style="display:none;padding:18px">
-                                    <div class="partner-tab-grid" style="display:grid;grid-template-columns:minmax(220px,300px) minmax(170px,200px) minmax(160px,1fr);gap:20px;align-items:start">
+                                    <div style="display:flex;flex-direction:column;gap:20px;width:100%;min-width:0">
+                                    <div style="display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px;align-items:start">
                                         <div style="background:var(--bg-2,#f8fafc);border:1px solid var(--border,#e8ecf0);border-radius:12px;padding:16px">
                                             <input type="hidden" id="project-edit-id" value="">
                                             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -944,18 +951,20 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div>
-                                            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted,#888);margin-bottom:12px">รายการ</div>
-                                            <div id="project-list" style="display:flex;flex-direction:column;gap:8px">
-                                                <div style="color:#bbb;font-size:13px;text-align:center;padding:30px">เลือกพาร์ทเนอร์ก่อน</div>
-                                            </div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted,#888);margin-bottom:12px">รายการ</div>
+                                        <div id="project-list" style="display:flex;flex-direction:column;gap:8px">
+                                            <div style="color:#bbb;font-size:13px;text-align:center;padding:30px">เลือกพาร์ทเนอร์ก่อน</div>
                                         </div>
+                                    </div>
                                     </div>
                                 </div>
 
                                 <!-- Tab: Ads -->
                                 <div id="tab-ads" class="ptab-content" style="display:none;padding:18px">
-                                    <div class="partner-tab-grid" style="display:grid;grid-template-columns:minmax(220px,300px) minmax(170px,200px) minmax(160px,1fr);gap:20px;align-items:start">
+                                    <div style="display:flex;flex-direction:column;gap:20px;width:100%;min-width:0">
+                                    <div style="display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px;align-items:start">
                                         <div style="background:var(--bg-2,#f8fafc);border:1px solid var(--border,#e8ecf0);border-radius:12px;padding:16px">
                                             <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted,#888);margin-bottom:12px">สร้าง / แก้ไขโฆษณา</div>
                                             <input type="hidden" id="p-ad-edit-id" value="">
@@ -1058,12 +1067,13 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div>
-                                            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted,#888);margin-bottom:12px">รายการโฆษณา</div>
-                                            <div id="partner-ads-list" style="display:flex;flex-direction:column;gap:8px">
-                                                <div style="color:#bbb;font-size:13px;text-align:center;padding:30px">เลือกพาร์ทเนอร์ก่อน</div>
-                                            </div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted,#888);margin-bottom:12px">รายการโฆษณา</div>
+                                        <div id="partner-ads-list" style="display:flex;flex-direction:column;gap:8px">
+                                            <div style="color:#bbb;font-size:13px;text-align:center;padding:30px">เลือกพาร์ทเนอร์ก่อน</div>
                                         </div>
+                                    </div>
                                     </div>
                                 </div>
 
@@ -1079,7 +1089,7 @@
                                     <!-- Reward Creation Form -->
                                     <div id="reward-create-form" class="section-box" style="display:none;">
                                         <h4 style="margin: 0 0 1.2rem 0; font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">สร้างรางวัลใหม่</h4>
-                                        <div style="display:grid;grid-template-columns:minmax(320px,1fr) minmax(190px,230px);gap:1.5rem;align-items:start;">
+                                        <div style="display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:1.5rem;align-items:start;">
                                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem;">
                                             <div>
                                                 <label class="field-label">ชื่อรางวัล *</label>
