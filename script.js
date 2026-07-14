@@ -3885,6 +3885,7 @@ function resetPartnerAdForm() {
     const msg = document.getElementById('p-ad-form-msg');
     if (msg) msg.textContent = '';
     togglePartnerAdDelayField();
+    updateAdPreview();
 }
 
 async function submitPartnerAdForm() {
@@ -3992,6 +3993,7 @@ async function editPartnerAdById(id) {
         document.getElementById('p-ad-end').value     = ad.end_date   ? ad.end_date.substring(0, 10)   : '';
         togglePartnerAdDelayField();
         document.getElementById('p-ad-title').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        updateAdPreview();
     } catch (e) { alert('เกิดข้อผิดพลาด: ' + e.message); }
 }
 
@@ -5000,6 +5002,7 @@ async function showCreateRewardForm() {
         // Scroll into view
         form.scrollIntoView({ behavior: 'smooth' });
         await loadRewardCategories();
+        updateRewardPreview();
     }
 }
 
@@ -5009,6 +5012,7 @@ function closeCreateRewardForm() {
         form.style.display = 'none';
         form.dataset.isEditing = 'false';
         delete form.dataset.rewardId;
+        delete form.dataset.imageUrl;
         
         // Reset form title
         const formTitle = document.querySelector('#reward-create-form h4');
@@ -5059,6 +5063,7 @@ function closeCreateRewardForm() {
         // Hide preview
         const preview = document.getElementById('reward-image-preview');
         if (preview) preview.style.display = 'none';
+        updateRewardPreview();
     }
 }
 
@@ -5481,9 +5486,11 @@ async function editReward(rewardId) {
         const form = document.getElementById('reward-create-form');
         form.dataset.rewardId = rewardId;
         form.dataset.isEditing = 'true';
+        form.dataset.imageUrl = reward.image_url || '';
 
         await loadRewardCategories(reward.category || '');
         showCreateRewardForm();
+        updateRewardPreview();
     } catch (err) {
         console.error('Load reward detail error:', err);
         alert('เกิดข้อผิดพลาดในการโหลดข้อมูล: ' + err.message);
@@ -6549,13 +6556,13 @@ function switchPartnerTab(tab) {
     });
     const id = window._selectedPartnerId;
     if (!id) return;
-    if (tab === 'announcements') loadPartnerAnnouncements(id);
-    if (tab === 'services')      loadPartnerServices(id);
-    if (tab === 'jobs')          loadPartnerJobs(id);
-    if (tab === 'projects')      loadPartnerProjects(id);
-    if (tab === 'ads')           loadPartnerAds(id);
+    if (tab === 'announcements') { loadPartnerAnnouncements(id); updateAnnouncementPreview(); }
+    if (tab === 'services')      { loadPartnerServices(id); updateServicePreview(); }
+    if (tab === 'jobs')          { loadPartnerJobs(id); updateJobPreview(); }
+    if (tab === 'projects')      { loadPartnerProjects(id); updateProjectPreview(); }
+    if (tab === 'ads')           { loadPartnerAds(id); updateAdPreview(); }
     if (tab === 'banners')       loadPartnerBanners(id);
-    if (tab === 'campaigns')     { loadRewardCategories(); loadRewardsCatalog(id); }
+    if (tab === 'campaigns')     { loadRewardCategories(); loadRewardsCatalog(id); updateRewardPreview(); }
     if (tab === 'articles')      loadPartnerArticles(id);
 }
 
@@ -7046,6 +7053,7 @@ function editJob(id) {
     document.getElementById('job-cancel-btn').style.display = '';
     document.getElementById('job-submit-btn').innerHTML = '<i class="fas fa-save"></i> บันทึกการแก้ไข';
     document.getElementById('job-title').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    updateJobPreview();
 }
 
 function resetJobForm() {
@@ -7055,6 +7063,7 @@ function resetJobForm() {
     document.getElementById('job-form-header').textContent = 'เพิ่มใหม่';
     document.getElementById('job-cancel-btn').style.display = 'none';
     document.getElementById('job-submit-btn').innerHTML = '<i class="fas fa-plus"></i> เพิ่มตำแหน่งงาน';
+    updateJobPreview();
 }
 
 async function submitJobForm() {
@@ -7180,6 +7189,7 @@ function editAnnouncement(id) {
     document.getElementById('ann-cancel-btn').style.display = '';
     document.getElementById('ann-submit-btn').innerHTML = '<i class="fas fa-save"></i> บันทึกการแก้ไข';
     document.getElementById('ann-title').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    updateAnnouncementPreview();
 }
 
 function resetAnnouncementForm() {
@@ -7190,6 +7200,7 @@ function resetAnnouncementForm() {
     document.getElementById('ann-form-header').textContent = 'เพิ่มใหม่';
     document.getElementById('ann-cancel-btn').style.display = 'none';
     document.getElementById('ann-submit-btn').innerHTML = '<i class="fas fa-plus"></i> เพิ่มประชาสัมพันธ์';
+    updateAnnouncementPreview();
 }
 
 async function submitAnnouncementForm() {
@@ -7238,6 +7249,7 @@ function editService(id) {
     document.getElementById('service-cancel-btn').style.display = '';
     document.getElementById('service-submit-btn').innerHTML = '<i class="fas fa-save"></i> บันทึกการแก้ไข';
     document.getElementById('service-title').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    updateServicePreview();
 }
 
 function resetServiceForm() {
@@ -7248,6 +7260,7 @@ function resetServiceForm() {
     document.getElementById('service-form-header').textContent = 'เพิ่มใหม่';
     document.getElementById('service-cancel-btn').style.display = 'none';
     document.getElementById('service-submit-btn').innerHTML = '<i class="fas fa-plus"></i> เพิ่มบริการ';
+    updateServicePreview();
 }
 
 async function submitServiceForm() {
@@ -7293,6 +7306,7 @@ function editProject(id) {
     document.getElementById('project-cancel-btn').style.display = '';
     document.getElementById('project-submit-btn').innerHTML = '<i class="fas fa-save"></i> บันทึกการแก้ไข';
     document.getElementById('project-title').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    updateProjectPreview();
 }
 
 function resetProjectForm() {
@@ -7303,6 +7317,7 @@ function resetProjectForm() {
     document.getElementById('project-form-header').textContent = 'เพิ่มใหม่';
     document.getElementById('project-cancel-btn').style.display = 'none';
     document.getElementById('project-submit-btn').innerHTML = '<i class="fas fa-plus"></i> เพิ่มโครงการ';
+    updateProjectPreview();
 }
 
 async function submitProjectForm() {
@@ -7824,6 +7839,175 @@ function onPartnerSelectChange(sel) {
         `<span style="font-weight:600;">${name}</span>` +
         `<span style="margin-left:8px;background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:999px;font-size:0.75rem;font-weight:600;">ได้รับการสนับสนุน</span>`;
     updateArticlePreview();
+}
+
+// ── Live "Preview (in-app)" mocks for announcements/services/jobs/projects/ads/campaigns ──
+// Mirrors updateArticlePreview() below: read form fields, write into a hand-built clone of the
+// real Flutter card, using FileReader for instant image preview and window._partnerDetailData
+// for the currently-selected partner's name/logo.
+
+function _dpvPartner() {
+    return window._partnerDetailData || {};
+}
+
+function _dpvSetText(id, val, placeholder) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = val || placeholder;
+    el.classList.toggle('dpv-placeholder', !val);
+}
+
+function _dpvPreviewImage(wrapId, file, fallbackUrl, iconClass) {
+    const wrap = document.getElementById(wrapId);
+    if (!wrap) return;
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = e => { wrap.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;display:block;">`; };
+        reader.readAsDataURL(file);
+    } else if (fallbackUrl) {
+        wrap.innerHTML = `<img src="${resolveMediaUrl(fallbackUrl)}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.parentElement.innerHTML='<i class=\\'${iconClass}\\'></i>'">`;
+    } else {
+        wrap.innerHTML = `<i class="${iconClass}"></i>`;
+    }
+}
+
+function updateAnnouncementPreview() {
+    const title = (document.getElementById('ann-title')?.value || '').trim();
+    const desc  = (document.getElementById('ann-desc')?.value || '').trim();
+    const editId = document.getElementById('ann-edit-id')?.value;
+    const cached = editId ? _annCache.find(x => String(x.id) === String(editId)) : null;
+    const file = document.getElementById('ann-image')?.files?.[0];
+
+    _dpvSetText('pvw-ann-title', title, 'ชื่อประชาสัมพันธ์...');
+    _dpvSetText('pvw-ann-desc', desc, 'รายละเอียดจะปรากฏที่นี่...');
+    const partnerEl = document.getElementById('pvw-ann-partner');
+    if (partnerEl) partnerEl.textContent = _dpvPartner().name || 'พาร์ทเนอร์';
+    _dpvPreviewImage('pvw-ann-img', file, cached?.image_url, 'fas fa-image');
+}
+
+function updateServicePreview() {
+    const title = (document.getElementById('service-title')?.value || '').trim();
+    const editId = document.getElementById('service-edit-id')?.value;
+    const cached = editId ? _serviceCache.find(x => String(x.id) === String(editId)) : null;
+    const file = document.getElementById('service-image')?.files?.[0];
+
+    _dpvSetText('pvw-svc-title', title, 'ชื่อบริการ...');
+    _dpvPreviewImage('pvw-svc-img', file, cached?.image_url, 'fas fa-image');
+}
+
+function updateJobPreview() {
+    const title    = (document.getElementById('job-title')?.value || '').trim();
+    const type     = (document.getElementById('job-type')?.value || '').trim();
+    const location = (document.getElementById('job-location')?.value || '').trim();
+    const salary   = (document.getElementById('job-salary')?.value || '').trim();
+    const link     = (document.getElementById('job-link')?.value || '').trim();
+    const partner  = _dpvPartner();
+
+    _dpvSetText('pvw-job-title', title, 'ชื่อตำแหน่ง...');
+    const partnerEl = document.getElementById('pvw-job-partner');
+    if (partnerEl) partnerEl.textContent = partner.name || 'พาร์ทเนอร์';
+
+    const logoWrap = document.getElementById('pvw-job-logo');
+    if (logoWrap) {
+        if (partner.logo_url) logoWrap.innerHTML = `<img src="${resolveMediaUrl(partner.logo_url)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-store\\'></i>'">`;
+        else logoWrap.innerHTML = '<i class="fas fa-store"></i>';
+    }
+
+    const typeEl = document.getElementById('pvw-job-type');
+    if (typeEl) { typeEl.textContent = type; typeEl.style.display = type ? 'inline-block' : 'none'; }
+    const locEl = document.getElementById('pvw-job-location');
+    if (locEl) { locEl.textContent = location; locEl.style.display = location ? 'inline-block' : 'none'; }
+
+    const salaryEl = document.getElementById('pvw-job-salary');
+    if (salaryEl) {
+        salaryEl.style.display = salary ? 'flex' : 'none';
+        salaryEl.innerHTML = `<i class="fas fa-sack-dollar"></i>&nbsp;${escapeHtml(salary)}`;
+    }
+
+    const btnEl = document.getElementById('pvw-job-btn');
+    if (btnEl) {
+        btnEl.textContent = 'สมัคร';
+        btnEl.style.background = link ? '#1565C0' : '#bbb';
+    }
+}
+
+function updateProjectPreview() {
+    const title = (document.getElementById('project-title')?.value || '').trim();
+    const desc  = (document.getElementById('project-desc')?.value || '').trim();
+    const editId = document.getElementById('project-edit-id')?.value;
+    const cached = editId ? _projectCache.find(x => String(x.id) === String(editId)) : null;
+    const file = document.getElementById('project-image')?.files?.[0];
+
+    _dpvSetText('pvw-proj-title', title, 'ชื่อโครงการ...');
+    _dpvSetText('pvw-proj-desc', desc, 'รายละเอียดจะปรากฏที่นี่...');
+    const partnerEl = document.getElementById('pvw-proj-partner');
+    if (partnerEl) partnerEl.textContent = _dpvPartner().name || 'พาร์ทเนอร์';
+
+    const wrap = document.getElementById('pvw-proj-img');
+    if (wrap) {
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = e => { wrap.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;display:block;">`; };
+            reader.readAsDataURL(file);
+        } else if (cached?.image_url) {
+            wrap.innerHTML = `<img src="${resolveMediaUrl(cached.image_url)}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-hand-holding-heart\\'></i>'">`;
+        } else {
+            wrap.innerHTML = '<i class="fas fa-hand-holding-heart"></i>';
+        }
+    }
+}
+
+function updateAdPreview() {
+    const fmt   = document.getElementById('p-ad-format')?.value || 'popup';
+    const title = (document.getElementById('p-ad-title')?.value || '').trim();
+    const body  = (document.getElementById('p-ad-body')?.value || '').trim();
+    const cta   = (document.getElementById('p-ad-cta')?.value || '').trim() || 'ดูเพิ่มเติม';
+    const editId = document.getElementById('p-ad-edit-id')?.value;
+    const cached = editId ? _partnerAdsCache.find(x => String(x.id) === String(editId)) : null;
+    const file = document.getElementById('p-ad-image')?.files?.[0];
+    const partner = _dpvPartner();
+
+    // Toggle which sub-mock is visible
+    document.getElementById('pvw-ad-popup').style.display   = fmt === 'popup'        ? 'block' : 'none';
+    document.getElementById('pvw-ad-notif').style.display   = fmt === 'notification' ? 'flex'  : 'none';
+    document.getElementById('pvw-ad-article').style.display = fmt === 'article'      ? 'block' : 'none';
+    document.getElementById('pvw-ad-notif-note').style.display = fmt === 'notification' ? 'block' : 'none';
+
+    if (fmt === 'popup') {
+        _dpvSetText('pvw-ad-popup-title', title, 'หัวข้อโฆษณา...');
+        _dpvSetText('pvw-ad-popup-body-text', body, 'เนื้อหาโฆษณาจะปรากฏที่นี่...');
+        const partnerEl = document.getElementById('pvw-ad-popup-partner');
+        if (partnerEl) partnerEl.textContent = partner.name || 'พาร์ทเนอร์';
+        const ctaEl = document.getElementById('pvw-ad-popup-cta');
+        if (ctaEl) ctaEl.textContent = cta;
+        _dpvPreviewImage('pvw-ad-popup-img', file, cached?.image_url, 'fas fa-image');
+    } else if (fmt === 'notification') {
+        _dpvSetText('pvw-ad-notif-title', title, 'หัวข้อโฆษณา...');
+        _dpvSetText('pvw-ad-notif-body', body, 'เนื้อหาโฆษณาจะปรากฏที่นี่...');
+    } else if (fmt === 'article') {
+        _dpvSetText('pvw-ad-article-title', title, 'หัวข้อโฆษณา...');
+        _dpvSetText('pvw-ad-article-text', body, 'เนื้อหาโฆษณาจะปรากฏที่นี่...');
+        const partnerEl = document.getElementById('pvw-ad-article-partner');
+        if (partnerEl) partnerEl.textContent = partner.name || 'พาร์ทเนอร์';
+        const ctaEl = document.getElementById('pvw-ad-article-cta');
+        if (ctaEl) ctaEl.textContent = cta;
+        _dpvPreviewImage('pvw-ad-article-img', file, cached?.image_url, 'fas fa-image');
+    }
+}
+
+function updateRewardPreview() {
+    const name   = (document.getElementById('reward-name')?.value || '').trim();
+    const desc   = (document.getElementById('reward-description')?.value || '').trim();
+    const points = document.getElementById('reward-points')?.value || '0';
+    const file   = document.getElementById('reward-image')?.files?.[0];
+    const fallbackImg = document.getElementById('reward-create-form')?.dataset.imageUrl || null;
+
+    _dpvSetText('pvw-reward-name', name, 'ชื่อรางวัล...');
+    const descEl = document.getElementById('pvw-reward-desc');
+    if (descEl) { descEl.textContent = desc; descEl.style.display = desc ? 'block' : 'none'; }
+    const ptsEl = document.getElementById('pvw-reward-pts');
+    if (ptsEl) ptsEl.innerHTML = `<i class="fas fa-star" style="color:#f9a825;"></i> ${points || 0}`;
+    _dpvPreviewImage('pvw-reward-img', file, fallbackImg, 'fas fa-gift');
 }
 
 function updateArticlePreview() {

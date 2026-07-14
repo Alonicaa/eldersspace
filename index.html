@@ -607,9 +607,89 @@
                                     </button>
                                 </div>
 
+                                <style>
+                                    /* Shared live in-app preview mock (announcements/services/jobs/projects/ads/campaigns) */
+                                    .dpv-wrap{position:sticky;top:24px;align-self:start;}
+                                    .dpv-phone{background:#f0f2f5;border-radius:18px;padding:14px;border:2px solid #dde3ea;}
+                                    .dpv-phone-label{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#aaa;text-align:center;margin-bottom:10px;}
+                                    .dpv-placeholder{color:#ccc;font-style:italic;}
+                                    .dpv-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+                                    .dpv-header-title{font-size:.8rem;font-weight:700;color:var(--text-secondary,#666);display:flex;align-items:center;gap:.4rem;}
+                                    .dpv-live-badge{font-size:.65rem;background:#e8f0fe;color:#1565c0;padding:2px 8px;border-radius:999px;font-weight:600;}
+
+                                    /* Announcement card (all_announcements_page.dart) */
+                                    .dpv-ann-card{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 8px rgba(0,0,0,.08);}
+                                    .dpv-ann-img{width:100%;height:140px;object-fit:cover;background:linear-gradient(135deg,#e3f0ff,#f3e5f5);display:flex;align-items:center;justify-content:center;color:#bbb;font-size:1.6rem;}
+                                    .dpv-ann-body{padding:12px 14px;}
+                                    .dpv-ann-title{font-size:.95rem;font-weight:700;color:#1a1a2e;line-height:1.35;}
+                                    .dpv-ann-desc{font-size:.8rem;color:#666;line-height:1.5;margin-top:6px;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;}
+                                    .dpv-ann-partner{display:flex;align-items:center;gap:5px;margin-top:10px;color:#1565C0;font-size:.75rem;font-weight:600;}
+
+                                    /* Service card (partner_page.dart _buildServiceCard) */
+                                    .dpv-svc-tile{width:120px;margin:0 auto;}
+                                    .dpv-svc-img{width:120px;height:120px;border-radius:10px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:1.6rem;overflow:hidden;}
+                                    .dpv-svc-img img{width:100%;height:100%;object-fit:cover;}
+                                    .dpv-svc-title{margin-top:6px;text-align:center;font-size:.75rem;font-weight:600;color:#222;}
+
+                                    /* Job card (all_opportunities_page.dart _buildJobCard) */
+                                    .dpv-job-card{background:#fff;border-radius:12px;padding:12px;box-shadow:0 1px 8px rgba(0,0,0,.08);}
+                                    .dpv-job-top{display:flex;gap:10px;align-items:flex-start;}
+                                    .dpv-job-logo{width:44px;height:44px;border-radius:10px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;color:#bbb;overflow:hidden;flex-shrink:0;}
+                                    .dpv-job-logo img{width:100%;height:100%;object-fit:cover;}
+                                    .dpv-job-title{font-size:.85rem;font-weight:700;color:#1a1a2e;}
+                                    .dpv-job-partner{font-size:.72rem;color:#1565C0;font-weight:600;margin-top:2px;}
+                                    .dpv-job-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+                                    .dpv-job-chip{font-size:.68rem;padding:2px 8px;border-radius:6px;background:#e8f5e9;color:#2e7d32;font-weight:600;}
+                                    .dpv-job-salary{font-size:.75rem;color:#388e3c;font-weight:600;margin-top:6px;}
+                                    .dpv-job-btn{margin-top:10px;background:#1565C0;color:#fff;text-align:center;padding:8px 0;border-radius:20px;font-weight:700;font-size:.78rem;}
+
+                                    /* Project card (all_social_projects_page.dart _buildProjectCard) */
+                                    .dpv-proj-card{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 8px rgba(0,0,0,.08);}
+                                    .dpv-proj-img{width:100%;height:120px;object-fit:cover;background:linear-gradient(135deg,#1B5E20,#388E3C);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.6rem;}
+                                    .dpv-proj-body{padding:12px 14px;}
+                                    .dpv-proj-partner{display:flex;align-items:center;gap:5px;color:#1B5E20;font-size:.72rem;font-weight:700;}
+                                    .dpv-proj-title{font-size:.9rem;font-weight:700;color:#1a1a2e;margin-top:6px;}
+                                    .dpv-proj-desc{font-size:.78rem;color:#666;line-height:1.5;margin-top:5px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+                                    .dpv-proj-btn{margin-top:10px;background:#1565C0;color:#fff;text-align:center;padding:8px 0;border-radius:20px;font-weight:700;font-size:.78rem;}
+
+                                    /* Ads — 3 sub-mocks (partner_ad_popup.dart / community_page.dart sponsored article) */
+                                    .dpv-ad-popup{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 14px rgba(0,0,0,.15);}
+                                    .dpv-ad-popup-head{display:flex;align-items:center;justify-content:space-between;background:#f5f5f5;padding:8px 12px;}
+                                    .dpv-ad-chip{background:#6C47D4;color:#fff;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:5px;}
+                                    .dpv-ad-popup-img{width:100%;height:110px;object-fit:cover;background:#eee;display:flex;align-items:center;justify-content:center;color:#bbb;}
+                                    .dpv-ad-popup-body{padding:12px;}
+                                    .dpv-ad-popup-partner{display:flex;align-items:center;gap:6px;color:#666;font-size:.7rem;font-weight:600;}
+                                    .dpv-ad-popup-title{font-size:.9rem;font-weight:700;margin-top:6px;}
+                                    .dpv-ad-popup-text{font-size:.75rem;color:#555;margin-top:4px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;}
+                                    .dpv-ad-popup-cta{margin-top:10px;background:#2E7D32;color:#fff;text-align:center;padding:9px 0;border-radius:10px;font-weight:700;font-size:.8rem;}
+                                    .dpv-ad-notif{background:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 1px 8px rgba(0,0,0,.12);display:flex;gap:10px;align-items:flex-start;}
+                                    .dpv-ad-notif-icon{width:34px;height:34px;border-radius:8px;background:#8e44ad;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+                                    .dpv-ad-notif-title{font-size:.8rem;font-weight:700;}
+                                    .dpv-ad-notif-body{font-size:.72rem;color:#666;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+                                    .dpv-ad-notif-note{font-size:.62rem;color:#aaa;text-align:center;margin-top:8px;font-style:italic;}
+                                    .dpv-ad-article{background:#fff;border-radius:14px;overflow:hidden;border:1.5px solid rgba(108,71,212,.3);box-shadow:0 1px 8px rgba(0,0,0,.08);}
+                                    .dpv-ad-article-head{display:flex;align-items:center;gap:6px;padding:10px 12px 0;}
+                                    .dpv-ad-article-badge{margin-left:auto;background:rgba(108,71,212,.1);color:#6C47D4;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:20px;}
+                                    .dpv-ad-article-img{width:100%;height:120px;object-fit:cover;margin-top:8px;background:#eee;}
+                                    .dpv-ad-article-body{padding:10px 12px 12px;}
+                                    .dpv-ad-article-title{font-size:.85rem;font-weight:700;}
+                                    .dpv-ad-article-text{font-size:.75rem;color:#555;margin-top:4px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+                                    .dpv-ad-article-cta{margin-top:10px;border:1.5px solid rgba(108,71,212,.4);background:rgba(108,71,212,.08);color:#6C47D4;text-align:center;padding:8px 0;border-radius:8px;font-weight:700;font-size:.75rem;}
+
+                                    /* Campaigns / reward card (home_page.dart _buildRewardCard) */
+                                    .dpv-reward-card{width:160px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 1px 8px rgba(0,0,0,.08);}
+                                    .dpv-reward-img{width:100%;height:96px;object-fit:cover;background:rgba(21,101,192,.08);display:flex;align-items:center;justify-content:center;color:#1B5E20;font-size:1.5rem;}
+                                    .dpv-reward-body{padding:8px 10px;}
+                                    .dpv-reward-name{font-size:.72rem;font-weight:600;color:#222;}
+                                    .dpv-reward-desc{font-size:.62rem;color:#999;margin-top:2px;}
+                                    .dpv-reward-row{display:flex;align-items:center;margin-top:6px;gap:6px;}
+                                    .dpv-reward-pts{background:#fff8e1;border:1px solid #ffe082;color:#f57f17;font-size:.62rem;font-weight:700;padding:2px 6px;border-radius:6px;}
+                                    .dpv-reward-btn{margin-left:auto;background:#1565C0;color:#fff;font-size:.62rem;font-weight:700;padding:4px 8px;border-radius:14px;}
+                                </style>
+
                                 <!-- Tab: ประชาสัมพันธ์ -->
                                 <div id="tab-announcements" class="ptab-content" style="padding:18px">
-                                    <div class="partner-tab-grid" style="display:grid;grid-template-columns:minmax(280px,340px) minmax(0,1fr);gap:20px;align-items:start;width:100%;min-width:0">
+                                    <div class="partner-tab-grid" style="display:grid;grid-template-columns:minmax(200px,260px) minmax(180px,220px) minmax(160px,1fr);gap:20px;align-items:start;width:100%;min-width:0">
                                         <!-- Form -->
                                         <div style="background:var(--bg-2,#f8fafc);border:1px solid var(--border,#e8ecf0);border-radius:12px;padding:16px">
                                             <input type="hidden" id="ann-edit-id" value="">
@@ -620,11 +700,11 @@
                                             <div style="display:flex;flex-direction:column;gap:10px">
                                                 <div>
                                                     <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">หัวข้อ *</label>
-                                                    <input id="ann-title" type="text" placeholder="ชื่อประชาสัมพันธ์" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none;transition:border-color .2s" onfocus="this.style.borderColor='#43A047'" onblur="this.style.borderColor='var(--border,#dde3ea)'">
+                                                    <input id="ann-title" type="text" placeholder="ชื่อประชาสัมพันธ์" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none;transition:border-color .2s" onfocus="this.style.borderColor='#43A047'" onblur="this.style.borderColor='var(--border,#dde3ea)'" oninput="updateAnnouncementPreview()">
                                                 </div>
                                                 <div>
                                                     <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">รายละเอียด</label>
-                                                    <textarea id="ann-desc" rows="2" placeholder="คำอธิบายเพิ่มเติม" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none;resize:vertical;font-family:inherit;transition:border-color .2s" onfocus="this.style.borderColor='#43A047'" onblur="this.style.borderColor='var(--border,#dde3ea)'"></textarea>
+                                                    <textarea id="ann-desc" rows="2" placeholder="คำอธิบายเพิ่มเติม" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none;resize:vertical;font-family:inherit;transition:border-color .2s" onfocus="this.style.borderColor='#43A047'" onblur="this.style.borderColor='var(--border,#dde3ea)'" oninput="updateAnnouncementPreview()"></textarea>
                                                 </div>
                                                 <div>
                                                     <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">ลิงก์ปลายทาง</label>
@@ -642,12 +722,32 @@
                                                 </div>
                                                 <div>
                                                     <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">รูปภาพ</label>
-                                                    <input id="ann-image" type="file" accept="image/*" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1.5px dashed var(--border,#dde3ea);border-radius:8px;font-size:12px;background:var(--bg,#fff);color:var(--text,#555);cursor:pointer">
+                                                    <input id="ann-image" type="file" accept="image/*" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1.5px dashed var(--border,#dde3ea);border-radius:8px;font-size:12px;background:var(--bg,#fff);color:var(--text,#555);cursor:pointer" onchange="updateAnnouncementPreview()">
                                                 </div>
                                                 <button type="button" id="ann-submit-btn" onclick="submitAnnouncementForm()" style="width:100%;padding:10px;background:#1B5E20;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .2s" onmouseover="this.style.background='#2E7D32'" onmouseout="this.style.background='#1B5E20'">
                                                     <i class="fas fa-plus"></i> เพิ่มประชาสัมพันธ์
                                                 </button>
                                                 <div id="ann-form-msg" style="font-size:12px;text-align:center;min-height:16px"></div>
+                                            </div>
+                                        </div>
+                                        <!-- Preview -->
+                                        <div class="dpv-wrap">
+                                            <div class="white-box" style="padding:1rem;">
+                                                <div class="dpv-header">
+                                                    <div class="dpv-header-title"><i class="fas fa-mobile-alt" style="color:#1565c0;"></i> Preview (in-app)</div>
+                                                    <span class="dpv-live-badge">Live</span>
+                                                </div>
+                                                <div class="dpv-phone">
+                                                    <div class="dpv-phone-label">รายการประชาสัมพันธ์</div>
+                                                    <div class="dpv-ann-card">
+                                                        <div id="pvw-ann-img" class="dpv-ann-img"><i class="fas fa-image"></i></div>
+                                                        <div class="dpv-ann-body">
+                                                            <div id="pvw-ann-title" class="dpv-ann-title dpv-placeholder">ชื่อประชาสัมพันธ์...</div>
+                                                            <div id="pvw-ann-desc" class="dpv-ann-desc dpv-placeholder">รายละเอียดจะปรากฏที่นี่...</div>
+                                                            <div class="dpv-ann-partner"><i class="fas fa-store" style="font-size:11px;"></i> <span id="pvw-ann-partner">พาร์ทเนอร์</span></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                         <!-- List -->
@@ -662,7 +762,7 @@
 
                                 <!-- Tab: บริการ -->
                                 <div id="tab-services" class="ptab-content" style="display:none;padding:18px">
-                                    <div class="partner-tab-grid" style="display:grid;grid-template-columns:minmax(280px,340px) minmax(0,1fr);gap:20px;align-items:start">
+                                    <div class="partner-tab-grid" style="display:grid;grid-template-columns:minmax(200px,260px) minmax(180px,220px) minmax(160px,1fr);gap:20px;align-items:start">
                                         <div style="background:var(--bg-2,#f8fafc);border:1px solid var(--border,#e8ecf0);border-radius:12px;padding:16px">
                                             <input type="hidden" id="service-edit-id" value="">
                                             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -672,20 +772,36 @@
                                             <div style="display:flex;flex-direction:column;gap:10px">
                                                 <div>
                                                     <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">ชื่อบริการ *</label>
-                                                    <input id="service-title" type="text" placeholder="เช่น เครื่องดื่มร้อน-เย็น" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none;transition:border-color .2s" onfocus="this.style.borderColor='#43A047'" onblur="this.style.borderColor='var(--border,#dde3ea)'">
+                                                    <input id="service-title" type="text" placeholder="เช่น เครื่องดื่มร้อน-เย็น" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none;transition:border-color .2s" onfocus="this.style.borderColor='#43A047'" onblur="this.style.borderColor='var(--border,#dde3ea)'" oninput="updateServicePreview()">
                                                 </div>
                                                 <div>
                                                     <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">รายละเอียด</label>
-                                                    <textarea id="service-desc" rows="2" placeholder="อธิบายบริการ" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none;resize:vertical;font-family:inherit;transition:border-color .2s" onfocus="this.style.borderColor='#43A047'" onblur="this.style.borderColor='var(--border,#dde3ea)'"></textarea>
+                                                    <textarea id="service-desc" rows="2" placeholder="อธิบายบริการ" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none;resize:vertical;font-family:inherit;transition:border-color .2s" onfocus="this.style.borderColor='#43A047'" onblur="this.style.borderColor='var(--border,#dde3ea)'" oninput="updateServicePreview()"></textarea>
                                                 </div>
                                                 <div>
                                                     <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">รูปภาพ</label>
-                                                    <input id="service-image" type="file" accept="image/*" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1.5px dashed var(--border,#dde3ea);border-radius:8px;font-size:12px;background:var(--bg,#fff);color:var(--text,#555);cursor:pointer">
+                                                    <input id="service-image" type="file" accept="image/*" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1.5px dashed var(--border,#dde3ea);border-radius:8px;font-size:12px;background:var(--bg,#fff);color:var(--text,#555);cursor:pointer" onchange="updateServicePreview()">
                                                 </div>
                                                 <button type="button" id="service-submit-btn" onclick="submitServiceForm()" style="width:100%;padding:10px;background:#1B5E20;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .2s" onmouseover="this.style.background='#2E7D32'" onmouseout="this.style.background='#1B5E20'">
                                                     <i class="fas fa-plus"></i> เพิ่มบริการ
                                                 </button>
                                                 <div id="service-form-msg" style="font-size:12px;text-align:center;min-height:16px"></div>
+                                            </div>
+                                        </div>
+                                        <!-- Preview -->
+                                        <div class="dpv-wrap">
+                                            <div class="white-box" style="padding:1rem;">
+                                                <div class="dpv-header">
+                                                    <div class="dpv-header-title"><i class="fas fa-mobile-alt" style="color:#1565c0;"></i> Preview (in-app)</div>
+                                                    <span class="dpv-live-badge">Live</span>
+                                                </div>
+                                                <div class="dpv-phone">
+                                                    <div class="dpv-phone-label">แถบบริการของเรา</div>
+                                                    <div class="dpv-svc-tile">
+                                                        <div id="pvw-svc-img" class="dpv-svc-img"><i class="fas fa-image"></i></div>
+                                                        <div id="pvw-svc-title" class="dpv-svc-title dpv-placeholder">ชื่อบริการ...</div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                         <div>
@@ -699,7 +815,7 @@
 
                                 <!-- Tab: งาน -->
                                 <div id="tab-jobs" class="ptab-content" style="display:none;padding:18px">
-                                    <div class="partner-tab-grid" style="display:grid;grid-template-columns:minmax(280px,340px) minmax(0,1fr);gap:20px;align-items:start">
+                                    <div class="partner-tab-grid" style="display:grid;grid-template-columns:minmax(200px,260px) minmax(180px,220px) minmax(160px,1fr);gap:20px;align-items:start">
                                         <div style="background:var(--bg-2,#f8fafc);border:1px solid var(--border,#e8ecf0);border-radius:12px;padding:16px">
                                             <input type="hidden" id="job-edit-id" value="">
                                             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -709,21 +825,21 @@
                                             <div style="display:flex;flex-direction:column;gap:10px">
                                                 <div>
                                                     <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">ชื่อตำแหน่ง *</label>
-                                                    <input id="job-title" type="text" placeholder="เช่น พนักงานบาริสต้า" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none;transition:border-color .2s" onfocus="this.style.borderColor='#43A047'" onblur="this.style.borderColor='var(--border,#dde3ea)'">
+                                                    <input id="job-title" type="text" placeholder="เช่น พนักงานบาริสต้า" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none;transition:border-color .2s" onfocus="this.style.borderColor='#43A047'" onblur="this.style.borderColor='var(--border,#dde3ea)'" oninput="updateJobPreview()">
                                                 </div>
                                                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                                                     <div>
                                                         <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">ประเภท</label>
-                                                        <input id="job-type" type="text" placeholder="พาร์ทไทม์" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none">
+                                                        <input id="job-type" type="text" placeholder="พาร์ทไทม์" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none" oninput="updateJobPreview()">
                                                     </div>
                                                     <div>
                                                         <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">สถานที่</label>
-                                                        <input id="job-location" type="text" placeholder="กรุงเทพฯ" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none">
+                                                        <input id="job-location" type="text" placeholder="กรุงเทพฯ" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none" oninput="updateJobPreview()">
                                                     </div>
                                                 </div>
                                                 <div>
                                                     <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">เงินเดือน</label>
-                                                    <input id="job-salary" type="text" placeholder="350 บ./วัน" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none">
+                                                    <input id="job-salary" type="text" placeholder="350 บ./วัน" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none" oninput="updateJobPreview()">
                                                 </div>
                                                 <div>
                                                     <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">รายละเอียด</label>
@@ -731,12 +847,39 @@
                                                 </div>
                                                 <div>
                                                     <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">ลิงก์สมัครงาน</label>
-                                                    <input id="job-link" type="url" placeholder="https://..." style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none;transition:border-color .2s" onfocus="this.style.borderColor='#43A047'" onblur="this.style.borderColor='var(--border,#dde3ea)'">
+                                                    <input id="job-link" type="url" placeholder="https://..." style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none;transition:border-color .2s" onfocus="this.style.borderColor='#43A047'" onblur="this.style.borderColor='var(--border,#dde3ea)'" oninput="updateJobPreview()">
                                                 </div>
                                                 <button type="button" id="job-submit-btn" onclick="submitJobForm()" style="width:100%;padding:10px;background:#1B5E20;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .2s" onmouseover="this.style.background='#2E7D32'" onmouseout="this.style.background='#1B5E20'">
                                                     <i class="fas fa-plus"></i> เพิ่มตำแหน่งงาน
                                                 </button>
                                                 <div id="job-form-msg" style="font-size:12px;text-align:center;min-height:16px"></div>
+                                            </div>
+                                        </div>
+                                        <!-- Preview -->
+                                        <div class="dpv-wrap">
+                                            <div class="white-box" style="padding:1rem;">
+                                                <div class="dpv-header">
+                                                    <div class="dpv-header-title"><i class="fas fa-mobile-alt" style="color:#1565c0;"></i> Preview (in-app)</div>
+                                                    <span class="dpv-live-badge">Live</span>
+                                                </div>
+                                                <div class="dpv-phone">
+                                                    <div class="dpv-phone-label">รายการงาน</div>
+                                                    <div class="dpv-job-card">
+                                                        <div class="dpv-job-top">
+                                                            <div id="pvw-job-logo" class="dpv-job-logo"><i class="fas fa-store"></i></div>
+                                                            <div style="flex:1;min-width:0;">
+                                                                <div id="pvw-job-title" class="dpv-job-title dpv-placeholder">ชื่อตำแหน่ง...</div>
+                                                                <div id="pvw-job-partner" class="dpv-job-partner">พาร์ทเนอร์</div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="dpv-job-chips">
+                                                            <span id="pvw-job-type" class="dpv-job-chip" style="display:none;"></span>
+                                                            <span id="pvw-job-location" class="dpv-job-chip" style="display:none;"></span>
+                                                        </div>
+                                                        <div id="pvw-job-salary" class="dpv-job-salary" style="display:none;"><i class="fas fa-sack-dollar"></i> </div>
+                                                        <div id="pvw-job-btn" class="dpv-job-btn" style="background:#bbb;">สมัคร</div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                         <div>
@@ -750,7 +893,7 @@
 
                                 <!-- Tab: โครงการ -->
                                 <div id="tab-projects" class="ptab-content" style="display:none;padding:18px">
-                                    <div class="partner-tab-grid" style="display:grid;grid-template-columns:minmax(280px,340px) minmax(0,1fr);gap:20px;align-items:start">
+                                    <div class="partner-tab-grid" style="display:grid;grid-template-columns:minmax(200px,260px) minmax(180px,220px) minmax(160px,1fr);gap:20px;align-items:start">
                                         <div style="background:var(--bg-2,#f8fafc);border:1px solid var(--border,#e8ecf0);border-radius:12px;padding:16px">
                                             <input type="hidden" id="project-edit-id" value="">
                                             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -760,11 +903,11 @@
                                             <div style="display:flex;flex-direction:column;gap:10px">
                                                 <div>
                                                     <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">ชื่อโครงการ *</label>
-                                                    <input id="project-title" type="text" placeholder="เช่น Café Amazon for Chance" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none;transition:border-color .2s" onfocus="this.style.borderColor='#43A047'" onblur="this.style.borderColor='var(--border,#dde3ea)'">
+                                                    <input id="project-title" type="text" placeholder="เช่น Café Amazon for Chance" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none;transition:border-color .2s" onfocus="this.style.borderColor='#43A047'" onblur="this.style.borderColor='var(--border,#dde3ea)'" oninput="updateProjectPreview()">
                                                 </div>
                                                 <div>
                                                     <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">รายละเอียด</label>
-                                                    <textarea id="project-desc" rows="3" placeholder="อธิบายโครงการ" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none;resize:vertical;font-family:inherit;transition:border-color .2s" onfocus="this.style.borderColor='#43A047'" onblur="this.style.borderColor='var(--border,#dde3ea)'"></textarea>
+                                                    <textarea id="project-desc" rows="3" placeholder="อธิบายโครงการ" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none;resize:vertical;font-family:inherit;transition:border-color .2s" onfocus="this.style.borderColor='#43A047'" onblur="this.style.borderColor='var(--border,#dde3ea)'" oninput="updateProjectPreview()"></textarea>
                                                 </div>
                                                 <div>
                                                     <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">ลิงก์รายละเอียด</label>
@@ -772,12 +915,33 @@
                                                 </div>
                                                 <div>
                                                     <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">รูปภาพ</label>
-                                                    <input id="project-image" type="file" accept="image/*" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1.5px dashed var(--border,#dde3ea);border-radius:8px;font-size:12px;background:var(--bg,#fff);color:var(--text,#555);cursor:pointer">
+                                                    <input id="project-image" type="file" accept="image/*" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1.5px dashed var(--border,#dde3ea);border-radius:8px;font-size:12px;background:var(--bg,#fff);color:var(--text,#555);cursor:pointer" onchange="updateProjectPreview()">
                                                 </div>
                                                 <button type="button" id="project-submit-btn" onclick="submitProjectForm()" style="width:100%;padding:10px;background:#1B5E20;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .2s" onmouseover="this.style.background='#2E7D32'" onmouseout="this.style.background='#1B5E20'">
                                                     <i class="fas fa-plus"></i> เพิ่มโครงการ
                                                 </button>
                                                 <div id="project-form-msg" style="font-size:12px;text-align:center;min-height:16px"></div>
+                                            </div>
+                                        </div>
+                                        <!-- Preview -->
+                                        <div class="dpv-wrap">
+                                            <div class="white-box" style="padding:1rem;">
+                                                <div class="dpv-header">
+                                                    <div class="dpv-header-title"><i class="fas fa-mobile-alt" style="color:#1565c0;"></i> Preview (in-app)</div>
+                                                    <span class="dpv-live-badge">Live</span>
+                                                </div>
+                                                <div class="dpv-phone">
+                                                    <div class="dpv-phone-label">รายการโครงการ</div>
+                                                    <div class="dpv-proj-card">
+                                                        <div id="pvw-proj-img" class="dpv-proj-img"><i class="fas fa-hand-holding-heart"></i></div>
+                                                        <div class="dpv-proj-body">
+                                                            <div class="dpv-proj-partner"><i class="fas fa-store" style="font-size:11px;"></i> <span id="pvw-proj-partner">พาร์ทเนอร์</span></div>
+                                                            <div id="pvw-proj-title" class="dpv-proj-title dpv-placeholder">ชื่อโครงการ...</div>
+                                                            <div id="pvw-proj-desc" class="dpv-proj-desc dpv-placeholder">รายละเอียดจะปรากฏที่นี่...</div>
+                                                            <div class="dpv-proj-btn">ดูรายละเอียด</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                         <div>
@@ -791,14 +955,14 @@
 
                                 <!-- Tab: Ads -->
                                 <div id="tab-ads" class="ptab-content" style="display:none;padding:18px">
-                                    <div class="partner-tab-grid" style="display:grid;grid-template-columns:minmax(280px,340px) minmax(0,1fr);gap:20px;align-items:start">
+                                    <div class="partner-tab-grid" style="display:grid;grid-template-columns:minmax(200px,260px) minmax(180px,220px) minmax(160px,1fr);gap:20px;align-items:start">
                                         <div style="background:var(--bg-2,#f8fafc);border:1px solid var(--border,#e8ecf0);border-radius:12px;padding:16px">
                                             <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted,#888);margin-bottom:12px">สร้าง / แก้ไขโฆษณา</div>
                                             <input type="hidden" id="p-ad-edit-id" value="">
                                             <div style="display:flex;flex-direction:column;gap:10px">
                                                 <div>
                                                     <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">รูปแบบโฆษณา *</label>
-                                                    <select id="p-ad-format" onchange="togglePartnerAdDelayField()" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none">
+                                                    <select id="p-ad-format" onchange="togglePartnerAdDelayField();updateAdPreview()" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none">
                                                         <option value="popup">🪟 Popup — แสดงหลังเข้าแอป</option>
                                                         <option value="notification">🔔 Push Notification — ส่งแจ้งเตือน</option>
                                                         <option value="article">📰 กระทู้บทความ — ใน Community Feed</option>
@@ -810,19 +974,19 @@
                                                 </div>
                                                 <div>
                                                     <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">หัวข้อโฆษณา *</label>
-                                                    <input id="p-ad-title" type="text" placeholder="เช่น สิทธิพิเศษสำหรับผู้สูงอายุ" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none;transition:border-color .2s" onfocus="this.style.borderColor='#6C47D4'" onblur="this.style.borderColor='var(--border,#dde3ea)'">
+                                                    <input id="p-ad-title" type="text" placeholder="เช่น สิทธิพิเศษสำหรับผู้สูงอายุ" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none;transition:border-color .2s" onfocus="this.style.borderColor='#6C47D4'" onblur="this.style.borderColor='var(--border,#dde3ea)'" oninput="updateAdPreview()">
                                                 </div>
                                                 <div>
                                                     <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">เนื้อหา</label>
-                                                    <textarea id="p-ad-body" rows="2" placeholder="รายละเอียดโฆษณา..." style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none;resize:vertical;font-family:inherit;transition:border-color .2s" onfocus="this.style.borderColor='#6C47D4'" onblur="this.style.borderColor='var(--border,#dde3ea)'"></textarea>
+                                                    <textarea id="p-ad-body" rows="2" placeholder="รายละเอียดโฆษณา..." style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none;resize:vertical;font-family:inherit;transition:border-color .2s" onfocus="this.style.borderColor='#6C47D4'" onblur="this.style.borderColor='var(--border,#dde3ea)'" oninput="updateAdPreview()"></textarea>
                                                 </div>
                                                 <div>
                                                     <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">ข้อความปุ่ม CTA</label>
-                                                    <input id="p-ad-cta" type="text" placeholder="ดูเพิ่มเติม" value="ดูเพิ่มเติม" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none;transition:border-color .2s" onfocus="this.style.borderColor='#6C47D4'" onblur="this.style.borderColor='var(--border,#dde3ea)'">
+                                                    <input id="p-ad-cta" type="text" placeholder="ดูเพิ่มเติม" value="ดูเพิ่มเติม" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border,#dde3ea);border-radius:8px;font-size:13px;background:var(--bg,#fff);color:var(--text,#222);outline:none;transition:border-color .2s" onfocus="this.style.borderColor='#6C47D4'" onblur="this.style.borderColor='var(--border,#dde3ea)'" oninput="updateAdPreview()">
                                                 </div>
                                                 <div>
                                                     <label style="font-size:11px;font-weight:600;color:var(--text-muted,#666);display:block;margin-bottom:4px">รูปภาพ</label>
-                                                    <input id="p-ad-image" type="file" accept="image/*" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1.5px dashed var(--border,#dde3ea);border-radius:8px;font-size:12px;background:var(--bg,#fff);color:var(--text,#555);cursor:pointer">
+                                                    <input id="p-ad-image" type="file" accept="image/*" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1.5px dashed var(--border,#dde3ea);border-radius:8px;font-size:12px;background:var(--bg,#fff);color:var(--text,#555);cursor:pointer" onchange="updateAdPreview()">
                                                 </div>
                                                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                                                     <div>
@@ -843,6 +1007,55 @@
                                                     </button>
                                                 </div>
                                                 <div id="p-ad-form-msg" style="font-size:12px;text-align:center;min-height:16px"></div>
+                                            </div>
+                                        </div>
+                                        <!-- Preview -->
+                                        <div class="dpv-wrap">
+                                            <div class="white-box" style="padding:1rem;">
+                                                <div class="dpv-header">
+                                                    <div class="dpv-header-title"><i class="fas fa-mobile-alt" style="color:#1565c0;"></i> Preview (in-app)</div>
+                                                    <span class="dpv-live-badge">Live</span>
+                                                </div>
+                                                <div class="dpv-phone">
+                                                    <div class="dpv-phone-label">ตัวอย่างตามรูปแบบโฆษณา</div>
+                                                    <!-- Popup mock -->
+                                                    <div id="pvw-ad-popup" class="dpv-ad-popup">
+                                                        <div class="dpv-ad-popup-head">
+                                                            <span class="dpv-ad-chip">โฆษณา</span>
+                                                            <i class="fas fa-times" style="color:#999;font-size:12px;"></i>
+                                                        </div>
+                                                        <div id="pvw-ad-popup-img" class="dpv-ad-popup-img"><i class="fas fa-image"></i></div>
+                                                        <div class="dpv-ad-popup-body">
+                                                            <div class="dpv-ad-popup-partner"><i class="fas fa-store" style="font-size:10px;"></i> <span id="pvw-ad-popup-partner">พาร์ทเนอร์</span></div>
+                                                            <div id="pvw-ad-popup-title" class="dpv-ad-popup-title dpv-placeholder">หัวข้อโฆษณา...</div>
+                                                            <div id="pvw-ad-popup-body-text" class="dpv-ad-popup-text dpv-placeholder">เนื้อหาโฆษณาจะปรากฏที่นี่...</div>
+                                                            <div id="pvw-ad-popup-cta" class="dpv-ad-popup-cta">ดูเพิ่มเติม</div>
+                                                        </div>
+                                                    </div>
+                                                    <!-- Notification mock -->
+                                                    <div id="pvw-ad-notif" class="dpv-ad-notif" style="display:none;">
+                                                        <div class="dpv-ad-notif-icon"><i class="fas fa-bell"></i></div>
+                                                        <div style="flex:1;min-width:0;">
+                                                            <div id="pvw-ad-notif-title" class="dpv-ad-notif-title dpv-placeholder">หัวข้อโฆษณา...</div>
+                                                            <div id="pvw-ad-notif-body" class="dpv-ad-notif-body dpv-placeholder">เนื้อหาโฆษณาจะปรากฏที่นี่...</div>
+                                                        </div>
+                                                    </div>
+                                                    <!-- Sponsored-article-in-feed mock -->
+                                                    <div id="pvw-ad-article" class="dpv-ad-article" style="display:none;">
+                                                        <div class="dpv-ad-article-head">
+                                                            <i class="fas fa-store" style="font-size:11px;color:#999;"></i>
+                                                            <span id="pvw-ad-article-partner" style="font-size:.72rem;color:#666;font-weight:600;">พาร์ทเนอร์</span>
+                                                            <span class="dpv-ad-article-badge">สนับสนุน</span>
+                                                        </div>
+                                                        <div id="pvw-ad-article-img" class="dpv-ad-article-img"></div>
+                                                        <div class="dpv-ad-article-body">
+                                                            <div id="pvw-ad-article-title" class="dpv-ad-article-title dpv-placeholder">หัวข้อโฆษณา...</div>
+                                                            <div id="pvw-ad-article-text" class="dpv-ad-article-text dpv-placeholder">เนื้อหาโฆษณาจะปรากฏที่นี่...</div>
+                                                            <div id="pvw-ad-article-cta" class="dpv-ad-article-cta">ดูเพิ่มเติม</div>
+                                                        </div>
+                                                    </div>
+                                                    <div id="pvw-ad-notif-note" class="dpv-ad-notif-note" style="display:none;">* ตัวอย่างโดยประมาณ รูปแบบจริงขึ้นกับระบบแจ้งเตือนของอุปกรณ์</div>
+                                                </div>
                                             </div>
                                         </div>
                                         <div>
@@ -866,14 +1079,15 @@
                                     <!-- Reward Creation Form -->
                                     <div id="reward-create-form" class="section-box" style="display:none;">
                                         <h4 style="margin: 0 0 1.2rem 0; font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">สร้างรางวัลใหม่</h4>
+                                        <div style="display:grid;grid-template-columns:minmax(320px,1fr) minmax(190px,230px);gap:1.5rem;align-items:start;">
                                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem;">
                                             <div>
                                                 <label class="field-label">ชื่อรางวัล *</label>
-                                                <input type="text" id="reward-name" placeholder="เช่น บัตรสตาร์บัคส์ 100 บาท" class="field-input">
+                                                <input type="text" id="reward-name" placeholder="เช่น บัตรสตาร์บัคส์ 100 บาท" class="field-input" oninput="updateRewardPreview()">
                                             </div>
                                             <div>
                                                 <label class="field-label">จำนวนแต้มที่ต้อง *</label>
-                                                <input type="number" id="reward-points" placeholder="500" min="1" class="field-input">
+                                                <input type="number" id="reward-points" placeholder="500" min="1" class="field-input" oninput="updateRewardPreview()">
                                             </div>
                                             <div>
                                                 <label class="field-label">หมวดหมู่</label>
@@ -885,14 +1099,14 @@
                                             </div>
                                             <div>
                                                 <label class="field-label">รูปภาพ (อัพโหลด)</label>
-                                                <input type="file" id="reward-image" accept="image/*" class="field-input">
+                                                <input type="file" id="reward-image" accept="image/*" class="field-input" onchange="updateRewardPreview()">
                                                 <div id="reward-image-preview" style="margin-top: 0.5rem; max-width: 100px; border-radius: 6px; overflow: hidden; display: none;">
                                                     <img id="reward-image-preview-img" src="" alt="Preview" style="width: 100%; height: auto; border-radius: 6px;">
                                                 </div>
                                             </div>
                                             <div style="grid-column: 1 / -1;">
                                                 <label class="field-label">คำอธิบาย</label>
-                                                <textarea id="reward-description" placeholder="รายละเอียดรางวัล" rows="3" class="field-input" style="font-family: inherit;"></textarea>
+                                                <textarea id="reward-description" placeholder="รายละเอียดรางวัล" rows="3" class="field-input" style="font-family: inherit;" oninput="updateRewardPreview()"></textarea>
                                             </div>
                                             <div style="grid-column: 1 / -1;">
                                                 <label class="field-label">วิธีใช้รหัส / เงื่อนไขการใช้งาน</label>
@@ -928,6 +1142,30 @@
                                                     <i class="fas fa-times"></i> ยกเลิก
                                                 </button>
                                             </div>
+                                        </div>
+                                        <!-- Preview -->
+                                        <div class="dpv-wrap">
+                                            <div class="white-box" style="padding:1rem;">
+                                                <div class="dpv-header">
+                                                    <div class="dpv-header-title"><i class="fas fa-mobile-alt" style="color:#1565c0;"></i> Preview (in-app)</div>
+                                                    <span class="dpv-live-badge">Live</span>
+                                                </div>
+                                                <div class="dpv-phone">
+                                                    <div class="dpv-phone-label">สิทธิประโยชน์สำหรับคุณ</div>
+                                                    <div class="dpv-reward-card">
+                                                        <div id="pvw-reward-img" class="dpv-reward-img"><i class="fas fa-gift"></i></div>
+                                                        <div class="dpv-reward-body">
+                                                            <div id="pvw-reward-name" class="dpv-reward-name dpv-placeholder">ชื่อรางวัล...</div>
+                                                            <div id="pvw-reward-desc" class="dpv-reward-desc" style="display:none;"></div>
+                                                            <div class="dpv-reward-row">
+                                                                <span id="pvw-reward-pts" class="dpv-reward-pts"><i class="fas fa-star" style="color:#f9a825;"></i> 0</span>
+                                                                <span class="dpv-reward-btn">แลกเลย</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                         </div>
                                     </div>
 
