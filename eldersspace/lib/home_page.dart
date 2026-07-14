@@ -23,9 +23,11 @@ import 'widgets/activity_rewards_checker.dart';
 import 'widgets/partner_ad_popup.dart';
 import 'services/app_settings_service.dart';
 import 'services/app_config.dart';
+import 'services/deep_link_service.dart';
 import 'app_settings_page.dart';
 import 'health_page.dart';
 import 'article_detail_page.dart';
+import 'post_detail_page.dart';
 
 class HomePage extends StatefulWidget {
   final String phoneNumber;
@@ -131,6 +133,28 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _startSession();
     _registerFcmToken();
     _schedulePopupAds();
+    _openPendingSharedPost();
+  }
+
+  // เปิดโพสต์ที่มาจากลิงก์แชร์ (deep link) ถ้ามีค้างอยู่
+  Future<void> _openPendingSharedPost() async {
+    final postId = DeepLinkService.consumePendingPostId();
+    if (postId == null) return;
+    final post = await ApiService.getPost(postId, phone: widget.phoneNumber);
+    if (!mounted) return;
+    if (post == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ไม่พบโพสต์นี้ หรือไม่มีสิทธิ์เข้าถึง')),
+      );
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            PostDetailPage(post: post, currentUserPhone: widget.phoneNumber),
+      ),
+    );
   }
 
   @override

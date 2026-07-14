@@ -1,9 +1,13 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'login_page.dart';
+import 'home_page.dart';
 import 'services/app_settings_service.dart';
+import 'services/deep_link_service.dart';
 
 final FlutterLocalNotificationsPlugin _localNotifications =
     FlutterLocalNotificationsPlugin();
@@ -84,7 +88,22 @@ Future<void> _initFirebase() async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (kIsWeb) {
+    usePathUrlStrategy();
+    final postId = DeepLinkService.extractPostId(Uri.base);
+    if (postId != null) DeepLinkService.setPendingPostId(postId);
+  }
+
   await AppSettingsService.instance.load();
+
+  if (!kIsWeb) {
+    await DeepLinkService.init().timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {},
+    );
+  }
+
   await _initFirebase().timeout(
     const Duration(seconds: 8),
     onTimeout: () {},
@@ -143,6 +162,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = AppSettingsService.instance;
+    final savedPhone = settings.savedPhone;
 
     return ValueListenableBuilder<bool>(
       valueListenable: settings.elderModeNotifier,
@@ -153,6 +173,7 @@ class MyApp extends StatelessWidget {
             final effectiveScale = isElder ? 1.3 : fontScale;
             return MaterialApp(
               debugShowCheckedModeBanner: false,
+              navigatorKey: DeepLinkService.navigatorKey,
               theme: _buildTheme(isElder: isElder),
               builder: (context, child) {
                 final media = MediaQuery.of(context);
@@ -163,7 +184,9 @@ class MyApp extends StatelessWidget {
                   child: child ?? const SizedBox.shrink(),
                 );
               },
-              home: const LoginPage(),
+              home: savedPhone != null
+                  ? HomePage(phoneNumber: savedPhone)
+                  : const LoginPage(),
             );
           },
         );

@@ -64,7 +64,8 @@ class ShareSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String content = post["content"] ?? "";
-    final String postLink = "http://eldersspace.app/post/${post['post_id']}";
+    final String postLink =
+        "https://eldersspace.vercel.app/post/${post['post_id']}";
 
     return SingleChildScrollView(
       child: Column(

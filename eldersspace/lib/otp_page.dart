@@ -105,6 +105,7 @@ class _OtpPageState extends State<OtpPage> {
     }
 
     await AppSettingsService.instance.setActiveUser(widget.phoneNumber);
+    await AppSettingsService.instance.setSavedPhone(widget.phoneNumber);
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).clearSnackBars();

@@ -342,6 +342,22 @@ class ApiService {
     }
   }
 
+  /// ดึงโพสต์เดี่ยวด้วย post_id (ใช้กับลิงก์แชร์/deep link)
+  static Future<Map<String, dynamic>?> getPost(dynamic postId, {String? phone}) async {
+    try {
+      var uri = Uri.parse("$baseUrl/posts/$postId");
+      if (phone != null) {
+        uri = uri.replace(queryParameters: {"phone": phone});
+      }
+      final res = await http.get(uri);
+      if (res.statusCode != 200) return null;
+      final data = jsonDecode(res.body);
+      return data is Map ? Map<String, dynamic>.from(data) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   static Future getUserPosts(String phone, {String? viewer}) async {
     try {
       var uri = Uri.parse("$baseUrl/users/$phone/posts");

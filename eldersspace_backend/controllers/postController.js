@@ -280,6 +280,93 @@ exports.getPosts = async (req, res) => {
   }
 };
 
+// ─── GET SINGLE POST (for shared-post deep links) ───
+exports.getPostById = async (req, res) => {
+  try {
+    const postId = Number(req.params.id);
+    if (!Number.isFinite(postId) || postId <= 0) {
+      return res.status(400).json({ error: 'Invalid post id' });
+    }
+
+    const conn = await pool.connect();
+    await ensureHiddenPostsTable(conn);
+    const phone = req.query.phone;
+
+    let viewerUserId = null;
+    if (phone) {
+      const { rows: vr } = await conn.query('SELECT user_id FROM users WHERE phone_number=$1', [phone]);
+      if (vr.length) viewerUserId = Number(vr[0].user_id);
+    }
+
+    let extraSelect = '';
+    if (viewerUserId) {
+      extraSelect = `,
+      (SELECT type FROM post_likes
+       WHERE post_id=p.post_id AND user_id=${viewerUserId}) as user_like`;
+    }
+
+    const visCond = visibilityCondition(viewerUserId);
+
+    const { rows: posts } = await conn.query(
+      `SELECT
+        p.*,
+        u.full_name, u.phone_number, u.profile_picture${extraSelect},
+        g.name as group_name, g.color_hex as group_color, g.icon as group_icon,
+        (SELECT COUNT(*) FROM post_likes WHERE post_id=p.post_id AND type='like')::int    as likes,
+        (SELECT COUNT(*) FROM post_likes WHERE post_id=p.post_id AND type='dislike')::int as dislikes,
+        (SELECT COUNT(*) FROM comments    WHERE post_id=p.post_id AND is_deleted=0)::int  as comments,
+        (SELECT COUNT(*) FROM posts sp WHERE sp.shared_post_id=p.post_id AND sp.is_deleted=0)::int as shares
+       FROM posts p
+       JOIN users u ON p.user_id=u.user_id
+       LEFT JOIN groups g ON p.group_id=g.group_id
+       WHERE p.post_id=$1 AND p.is_deleted=0 AND ${visCond}`,
+      [postId]
+    );
+
+    if (!posts.length) {
+      conn.release();
+      return res.status(404).json({ error: 'Post not found' });
+    }
+
+    const post = posts[0];
+    const { rows: imgs } = await conn.query('SELECT image_url FROM post_images WHERE post_id=$1', [postId]);
+    post.images = imgs.map(i => resolveUrl(i.image_url));
+    post.profile_picture_url = resolveUrl(post.profile_picture);
+    post.shared_post = await getOriginalPost(conn, post.shared_post_id);
+
+    if (post.linked_article_id) {
+      const { rows: artRows } = await conn.query(
+        `SELECT article_id, title, author_name, cover_image, summary, category
+         FROM articles WHERE article_id=$1 AND is_deleted=0 AND status='approved'`,
+        [post.linked_article_id]
+      );
+      if (artRows.length) {
+        artRows[0].cover_image_url = resolveUrl(artRows[0].cover_image);
+        post.linked_article = artRows[0];
+      } else {
+        post.linked_article = null;
+      }
+    } else {
+      post.linked_article = null;
+    }
+
+    if (post.created_at) post.created_at = new Date(post.created_at).toISOString();
+
+    conn.release();
+
+    res.json({
+      ...post,
+      likes: Number(post.likes),
+      dislikes: Number(post.dislikes),
+      comments: Number(post.comments),
+      shares: Number(post.shares),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // ─── LIKE POST ───
 exports.likePost = async (req, res) => {
   try {

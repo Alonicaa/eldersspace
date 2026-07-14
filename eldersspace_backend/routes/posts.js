@@ -4,6 +4,7 @@ const router = express.Router();
 const postController = require("../controllers/postController");
 
 router.get("/", postController.getPosts);
+router.get("/:id", postController.getPostById);
 router.post("/", postController.upload, postController.createPost);
 router.delete("/:id", postController.deletePost);
 router.post("/:id/like", postController.likePost);

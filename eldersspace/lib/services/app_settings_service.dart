@@ -10,6 +10,7 @@ class AppSettingsService {
   static const _ttsVoiceNameKey  = 'tts_voice_name';
   static const _ttsVoiceLocaleKey = 'tts_voice_locale';
   static const _ttsSpeedKey    = 'tts_speed';
+  static const _savedPhoneKey  = 'logged_in_phone';
 
   final ValueNotifier<double> fontScaleNotifier = ValueNotifier<double>(1.0);
   final ValueNotifier<bool>   elderModeNotifier = ValueNotifier<bool>(true);
@@ -36,6 +37,19 @@ class AppSettingsService {
   }
 
   // ─── Getters ─────────────────────────────────────────────────────────────
+
+  /// เบอร์ที่ login ค้างไว้ (persist session) — null ถ้ายังไม่เคย login หรือ logout แล้ว
+  String? get savedPhone => _prefs?.getString(_savedPhoneKey);
+
+  Future<void> setSavedPhone(String phone) async {
+    _prefs ??= await SharedPreferences.getInstance();
+    await _prefs!.setString(_savedPhoneKey, phone);
+  }
+
+  Future<void> clearSavedPhone() async {
+    _prefs ??= await SharedPreferences.getInstance();
+    await _prefs!.remove(_savedPhoneKey);
+  }
 
   String? get ttsVoiceName =>
       _ttsVoiceName?.isNotEmpty == true ? _ttsVoiceName : 'th-TH-Chirp3-HD-Achernar';
