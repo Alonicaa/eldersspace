@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:ui' show PointerDeviceKind;
+import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -111,6 +112,20 @@ void main() async {
   runApp(const MyApp());
 }
 
+// Flutter's default ScrollBehavior only treats touch/stylus as drag
+// gestures, so on web a mouse click-drag over a ListView/PageView does
+// nothing (only the scrollbar or wheel works). This adds mouse/trackpad
+// support so horizontal card lists can be swiped with a mouse too.
+class AppScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+      };
+}
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -174,6 +189,7 @@ class MyApp extends StatelessWidget {
             return MaterialApp(
               debugShowCheckedModeBanner: false,
               navigatorKey: DeepLinkService.navigatorKey,
+              scrollBehavior: AppScrollBehavior(),
               theme: _buildTheme(isElder: isElder),
               builder: (context, child) {
                 final media = MediaQuery.of(context);

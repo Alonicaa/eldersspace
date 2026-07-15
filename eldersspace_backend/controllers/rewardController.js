@@ -285,22 +285,26 @@ async function getTodayTotalElapsedMinutes(conn, userId, today) {
   return Number(rows[0]?.today_total || 0);
 }
 
+// Points accrue against total time used *today* (summed across every
+// session), not just the currently-open session — otherwise opening and
+// closing the app resets progress and a user can rack up hours without
+// ever crossing a single reward threshold.
 function computeUsageRewardState({
-  elapsedMinutes,
-  alreadyAwardedInSession,
+  todayTotalElapsedMinutes,
   todayUsageAwardedPoints,
   usageRule,
 }) {
-  const totalEligibleRewards = Math.floor(elapsedMinutes / usageRule.minutesPerReward);
-  const targetSessionPoints = totalEligibleRewards * usageRule.pointsPerReward;
-  const pendingFromSession = Math.max(0, targetSessionPoints - alreadyAwardedInSession);
-  const remainingDailyPoints = Math.max(0, usageRule.maxDailyPoints - todayUsageAwardedPoints);
-  const newPointsToAward = Math.min(pendingFromSession, remainingDailyPoints);
+  const totalEligibleRewards = Math.floor(todayTotalElapsedMinutes / usageRule.minutesPerReward);
+  const targetDailyPoints = Math.min(
+    totalEligibleRewards * usageRule.pointsPerReward,
+    usageRule.maxDailyPoints
+  );
+  const newPointsToAward = Math.max(0, targetDailyPoints - todayUsageAwardedPoints);
 
   const totalAwardedTodayAfter = todayUsageAwardedPoints + newPointsToAward;
   const dailyLimitReached = totalAwardedTodayAfter >= usageRule.maxDailyPoints;
 
-  const minutesIntoCycle = elapsedMinutes % usageRule.minutesPerReward;
+  const minutesIntoCycle = todayTotalElapsedMinutes % usageRule.minutesPerReward;
   const minutesToNextReward = dailyLimitReached
     ? 0
     : minutesIntoCycle == 0
@@ -313,7 +317,7 @@ function computeUsageRewardState({
     dailyLimitReached,
     totalAwardedTodayAfter,
     totalEligibleRewards,
-    targetSessionPoints,
+    targetDailyPoints,
   };
 }
 
@@ -520,14 +524,12 @@ exports.endSession = async (req, res) => {
     const alreadyAwarded = Number(sessions[0].points_awarded || 0);
 
     const { today } = await getBangkokDates(conn);
-    const todayUsageAwardedPoints = await getTodayAppUsageAwardedPoints(
-      conn,
-      userId,
-      today
-    );
+    const [todayUsageAwardedPoints, todayTotalElapsed] = await Promise.all([
+      getTodayAppUsageAwardedPoints(conn, userId, today),
+      getTodayTotalElapsedMinutes(conn, userId, today),
+    ]);
     const rewardState = computeUsageRewardState({
-      elapsedMinutes: minutes,
-      alreadyAwardedInSession: alreadyAwarded,
+      todayTotalElapsedMinutes: todayTotalElapsed,
       todayUsageAwardedPoints,
       usageRule,
     });
@@ -609,8 +611,7 @@ exports.sessionHeartbeat = async (req, res) => {
       getTodayTotalElapsedMinutes(conn, userId, today),
     ]);
     const rewardState = computeUsageRewardState({
-      elapsedMinutes: elapsed,
-      alreadyAwardedInSession: alreadyAwarded,
+      todayTotalElapsedMinutes: todayTotalElapsed,
       todayUsageAwardedPoints,
       usageRule,
     });

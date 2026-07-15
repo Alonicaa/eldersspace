@@ -35,14 +35,16 @@ class SessionBanner extends StatelessWidget {
     final dailyLimitReached = dailyMax > 0 && dailyPoints >= dailyMax;
     // Cap display so it never shows more than max (e.g. 16/8 when settings changed)
     final displayPoints = dailyMax > 0 ? dailyPoints.clamp(0, dailyMax) : dailyPoints;
-    // Progress: lock at 100% when daily limit is reached
+    // Progress must be derived from the same "minutes left" the backend
+    // already computed (minutesLeft), not recomputed from `elapsed` here —
+    // elapsed is today's *total* usage across all sessions, while the
+    // reward cycle countdown is a separate figure, so mixing the two
+    // produced a progress bar that didn't match the "อีก N นาที" text.
     final progress = dailyLimitReached
         ? 1.0
         : threshold <= 0
             ? 0.0
-            : (elapsed % threshold == 0 && elapsed > 0)
-                ? 1.0
-                : (elapsed % threshold) / threshold.toDouble();
+            : ((threshold - minutesLeft) / threshold.toDouble()).clamp(0.0, 1.0);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
