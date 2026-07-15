@@ -206,9 +206,10 @@ exports.getPosts = async (req, res) => {
     }
 
     const visCond = visibilityCondition(viewerUserId);
+    const hiddenFilter = viewerUserId ? `
+         AND NOT EXISTS (SELECT 1 FROM hidden_posts WHERE user_id=${viewerUserId} AND post_id=p.post_id)` : '';
 
-    const { rows: posts } = await conn.query(
-      `SELECT
+    const postColumns = `
         p.*,
         u.full_name, u.phone_number, u.profile_picture${extraSelect},
         g.name as group_name, g.color_hex as group_color, g.icon as group_icon,
@@ -218,12 +219,66 @@ exports.getPosts = async (req, res) => {
         (SELECT COUNT(*) FROM posts sp WHERE sp.shared_post_id=p.post_id AND sp.is_deleted=0)::int as shares
        FROM posts p
        JOIN users u ON p.user_id=u.user_id
-       LEFT JOIN groups g ON p.group_id=g.group_id
-       WHERE p.is_deleted=0 AND ${visCond}${viewerUserId ? `
-         AND NOT EXISTS (SELECT 1 FROM hidden_posts WHERE user_id=${viewerUserId} AND post_id=p.post_id)` : ''}
+       LEFT JOIN groups g ON p.group_id=g.group_id`;
+
+    // Main feed = posts with no group, chronological.
+    const { rows: mainPosts } = await conn.query(
+      `SELECT ${postColumns}
+       WHERE p.is_deleted=0 AND p.group_id IS NULL AND ${visCond}${hiddenFilter}
        ORDER BY p.created_at DESC
-       LIMIT 60`
+       LIMIT 50`
     );
+
+    // Group posts blended into the main feed:
+    //  - members of a group see recent posts from groups they've joined (higher ratio)
+    //  - non-members see only popular posts from any group (lower ratio, discovery-only)
+    let groupPosts = [];
+    let blendRatio = 5; // 1 group post per N main posts
+    if (viewerUserId) {
+      const { rows: memberRows } = await conn.query(
+        'SELECT group_id FROM group_members WHERE user_id=$1',
+        [viewerUserId]
+      );
+      const joinedGroupIds = memberRows.map(r => Number(r.group_id));
+
+      if (joinedGroupIds.length > 0) {
+        blendRatio = 2;
+        const { rows } = await conn.query(
+          `SELECT ${postColumns}
+           WHERE p.is_deleted=0 AND p.group_id = ANY($1) AND ${visCond}${hiddenFilter}
+           ORDER BY p.created_at DESC
+           LIMIT 20`,
+          [joinedGroupIds]
+        );
+        groupPosts = rows;
+      }
+    }
+    if (groupPosts.length === 0) {
+      const { rows } = await conn.query(
+        `SELECT ${postColumns}
+         WHERE p.is_deleted=0 AND p.group_id IS NOT NULL AND ${visCond}${hiddenFilter}
+           AND p.created_at > NOW() - INTERVAL '14 days'
+         ORDER BY (
+           (SELECT COUNT(*) FROM post_likes WHERE post_id=p.post_id AND type='like')
+           + (SELECT COUNT(*) FROM comments WHERE post_id=p.post_id AND is_deleted=0) * 2
+         ) DESC
+         LIMIT 10`
+      );
+      groupPosts = rows;
+    }
+
+    // Interleave: 1 group post per `blendRatio` main posts, capped at 60 total.
+    const posts = [];
+    let gi = 0;
+    for (let i = 0; i < mainPosts.length && posts.length < 60; i++) {
+      posts.push(mainPosts[i]);
+      if ((i + 1) % blendRatio === 0 && gi < groupPosts.length && posts.length < 60) {
+        posts.push(groupPosts[gi++]);
+      }
+    }
+    while (gi < groupPosts.length && posts.length < 60) {
+      posts.push(groupPosts[gi++]);
+    }
 
     // Batch load all post images in one query instead of N queries
     const postIds = posts.map(p => p.post_id);
