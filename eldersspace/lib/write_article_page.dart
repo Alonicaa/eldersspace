@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'models/picked_image.dart';
 import 'services/api_service.dart';
 import 'services/app_settings_service.dart';
 
@@ -32,7 +32,7 @@ class _WriteArticlePageState extends State<WriteArticlePage> {
 
   static const _cats = ['ทั่วไป', 'สุขภาพ', 'โภชนาการ', 'จิตใจ'];
   late String _category;
-  File? _coverImage;
+  PickedImage? _coverImage;
   bool _submitting = false;
   bool _hasDraft = false;
   Timer? _draftTimer;
@@ -603,7 +603,7 @@ class _WriteArticlePageState extends State<WriteArticlePage> {
               borderRadius: BorderRadius.circular(8),
               child: Stack(
                 children: [
-                  Image.file(_coverImage!, width: double.infinity, height: 180, fit: BoxFit.cover),
+                  Image.memory(_coverImage!.bytes, width: double.infinity, height: 180, fit: BoxFit.cover),
                   Positioned(
                     top: 8, right: 8,
                     child: GestureDetector(
@@ -647,6 +647,8 @@ class _WriteArticlePageState extends State<WriteArticlePage> {
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-    if (picked != null && mounted) setState(() => _coverImage = File(picked.path));
+    if (picked == null) return;
+    final image = await PickedImage.from(picked);
+    if (mounted) setState(() => _coverImage = image);
   }
 }

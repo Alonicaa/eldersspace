@@ -3,6 +3,7 @@ const router     = express.Router();
 const postCtrl   = require('../controllers/postController');
 const adminCtrl  = require('../controllers/adminController');
 const cloudCtrl  = require('../controllers/cloudSQLController');
+const commentCtrl = require('../controllers/commentController');
 const { verifyAdminToken } = require('../controllers/authController');
 const upload = require('../config/multerConfig');
  
@@ -81,6 +82,10 @@ router.get('/posts/:id/detail', adminTokenAuth, adminCtrl.getPostDetail);
 router.post('/posts/:id/moderate', adminTokenAuth, adminCtrl.moderatePost);
 router.patch('/posts/:id/move-group', adminTokenAuth, adminCtrl.movePostGroup);
 router.post('/posts/:id/restore', adminAuth, postCtrl.restorePost);
+
+// ─── COMMENT MODERATION ROUTES ──────────────────────────────────────────────
+router.get('/comments/reported', adminTokenAuth, commentCtrl.getReportedComments);
+router.post('/comments/:commentId/moderate', adminTokenAuth, commentCtrl.moderateComment);
 
 // ─── CLOUD SQL ROUTES ────────────────────────────────────────────────────────
 // GET /api/admin/users/blocked       → ดึงรายชื่อผู้ใช้ที่ถูกแบน

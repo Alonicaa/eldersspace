@@ -298,6 +298,87 @@ exports.deleteComment = async (req, res) => {
  }
 };
 
+// ─── Admin: reported comments moderation ───
+
+exports.getReportedComments = async (req, res) => {
+  let conn;
+  try {
+    conn = await pool.connect();
+    await ensureCommentsSchema(conn);
+    await ensureCommentReportsTable(conn);
+
+    const { rows } = await conn.query(
+      `SELECT
+        c.comment_id, c.post_id, c.content, c.created_at,
+        u.full_name AS author_name, u.phone_number AS author_phone,
+        COUNT(cr.report_id)::int AS report_count,
+        SUM(CASE WHEN cr.status = 'pending' THEN 1 ELSE 0 END)::int AS pending_count
+       FROM comments c
+       JOIN users u ON u.user_id = c.user_id
+       JOIN comment_reports cr ON cr.comment_id = c.comment_id
+       WHERE c.is_deleted = 0
+       GROUP BY c.comment_id, c.post_id, c.content, c.created_at, u.full_name, u.phone_number
+       ORDER BY pending_count DESC, c.created_at DESC
+       LIMIT 100`
+    );
+
+    res.json({ comments: rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    if (conn) conn.release();
+  }
+};
+
+exports.moderateComment = async (req, res) => {
+  const commentId = Number(req.params.commentId);
+  const { action } = req.body || {};
+  const normalizedAction = String(action || '').trim().toLowerCase();
+  let conn;
+
+  if (!Number.isFinite(commentId) || commentId <= 0) {
+    return res.status(400).json({ error: 'Invalid comment id' });
+  }
+  if (!['delete', 'dismiss'].includes(normalizedAction)) {
+    return res.status(400).json({ error: 'Invalid moderation action' });
+  }
+
+  try {
+    conn = await pool.connect();
+    await ensureCommentsSchema(conn);
+    await ensureCommentReportsTable(conn);
+
+    const { rows } = await conn.query('SELECT comment_id FROM comments WHERE comment_id=$1', [commentId]);
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+
+    if (normalizedAction === 'delete') {
+      await conn.query(
+        'UPDATE comments SET is_deleted=1, deleted_at=NOW(), updated_at=NOW() WHERE comment_id=$1',
+        [commentId]
+      );
+      await conn.query(
+        `UPDATE comment_reports SET status='reviewed', updated_at=NOW() WHERE comment_id=$1 AND status='pending'`,
+        [commentId]
+      );
+    } else {
+      await conn.query(
+        `UPDATE comment_reports SET status='dismissed', updated_at=NOW() WHERE comment_id=$1 AND status='pending'`,
+        [commentId]
+      );
+    }
+
+    res.json({ message: 'Comment moderation saved', commentId, action: normalizedAction });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    if (conn) conn.release();
+  }
+};
+
 exports.reportComment = async (req, res) => {
  const { commentId } = req.params;
  const { phone, reason, detail } = req.body;

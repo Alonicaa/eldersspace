@@ -1,7 +1,7 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
+import 'models/picked_image.dart';
 import 'services/api_service.dart';
 import 'home_page.dart';
 
@@ -20,7 +20,7 @@ class SetProfilePage extends StatefulWidget {
 }
 
 class _SetProfilePageState extends State<SetProfilePage> {
-  File? _selectedImage;
+  PickedImage? _selectedImage;
   String? _currentAvatarUrl;
   bool _isUploading = false;
 
@@ -71,7 +71,8 @@ class _SetProfilePageState extends State<SetProfilePage> {
     );
 
     if (cropped != null) {
-      setState(() => _selectedImage = File(cropped.path));
+      final picked = await PickedImage.from(cropped);
+      setState(() => _selectedImage = picked);
     }
   }
 
@@ -81,7 +82,7 @@ class _SetProfilePageState extends State<SetProfilePage> {
     try {
       final url = await ApiService.uploadProfilePicture(
         widget.phoneNumber,
-        _selectedImage!.path,
+        _selectedImage!,
       );
       setState(() {
         _currentAvatarUrl = url;
@@ -128,7 +129,7 @@ class _SetProfilePageState extends State<SetProfilePage> {
     if (_selectedImage != null) {
       avatarWidget = CircleAvatar(
         radius: 60,
-        backgroundImage: FileImage(_selectedImage!),
+        backgroundImage: MemoryImage(_selectedImage!.bytes),
       );
     } else if (_currentAvatarUrl != null) {
       avatarWidget = CircleAvatar(

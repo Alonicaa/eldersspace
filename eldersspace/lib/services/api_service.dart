@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'app_config.dart';
+import '../models/picked_image.dart';
 
 class ApiService {
   static String get baseUrl => AppConfig.apiBaseUrl;
@@ -140,12 +141,12 @@ class ApiService {
 
   /// Upload a profile picture, returns the public URL string
   static Future<String?> uploadProfilePicture(
-      String phoneNumber, String filePath) async {
+      String phoneNumber, PickedImage image) async {
     final req = http.MultipartRequest(
       'POST',
       Uri.parse('$baseUrl/users/$phoneNumber/profile-picture'),
     );
-    req.files.add(await http.MultipartFile.fromPath('avatar', filePath));
+    req.files.add(image.toMultipartFile('avatar'));
     final streamed = await req.send();
     final res = await http.Response.fromStream(streamed);
     if (res.statusCode == 200) {
@@ -190,6 +191,25 @@ class ApiService {
       'followers': int.tryParse(d['followers'].toString()) ?? 0,
       'following': int.tryParse(d['following'].toString()) ?? 0,
     };
+  }
+
+  // ── Search (users + posts) ──
+  static Future<Map<String, List<dynamic>>> search(String query, {String? phone}) async {
+    try {
+      final uri = Uri.parse('$baseUrl/search').replace(queryParameters: {
+        'q': query,
+        if (phone != null) 'phone': phone,
+      });
+      final response = await http.get(uri).timeout(const Duration(seconds: 15));
+      if (response.statusCode != 200) return {'users': [], 'posts': []};
+      final data = jsonDecode(response.body);
+      return {
+        'users': (data['users'] as List?) ?? [],
+        'posts': (data['posts'] as List?) ?? [],
+      };
+    } catch (_) {
+      return {'users': [], 'posts': []};
+    }
   }
 
   static Future<List<dynamic>> getFollowers(String phoneNumber) async {
@@ -720,7 +740,7 @@ class ApiService {
     String? body,
     String? conclusion,
     required String category,
-    dynamic coverImage,
+    PickedImage? coverImage,
   }) async {
     try {
       final uri = Uri.parse('$baseUrl/articles/submit');
@@ -735,7 +755,7 @@ class ApiService {
       if (body?.isNotEmpty == true) request.fields['body'] = body!;
       if (conclusion?.isNotEmpty == true) request.fields['conclusion'] = conclusion!;
       if (coverImage != null) {
-        request.files.add(await http.MultipartFile.fromPath('cover_image', coverImage.path));
+        request.files.add(coverImage.toMultipartFile('cover_image'));
       }
       final streamed = await request.send().timeout(const Duration(seconds: 30));
       final res = await http.Response.fromStream(streamed);

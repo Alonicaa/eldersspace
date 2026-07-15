@@ -156,21 +156,15 @@ class TtsSttService {
     void Function(String id, String message)? onError,
   }) async {
     try {
-      final url = Uri.parse(
-        'https://texttospeech.googleapis.com/v1beta1/text:synthesize'
-        '?key=${AppConfig.googleTtsApiKey}',
-      );
+      final url = Uri.parse('${AppConfig.apiBaseUrl}/tts/synthesize');
       final response = await http
           .post(
             url,
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
-              'input': {'text': chunk},
-              'voice': {'languageCode': 'th-TH', 'name': voiceName},
-              'audioConfig': {
-                'audioEncoding': 'MP3',
-                'speakingRate': speakingRate,
-              },
+              'text': chunk,
+              'voiceName': voiceName,
+              'speakingRate': speakingRate,
             }),
           )
           .timeout(const Duration(seconds: 15));

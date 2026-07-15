@@ -19,6 +19,7 @@ class FollowListPage extends StatefulWidget {
 class _FollowListPageState extends State<FollowListPage> {
   List<dynamic> users = [];
   bool isLoading = true;
+  String? errorMessage;
 
   @override
   void initState() {
@@ -26,15 +27,27 @@ class _FollowListPageState extends State<FollowListPage> {
     loadList();
   }
 
-  void loadList() async {
-    final data = widget.isFollowing
-        ? await ApiService.getFollowing(widget.phoneNumber)
-        : await ApiService.getFollowers(widget.phoneNumber);
-
+  Future<void> loadList() async {
     setState(() {
-      users = data;
-      isLoading = false;
+      isLoading = true;
+      errorMessage = null;
     });
+    try {
+      final data = widget.isFollowing
+          ? await ApiService.getFollowing(widget.phoneNumber)
+          : await ApiService.getFollowers(widget.phoneNumber);
+      setState(() {
+        users = data;
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = "ไม่สามารถโหลดรายชื่อได้ กรุณาลองใหม่";
+      });
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
 
   @override
@@ -45,31 +58,51 @@ class _FollowListPageState extends State<FollowListPage> {
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              itemCount: users.length,
-              itemBuilder: (context, index) {
-                final user = users[index];
-
-                return ListTile(
-                  leading: const CircleAvatar(
-                    backgroundImage: AssetImage('assets/images/profile.jpg'),
-                  ),
-                  title: Text(user["full_name"]),
-                  subtitle: Text(user["phone_number"]),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ProfilePage(
-                          phoneNumber: user["phone_number"], // คนที่ถูกกด
-                          currentUserPhone: widget.phoneNumber, // คนที่ login
-                        ),
+          : errorMessage != null
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(errorMessage!),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed: loadList,
+                        child: const Text("ลองใหม่"),
                       ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: users.length,
+                  itemBuilder: (context, index) {
+                    final user = users[index];
+                    final avatarUrl = user["profile_picture_url"] as String?;
+
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
+                            ? NetworkImage(avatarUrl)
+                            : null,
+                        child: (avatarUrl == null || avatarUrl.isEmpty)
+                            ? const Icon(Icons.person)
+                            : null,
+                      ),
+                      title: Text(user["full_name"]),
+                      subtitle: Text(user["phone_number"]),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ProfilePage(
+                              phoneNumber: user["phone_number"], // คนที่ถูกกด
+                              currentUserPhone: widget.phoneNumber, // คนที่ login
+                            ),
+                          ),
+                        );
+                      },
                     );
                   },
-                );
-              },
-            ),
+                ),
     );
   }
 }

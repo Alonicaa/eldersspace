@@ -307,8 +307,6 @@ exports.verifyAdminOtp = async (req, res) => {
       await conn.query('UPDATE otp_verification SET is_verified = 1 WHERE otp_id = $1', [otpRows[0].otp_id]);
     }
 
-    conn.release();
-
     const auth = buildAdminLoginResponse(admin);
     await logSecurityEvent(conn, {
       eventType: SECURITY_EVENT_TYPES.ADMIN_OTP_SUCCESS,
@@ -317,6 +315,8 @@ exports.verifyAdminOtp = async (req, res) => {
       detail: 'Admin OTP verified successfully',
       req
     });
+    conn.release();
+
     return res.json({
       message: 'Admin OTP verified',
       ...auth

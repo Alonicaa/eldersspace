@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'services/api_service.dart';
 import 'services/app_settings_service.dart';
-import 'set_name_page.dart';
-import 'home_page.dart';
+import 'otp_success_page.dart';
 
 class OtpPage extends StatefulWidget {
   final String phoneNumber;
@@ -110,21 +109,15 @@ class _OtpPageState extends State<OtpPage> {
 
     ScaffoldMessenger.of(context).clearSnackBars();
 
-    if (response["needs_name"] == true) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => SetNamePage(phoneNumber: widget.phoneNumber),
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OtpSuccessPage(
+          phoneNumber: widget.phoneNumber,
+          needsName: response["needs_name"] == true,
         ),
-      );
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => HomePage(phoneNumber: widget.phoneNumber),
-        ),
-      );
-    }
+      ),
+    );
   }
 
   Widget _otpBox(int i) {

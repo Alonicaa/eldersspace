@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'app_settings_page.dart';
 import 'follow_list_page.dart';
+import 'models/picked_image.dart';
 import 'reward_history_page.dart';
 import 'points_system_page.dart';
 import 'services/api_service.dart';
@@ -785,7 +786,8 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
     if (cropped == null) return;
 
     try {
-      final url = await ApiService.uploadProfilePicture(widget.phoneNumber, cropped);
+      final image = await PickedImage.from(cropped);
+      final url = await ApiService.uploadProfilePicture(widget.phoneNumber, image);
       if (!mounted) return;
       setState(() => avatarUrl = url);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -799,8 +801,8 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
     }
   }
 
-  Future<String?> _cropCircle(String path) async {
-    final result = await ImageCropper().cropImage(
+  Future<CroppedFile?> _cropCircle(String path) async {
+    return ImageCropper().cropImage(
       sourcePath: path,
       aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
       uiSettings: [
@@ -816,7 +818,6 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
         ),
       ],
     );
-    return result?.path;
   }
 
   Widget _buildPostCard(Map p) {

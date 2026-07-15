@@ -47,6 +47,7 @@ async function ensurePostReportTable(conn) {
 }
 
 // ─── Visibility filter ───
+exports.visibilityCondition = visibilityCondition;
 function visibilityCondition(viewerUserId) {
   if (!viewerUserId) return `p.visibility = 'public'`;
   return `(
@@ -76,6 +77,7 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://10.0.2.2:3000';
 
 // Resolve a stored image_url/profile_picture value to a full URL.
 // New uploads store the full Supabase public URL; legacy rows store relative paths.
+exports.resolveUrl = resolveUrl;
 function resolveUrl(stored) {
   if (!stored) return null;
   if (/^https?:\/\//i.test(stored)) return stored;

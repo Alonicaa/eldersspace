@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const multer = require('multer');
 
 const usersRoute = require('./routes/users.js');
 
@@ -67,6 +68,12 @@ app.use('/api/articles', articlesRoute);
 const adsRoute = require('./routes/ads');
 app.use('/api/ads', adsRoute);
 
+const ttsRoute = require('./routes/tts');
+app.use('/api/tts', ttsRoute);
+
+const searchRoute = require('./routes/search');
+app.use('/api/search', searchRoute);
+
 const admin = require('firebase-admin');
 const serviceAccount = require('./eldersspace-firebase-adminsdk-fbsvc-59c5738b8d.json');
 
@@ -80,6 +87,23 @@ app.use('/uploads/ads',      express.static('uploads/ads'));
 
 app.use('/uploads', express.static('uploads'));
 
+// Multer/upload errors (bad file type, size limit, etc.) throw before a
+// controller's own try/catch runs, so without this handler Express falls
+// back to its default HTML error page and breaks the JSON API contract.
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({ error: err.message });
+  }
+  if (err && /invalid file type|เฉพาะไฟล์/i.test(err.message || '')) {
+    return res.status(400).json({ error: err.message });
+  }
+  if (err) {
+    console.error('Unhandled error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+  next();
+});
+
 pool.connect()
   .then(conn => {
     console.log("Database connected successfully");
@@ -88,6 +112,7 @@ pool.connect()
   .catch(err => {
     console.error("Database connection failed:", err);
   });
-app.listen(3000, '0.0.0.0', () => {
-  console.log('Server running on http://0.0.0.0:3000 - accessible from any IP');
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on http://0.0.0.0:${PORT} - accessible from any IP`);
 });

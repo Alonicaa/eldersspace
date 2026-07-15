@@ -1067,6 +1067,18 @@ function navTo(page, targetElement) {
         if (page === 'articles') {
             loadArticlesAdmin('pending');
         }
+
+        if (page === 'banners') {
+            loadBannersAdmin();
+        }
+
+        if (page === 'comments') {
+            loadReportedComments();
+        }
+
+        if (page === 'groups') {
+            loadGroupsAdmin();
+        }
     } else {
         document.getElementById('page-fallback').classList.add('active');
         document.getElementById('fallback-name').innerText = page;
@@ -9060,3 +9072,266 @@ function initPromoVerifier() {
     });
     syncBreadcrumb();
 })();
+
+// ═════════════════════════════════════════════════════════════════
+// Home Banners admin
+// ═════════════════════════════════════════════════════════════════
+
+let _bannerCache = [];
+
+async function loadBannersAdmin() {
+    const el = document.getElementById('banner-list');
+    if (!el) return;
+    el.innerHTML = '<div style="color:#888;font-size:12px">กำลังโหลด...</div>';
+    try {
+        const list = await fetchAuthJson(`${API_BASE_URL}/api/banners/admin/all`);
+        _bannerCache = list;
+        if (!list.length) { el.innerHTML = '<div style="color:#aaa;font-size:12px;text-align:center">ยังไม่มีแบนเนอร์</div>'; return; }
+        el.innerHTML = list.map(b => {
+            const statusColor = b.is_active ? '#10b981' : '#6b7280';
+            const statusLabel = b.is_active ? 'Active' : 'Inactive';
+            const img = b.image_url
+                ? `<img src="${resolveMediaUrl(b.image_url)}" style="width:52px;height:40px;object-fit:cover;border-radius:4px;flex-shrink:0" onerror="this.style.display='none'">`
+                : `<div style="width:52px;height:40px;background:#eee;border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fas fa-image" style="color:#bbb;font-size:14px"></i></div>`;
+            return `
+            <div style="background:#f9f9f9;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px">
+                <div style="display:flex;align-items:center;gap:10px">
+                    ${img}
+                    <div style="flex:1;min-width:0">
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                            <span style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">${escapeHtml(b.title || '(ไม่มีชื่อ)')}</span>
+                            <span style="font-size:10px;font-weight:600;color:${statusColor};background:${statusColor}18;padding:1px 6px;border-radius:10px;white-space:nowrap">${statusLabel}</span>
+                            <span style="font-size:10px;color:#888">${escapeHtml(b.banner_type || 'general')}</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-check" style="font-size:10px;padding:3px 8px;flex-shrink:0" onclick="editBanner(${b.id})"><i class="fas fa-pen"></i></button>
+                    <button class="btn btn-del" style="font-size:10px;padding:3px 8px;flex-shrink:0" onclick="deleteBannerById(${b.id})"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>`;
+        }).join('');
+    } catch (e) {
+        el.innerHTML = '<div style="color:#e74c3c;font-size:12px">โหลดไม่ได้</div>';
+    }
+}
+
+function editBanner(id) {
+    const b = _bannerCache.find(x => x.id === id);
+    if (!b) return;
+    document.getElementById('banner-edit-id').value = id;
+    document.getElementById('banner-title').value = b.title || '';
+    document.getElementById('banner-desc').value = b.description || '';
+    document.getElementById('banner-link').value = b.link_url || '';
+    document.getElementById('banner-type').value = b.banner_type || 'general';
+    document.getElementById('banner-start').value = b.start_date ? b.start_date.substring(0, 10) : '';
+    document.getElementById('banner-end').value = b.end_date ? b.end_date.substring(0, 10) : '';
+    document.getElementById('banner-form-header').textContent = 'แก้ไข';
+    document.getElementById('banner-cancel-btn').style.display = '';
+    document.getElementById('banner-submit-btn').innerHTML = '<i class="fas fa-save"></i> บันทึกการแก้ไข';
+}
+
+function resetBannerForm() {
+    document.getElementById('banner-edit-id').value = '';
+    ['banner-title', 'banner-desc', 'banner-link', 'banner-start', 'banner-end'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('banner-type').value = 'general';
+    document.getElementById('banner-image').value = '';
+    document.getElementById('banner-form-msg').textContent = '';
+    document.getElementById('banner-form-header').textContent = 'เพิ่มใหม่';
+    document.getElementById('banner-cancel-btn').style.display = 'none';
+    document.getElementById('banner-submit-btn').innerHTML = '<i class="fas fa-plus"></i> เพิ่มแบนเนอร์';
+}
+
+async function submitBannerForm() {
+    const msg = document.getElementById('banner-form-msg');
+    const editId = document.getElementById('banner-edit-id').value;
+    const title = document.getElementById('banner-title').value.trim();
+    if (!title) { msg.style.color = '#e74c3c'; msg.textContent = 'กรุณากรอกหัวข้อ'; return; }
+    try {
+        msg.textContent = 'กำลังบันทึก...';
+        const fd = new FormData();
+        fd.append('title', title);
+        fd.append('description', document.getElementById('banner-desc').value.trim());
+        fd.append('link_url', document.getElementById('banner-link').value.trim());
+        fd.append('banner_type', document.getElementById('banner-type').value);
+        const start = document.getElementById('banner-start').value;
+        const end = document.getElementById('banner-end').value;
+        if (start) fd.append('start_date', start);
+        if (end) fd.append('end_date', end);
+        const imgFile = document.getElementById('banner-image').files[0];
+        if (imgFile) fd.append('image', imgFile);
+        const url = editId ? `${API_BASE_URL}/api/banners/${editId}` : `${API_BASE_URL}/api/banners`;
+        const method = editId ? 'PUT' : 'POST';
+        const res = await fetch(url, { method, headers: getAuthHeaders(), body: fd });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'เกิดข้อผิดพลาด');
+        msg.style.color = '#27ae60';
+        msg.textContent = editId ? 'อัปเดตสำเร็จ!' : 'เพิ่มแบนเนอร์สำเร็จ!';
+        resetBannerForm();
+        loadBannersAdmin();
+    } catch (err) {
+        msg.style.color = '#e74c3c';
+        msg.textContent = err.message;
+    }
+}
+
+async function deleteBannerById(id) {
+    const confirmed = await openActionDialog({
+        title: 'ลบแบนเนอร์',
+        message: 'ต้องการปิดใช้งานแบนเนอร์นี้หรือไม่?',
+        confirmText: 'ลบ'
+    });
+    if (!confirmed) return;
+    try {
+        await fetchAuthJson(`${API_BASE_URL}/api/banners/${id}`, { method: 'DELETE' });
+        loadBannersAdmin();
+    } catch (e) {
+        await showActionDialogInfo('เกิดข้อผิดพลาด: ' + e.message, 'ผิดพลาด');
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════
+// Comment moderation admin
+// ═════════════════════════════════════════════════════════════════
+
+async function loadReportedComments() {
+    try {
+        const data = await fetchAuthJson(`${API_BASE_URL}/api/admin/comments/reported`);
+        const comments = data.comments || [];
+        const badge = document.getElementById('comment-report-count');
+        if (badge) badge.textContent = comments.reduce((sum, c) => sum + (c.pending_count || 0), 0);
+
+        if (!comments.length) {
+            setEmptyRow('comment-report-table', 6, 'ไม่มีคอมเมนต์ที่ถูกรายงาน');
+            return;
+        }
+
+        document.getElementById('comment-report-table').innerHTML = comments.map(c => `
+            <tr>
+                <td>${escapeHtml(c.author_name || '-')}<br><small style="color:#888">${escapeHtml(c.author_phone || '')}</small></td>
+                <td style="max-width:280px;white-space:normal">${escapeHtml(c.content || '')}</td>
+                <td>#${c.post_id}</td>
+                <td>${c.report_count} ครั้ง (${c.pending_count} รอตรวจ)</td>
+                <td>${new Date(c.created_at).toLocaleDateString('th-TH')}</td>
+                <td>
+                    <button class="btn btn-del" style="font-size:11px;padding:4px 8px" onclick="moderateCommentAction(${c.comment_id}, 'delete')"><i class="fas fa-trash"></i> ลบ</button>
+                    <button class="btn btn-toggle" style="font-size:11px;padding:4px 8px" onclick="moderateCommentAction(${c.comment_id}, 'dismiss')">เพิกเฉย</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        setEmptyRow('comment-report-table', 6, 'โหลดไม่ได้: ' + e.message);
+    }
+}
+
+async function moderateCommentAction(commentId, action) {
+    const confirmed = await openActionDialog({
+        title: action === 'delete' ? 'ลบคอมเมนต์' : 'เพิกเฉยรายงาน',
+        message: action === 'delete' ? 'ต้องการลบคอมเมนต์นี้หรือไม่?' : 'ต้องการเพิกเฉยรายงานนี้หรือไม่?',
+        confirmText: action === 'delete' ? 'ลบ' : 'เพิกเฉย'
+    });
+    if (!confirmed) return;
+    try {
+        await fetchAuthJson(`${API_BASE_URL}/api/admin/comments/${commentId}/moderate`, {
+            method: 'POST',
+            body: JSON.stringify({ action })
+        });
+        loadReportedComments();
+    } catch (e) {
+        await showActionDialogInfo('เกิดข้อผิดพลาด: ' + e.message, 'ผิดพลาด');
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════
+// Groups admin
+// ═════════════════════════════════════════════════════════════════
+
+let _groupCache = [];
+
+async function loadGroupsAdmin() {
+    const el = document.getElementById('group-list');
+    if (!el) return;
+    el.innerHTML = '<div style="color:#888;font-size:12px">กำลังโหลด...</div>';
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/groups`);
+        const list = await res.json();
+        _groupCache = list;
+        if (!list.length) { el.innerHTML = '<div style="color:#aaa;font-size:12px;text-align:center">ยังไม่มีกลุ่ม</div>'; return; }
+        el.innerHTML = list.map(g => `
+            <div style="background:#f9f9f9;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;display:flex;align-items:center;gap:10px">
+                <div style="width:36px;height:36px;border-radius:50%;background:${g.color_hex || '#ccc'};flex-shrink:0;display:flex;align-items:center;justify-content:center">
+                    <i class="fas fa-people-group" style="color:#fff;font-size:14px"></i>
+                </div>
+                <div style="flex:1;min-width:0">
+                    <div style="font-size:13px;font-weight:600">${escapeHtml(g.name)}</div>
+                    <div style="font-size:11px;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(g.description || '')}</div>
+                </div>
+                <button class="btn btn-check" style="font-size:10px;padding:3px 8px;flex-shrink:0" onclick="editGroup(${g.group_id})"><i class="fas fa-pen"></i></button>
+                <button class="btn btn-del" style="font-size:10px;padding:3px 8px;flex-shrink:0" onclick="deleteGroupById(${g.group_id})"><i class="fas fa-trash"></i></button>
+            </div>
+        `).join('');
+    } catch (e) {
+        el.innerHTML = '<div style="color:#e74c3c;font-size:12px">โหลดไม่ได้</div>';
+    }
+}
+
+function editGroup(id) {
+    const g = _groupCache.find(x => x.group_id === id);
+    if (!g) return;
+    document.getElementById('group-edit-id').value = id;
+    document.getElementById('group-name').value = g.name || '';
+    document.getElementById('group-desc').value = g.description || '';
+    document.getElementById('group-icon').value = g.icon || '';
+    document.getElementById('group-color').value = g.color_hex || '';
+    document.getElementById('group-form-header').textContent = 'แก้ไข';
+    document.getElementById('group-cancel-btn').style.display = '';
+    document.getElementById('group-submit-btn').innerHTML = '<i class="fas fa-save"></i> บันทึกการแก้ไข';
+}
+
+function resetGroupForm() {
+    document.getElementById('group-edit-id').value = '';
+    ['group-name', 'group-desc', 'group-icon', 'group-color'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('group-form-msg').textContent = '';
+    document.getElementById('group-form-header').textContent = 'เพิ่มใหม่';
+    document.getElementById('group-cancel-btn').style.display = 'none';
+    document.getElementById('group-submit-btn').innerHTML = '<i class="fas fa-plus"></i> เพิ่มกลุ่ม';
+}
+
+async function submitGroupForm() {
+    const msg = document.getElementById('group-form-msg');
+    const editId = document.getElementById('group-edit-id').value;
+    const name = document.getElementById('group-name').value.trim();
+    if (!name) { msg.style.color = '#e74c3c'; msg.textContent = 'กรุณากรอกชื่อกลุ่ม'; return; }
+    try {
+        msg.textContent = 'กำลังบันทึก...';
+        const body = JSON.stringify({
+            name,
+            description: document.getElementById('group-desc').value.trim(),
+            icon: document.getElementById('group-icon').value.trim(),
+            color_hex: document.getElementById('group-color').value.trim()
+        });
+        const url = editId ? `${API_BASE_URL}/api/groups/${editId}` : `${API_BASE_URL}/api/groups`;
+        const method = editId ? 'PUT' : 'POST';
+        await fetchAuthJson(url, { method, body });
+        msg.style.color = '#27ae60';
+        msg.textContent = editId ? 'อัปเดตสำเร็จ!' : 'เพิ่มกลุ่มสำเร็จ!';
+        resetGroupForm();
+        loadGroupsAdmin();
+    } catch (err) {
+        msg.style.color = '#e74c3c';
+        msg.textContent = err.message;
+    }
+}
+
+async function deleteGroupById(id) {
+    const confirmed = await openActionDialog({
+        title: 'ลบกลุ่ม',
+        message: 'ต้องการลบกลุ่มนี้หรือไม่? โพสต์ในกลุ่มจะยังคงอยู่',
+        confirmText: 'ลบ'
+    });
+    if (!confirmed) return;
+    try {
+        await fetchAuthJson(`${API_BASE_URL}/api/groups/${id}`, { method: 'DELETE' });
+        loadGroupsAdmin();
+    } catch (e) {
+        await showActionDialogInfo('เกิดข้อผิดพลาด: ' + e.message, 'ผิดพลาด');
+    }
+}

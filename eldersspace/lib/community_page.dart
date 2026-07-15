@@ -1,16 +1,17 @@
 ﻿import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
+import 'models/picked_image.dart';
 import 'services/api_service.dart';
 import 'services/ad_service.dart';
 import 'services/tts_stt_service.dart';
 import 'profile_page.dart';
 import 'partner_page.dart';
 import 'post_detail_page.dart';
+import 'search_page.dart';
 import 'widgets/comment_dialog.dart';
 import 'widgets/post_component.dart';
 import 'widgets/share_sheet.dart';
@@ -44,7 +45,7 @@ class _CommunityPageState extends State<CommunityPage> {
 
   final TextEditingController postController = TextEditingController();
 
-  List<File> selectedImages = [];
+  List<PickedImage> selectedImages = [];
   String _selectedVisibility = 'public';
   int? _selectedGroupId; // กลุ่มที่เลือกสำหรับโพสต์
 
@@ -536,7 +537,7 @@ class _CommunityPageState extends State<CommunityPage> {
       if (imgs.isEmpty) return;
     }
 
-    List<File> cropped = [];
+    List<PickedImage> cropped = [];
     for (final img in imgs) {
       final result = await ImageCropper().cropImage(
         sourcePath: img.path,
@@ -555,7 +556,7 @@ class _CommunityPageState extends State<CommunityPage> {
           ),
         ],
       );
-      if (result != null) cropped.add(File(result.path));
+      if (result != null) cropped.add(await PickedImage.from(result));
     }
 
     if (cropped.isNotEmpty) {
@@ -624,7 +625,7 @@ class _CommunityPageState extends State<CommunityPage> {
     }
 
     for (var img in selectedImages) {
-      request.files.add(await http.MultipartFile.fromPath("images", img.path));
+      request.files.add(img.toMultipartFile("images"));
     }
 
     final response = await request.send();
@@ -1029,8 +1030,8 @@ class _CommunityPageState extends State<CommunityPage> {
                                             borderRadius: BorderRadius.circular(
                                               12,
                                             ),
-                                            child: Image.file(
-                                              selectedImages[i],
+                                            child: Image.memory(
+                                              selectedImages[i].bytes,
                                               width: 110,
                                               height: 110,
                                               fit: BoxFit.cover,
@@ -2138,7 +2139,7 @@ class _CommunityPageState extends State<CommunityPage> {
 
   void openEditDialog(Map p) {
     final editController = TextEditingController(text: p["content"] ?? "");
-    List<File> editImages = [];
+    List<PickedImage> editImages = [];
 
     showModalBottomSheet(
       context: context,
@@ -2187,8 +2188,8 @@ class _CommunityPageState extends State<CommunityPage> {
                           itemCount: editImages.length,
                           itemBuilder: (_, i) => Padding(
                             padding: const EdgeInsets.only(right: 8),
-                            child: Image.file(
-                              editImages[i],
+                            child: Image.memory(
+                              editImages[i].bytes,
                               width: 80,
                               height: 80,
                               fit: BoxFit.cover,
@@ -2203,7 +2204,7 @@ class _CommunityPageState extends State<CommunityPage> {
                             final picker = ImagePicker();
                             final imgs = await picker.pickMultiImage();
                             if (imgs.isNotEmpty) {
-                              List<File> cropped = [];
+                              List<PickedImage> cropped = [];
                               for (final img in imgs) {
                                 final r = await ImageCropper().cropImage(
                                   sourcePath: img.path,
@@ -2217,7 +2218,7 @@ class _CommunityPageState extends State<CommunityPage> {
                                     IOSUiSettings(title: 'ครอปรูปภาพ'),
                                   ],
                                 );
-                                if (r != null) cropped.add(File(r.path));
+                                if (r != null) cropped.add(await PickedImage.from(r));
                               }
                               setModal(() => editImages = cropped);
                             }
@@ -2235,12 +2236,7 @@ class _CommunityPageState extends State<CommunityPage> {
                             req.fields["phone"] = widget.phoneNumber;
                             req.fields["content"] = editController.text;
                             for (var img in editImages) {
-                              req.files.add(
-                                await http.MultipartFile.fromPath(
-                                  "images",
-                                  img.path,
-                                ),
-                              );
+                              req.files.add(img.toMultipartFile("images"));
                             }
                             await req.send();
                             if (mounted) Navigator.pop(context);
@@ -2275,6 +2271,20 @@ class _CommunityPageState extends State<CommunityPage> {
             fontSize: 20,
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search, color: Colors.black87),
+            tooltip: 'ค้นหา',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SearchPage(phoneNumber: widget.phoneNumber),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: loading
           ? const Center(child: CircularProgressIndicator())

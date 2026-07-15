@@ -1,6 +1,24 @@
 const express = require('express');
 const router  = express.Router();
 const pool    = require('../config/db');
+const { verifyAdminToken } = require('../controllers/authController');
+
+const adminTokenAuth = (req, res, next) => {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const payload = verifyAdminToken(token);
+  if (!payload) {
+    return res.status(401).json({ error: 'Unauthorized: invalid admin token' });
+  }
+  req.admin = payload;
+  next();
+};
+
+async function ensureGroupColumns(conn) {
+  try {
+    await conn.query('ALTER TABLE groups ADD COLUMN IF NOT EXISTS is_deleted SMALLINT NOT NULL DEFAULT 0');
+  } catch (e) { /* already exists */ }
+}
 
 function visibilityCondition(viewerUserId) {
   if (!viewerUserId) return `p.visibility = 'public'`;
@@ -28,9 +46,78 @@ function visibilityCondition(viewerUserId) {
 router.get('/', async (req, res) => {
   try {
     const conn = await pool.connect();
-    const { rows: groups } = await conn.query('SELECT * FROM groups ORDER BY group_id');
+    await ensureGroupColumns(conn);
+    const { rows: groups } = await conn.query('SELECT * FROM groups WHERE is_deleted = 0 ORDER BY group_id');
     conn.release();
     res.json(groups);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/groups — admin only
+router.post('/', adminTokenAuth, async (req, res) => {
+  const { name, description, icon, color_hex } = req.body || {};
+  if (!name || !String(name).trim()) {
+    return res.status(400).json({ error: 'name is required' });
+  }
+  try {
+    const conn = await pool.connect();
+    await ensureGroupColumns(conn);
+    const { rows } = await conn.query(
+      `INSERT INTO groups (name, description, icon, color_hex)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [String(name).trim(), description || null, icon || null, color_hex || null]
+    );
+    conn.release();
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/groups/:id — admin only
+router.put('/:id', adminTokenAuth, async (req, res) => {
+  const groupId = Number(req.params.id);
+  const { name, description, icon, color_hex } = req.body || {};
+  if (!Number.isFinite(groupId) || groupId <= 0) {
+    return res.status(400).json({ error: 'Invalid group id' });
+  }
+  if (!name || !String(name).trim()) {
+    return res.status(400).json({ error: 'name is required' });
+  }
+  try {
+    const conn = await pool.connect();
+    await ensureGroupColumns(conn);
+    const { rows } = await conn.query(
+      `UPDATE groups SET name=$1, description=$2, icon=$3, color_hex=$4
+       WHERE group_id=$5 AND is_deleted=0 RETURNING *`,
+      [String(name).trim(), description || null, icon || null, color_hex || null, groupId]
+    );
+    conn.release();
+    if (!rows.length) return res.status(404).json({ error: 'Group not found' });
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/groups/:id — admin only, soft delete
+router.delete('/:id', adminTokenAuth, async (req, res) => {
+  const groupId = Number(req.params.id);
+  if (!Number.isFinite(groupId) || groupId <= 0) {
+    return res.status(400).json({ error: 'Invalid group id' });
+  }
+  try {
+    const conn = await pool.connect();
+    await ensureGroupColumns(conn);
+    const { rows } = await conn.query(
+      'UPDATE groups SET is_deleted=1 WHERE group_id=$1 AND is_deleted=0 RETURNING group_id',
+      [groupId]
+    );
+    conn.release();
+    if (!rows.length) return res.status(404).json({ error: 'Group not found' });
+    res.json({ message: 'Group deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -62,6 +62,9 @@
 
             <div class="nav-label">Content</div>
             <div class="nav-item" data-page-label="Article Manager" onclick="navTo('articles', this)"><i class="fas fa-fw fa-newspaper"></i> Article Manager <span class="nav-badge" id="articles-pending-count" style="display:none">0</span></div>
+            <div class="nav-item" data-page-label="Home Banners" onclick="navTo('banners', this)"><i class="fas fa-fw fa-image"></i> Home Banners</div>
+            <div class="nav-item" data-page-label="Comment Moderation" onclick="navTo('comments', this)"><i class="fas fa-fw fa-comment-slash"></i> Comment Moderation <span class="nav-badge" id="comment-report-count">0</span></div>
+            <div class="nav-item" data-page-label="Groups" onclick="navTo('groups', this)"><i class="fas fa-fw fa-people-group"></i> Groups</div>
 
             <div class="nav-label">System Admin</div>
             <div class="nav-item" data-page-label="Security & Logs" onclick="navTo('security', this)"><i class="fas fa-fw fa-lock"></i> Security & Logs</div>
@@ -1885,6 +1888,106 @@
                 </div>
             </div>
             
+            <!-- Home Banners Page -->
+            <div id="page-banners" class="page-content">
+                <h1 class="page-title"><i class="fas fa-image page-title-icon"></i> Home Banners</h1>
+                <small class="page-title-sub">จัดการแบนเนอร์หน้าแรกของแอป (สิทธิพิเศษ/ประกาศ/โปรโมชัน)</small>
+
+                <div class="dashboard-row" style="margin-top:1rem">
+                    <div class="white-box box-flex" style="max-width:380px">
+                        <div class="box-header"><div class="box-title" id="banner-form-header">เพิ่มใหม่</div></div>
+                        <input type="hidden" id="banner-edit-id" value="">
+                        <div style="display:flex;flex-direction:column;gap:8px;margin-top:0.5rem">
+                            <input type="text" id="banner-title" class="field-input" placeholder="หัวข้อ">
+                            <textarea id="banner-desc" class="field-input" placeholder="คำอธิบาย" rows="2"></textarea>
+                            <input type="text" id="banner-link" class="field-input" placeholder="ลิงก์ (ไม่บังคับ)">
+                            <select id="banner-type" class="field-input">
+                                <option value="general">ทั่วไป</option>
+                                <option value="benefits">สิทธิพิเศษ</option>
+                                <option value="announcement">ประกาศ</option>
+                                <option value="special_offer">โปรโมชัน</option>
+                                <option value="sponsor">สปอนเซอร์</option>
+                            </select>
+                            <label style="font-size:12px;color:#888">วันเริ่ม
+                                <input type="date" id="banner-start" class="field-input">
+                            </label>
+                            <label style="font-size:12px;color:#888">วันสิ้นสุด
+                                <input type="date" id="banner-end" class="field-input">
+                            </label>
+                            <label style="font-size:12px;color:#888">รูปภาพ
+                                <input type="file" id="banner-image" accept="image/*" class="field-input">
+                            </label>
+                            <div id="banner-form-msg" style="font-size:12px"></div>
+                            <div style="display:flex;gap:8px">
+                                <button class="btn btn-check" id="banner-submit-btn" onclick="submitBannerForm()"><i class="fas fa-plus"></i> เพิ่มแบนเนอร์</button>
+                                <button class="btn btn-toggle" id="banner-cancel-btn" style="display:none" onclick="resetBannerForm()">ยกเลิก</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="white-box box-flex">
+                        <div class="box-header"><div class="box-title">รายการแบนเนอร์</div></div>
+                        <div id="banner-list" style="display:flex;flex-direction:column;gap:8px;margin-top:0.5rem">
+                            <div style="color:#888;font-size:12px">กำลังโหลด...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comment Moderation Page -->
+            <div id="page-comments" class="page-content">
+                <h1 class="page-title"><i class="fas fa-comment-slash page-title-icon"></i> Comment Moderation</h1>
+                <small class="page-title-sub">คอมเมนต์ที่ถูกรายงานจากผู้ใช้</small>
+                <div class="white-box" style="margin-top:1rem">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ผู้แสดงความคิดเห็น</th>
+                                <th>ข้อความ</th>
+                                <th>โพสต์</th>
+                                <th>ถูกรายงาน</th>
+                                <th>วันที่</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="comment-report-table">
+                            <tr><td colspan="6" class="empty-row">กำลังโหลด...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Groups Page -->
+            <div id="page-groups" class="page-content">
+                <h1 class="page-title"><i class="fas fa-people-group page-title-icon"></i> Groups</h1>
+                <small class="page-title-sub">จัดการกลุ่มพื้นที่ชุมชน</small>
+
+                <div class="dashboard-row" style="margin-top:1rem">
+                    <div class="white-box box-flex" style="max-width:380px">
+                        <div class="box-header"><div class="box-title" id="group-form-header">เพิ่มใหม่</div></div>
+                        <input type="hidden" id="group-edit-id" value="">
+                        <div style="display:flex;flex-direction:column;gap:8px;margin-top:0.5rem">
+                            <input type="text" id="group-name" class="field-input" placeholder="ชื่อกลุ่ม">
+                            <textarea id="group-desc" class="field-input" placeholder="คำอธิบาย" rows="2"></textarea>
+                            <input type="text" id="group-icon" class="field-input" placeholder="ไอคอน (เช่น favorite)">
+                            <input type="text" id="group-color" class="field-input" placeholder="สี เช่น #4CAF50">
+                            <div id="group-form-msg" style="font-size:12px"></div>
+                            <div style="display:flex;gap:8px">
+                                <button class="btn btn-check" id="group-submit-btn" onclick="submitGroupForm()"><i class="fas fa-plus"></i> เพิ่มกลุ่ม</button>
+                                <button class="btn btn-toggle" id="group-cancel-btn" style="display:none" onclick="resetGroupForm()">ยกเลิก</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="white-box box-flex">
+                        <div class="box-header"><div class="box-title">รายการกลุ่ม</div></div>
+                        <div id="group-list" style="display:flex;flex-direction:column;gap:8px;margin-top:0.5rem">
+                            <div style="color:#888;font-size:12px">กำลังโหลด...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div id="page-fallback" class="page-content" style="text-align:center; padding: 100px;">
                 <i class="fas fa-hard-hat" style="font-size: 4rem; color:#dddfeb"></i>
                 <h2 style="margin-top:1rem">หน้านี้กำลังดึงข้อมูล...</h2>
