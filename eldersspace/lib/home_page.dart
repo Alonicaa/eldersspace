@@ -1,6 +1,6 @@
 ﻿import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'services/api_service.dart';
@@ -285,30 +285,23 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final ads = await AdService.getPopupAds();
     if (ads.isEmpty || !mounted) return;
 
-    final prefs = await SharedPreferences.getInstance();
-    final today = DateTime.now().toIso8601String().substring(0, 10);
+    // Show exactly one randomly-picked ad per app open, instead of
+    // stacking every configured ad's dialog on top of each other.
+    final ad = ads[Random().nextInt(ads.length)];
 
-    for (final ad in ads) {
-      final adId = ad['id'].toString();
-      final key = 'popup_shown_${adId}_$today';
-      if (prefs.getBool(key) == true) continue;
+    final configuredDelay = ad['display_delay_seconds'] is int
+        ? ad['display_delay_seconds'] as int
+        : int.tryParse(ad['display_delay_seconds']?.toString() ?? '0') ?? 0;
+    // Give the home page a moment to render before an ad appears,
+    // even if the partner content wasn't configured with a delay.
+    const minDelaySec = 3;
+    final delaySec =
+        configuredDelay < minDelaySec ? minDelaySec : configuredDelay;
 
-      final configuredDelay = ad['display_delay_seconds'] is int
-          ? ad['display_delay_seconds'] as int
-          : int.tryParse(ad['display_delay_seconds']?.toString() ?? '0') ?? 0;
-      // Give the home page a moment to render before an ad appears,
-      // even if the partner content wasn't configured with a delay.
-      const minDelaySec = 3;
-      final delaySec =
-          configuredDelay < minDelaySec ? minDelaySec : configuredDelay;
-
-      final t = Timer(Duration(seconds: delaySec), () async {
-        if (!mounted) return;
-        await prefs.setBool(key, true);
-        if (mounted) await PartnerAdPopup.show(context, ad);
-      });
-      _popupTimers.add(t);
-    }
+    final t = Timer(Duration(seconds: delaySec), () async {
+      if (mounted) await PartnerAdPopup.show(context, ad);
+    });
+    _popupTimers.add(t);
   }
 
   Future<void> _checkBlockedStatus() async {
