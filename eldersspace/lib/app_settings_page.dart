@@ -82,9 +82,9 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
               return ValueListenableBuilder<double>(
                 valueListenable: _settings.fontScaleNotifier,
                 builder: (context, scale, _) {
-                  final String selected = isElder
-                      ? 'large'
-                      : (scale < 0.95 ? 'small' : 'medium');
+                  final String selected = !isElder
+                      ? (scale < 0.95 ? 'small' : 'medium')
+                      : (scale > 1.45 ? 'xlarge' : 'large');
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -125,8 +125,24 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
                             _buildSizeOption(
                               label: 'ใหญ่',
                               isSelected: selected == 'large',
+                              onTap: () async {
+                                await _settings.setElderMode(true);
+                                await _settings.setFontScale(1.3);
+                              },
+                            ),
+                            Container(
+                              width: 1,
+                              height: 52,
+                              color: Colors.grey.shade300,
+                            ),
+                            _buildSizeOption(
+                              label: 'ใหญ่มาก',
+                              isSelected: selected == 'xlarge',
                               isLast: true,
-                              onTap: () => _settings.setElderMode(true),
+                              onTap: () async {
+                                await _settings.setElderMode(true);
+                                await _settings.setFontScale(1.6);
+                              },
                             ),
                           ],
                         ),

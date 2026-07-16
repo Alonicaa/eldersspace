@@ -185,7 +185,7 @@ class MyApp extends StatelessWidget {
         return ValueListenableBuilder<double>(
           valueListenable: settings.fontScaleNotifier,
           builder: (context, fontScale, _) {
-            final effectiveScale = isElder ? 1.3 : fontScale;
+            final effectiveScale = isElder ? (fontScale > 1.3 ? fontScale : 1.3) : fontScale;
             return MaterialApp(
               debugShowCheckedModeBanner: false,
               navigatorKey: DeepLinkService.navigatorKey,
