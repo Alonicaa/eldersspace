@@ -673,14 +673,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             ),
             const SizedBox(height: 12),
           ],
-          _buildBenefitsSection(),
-          const SizedBox(height: 12),
-          _buildRedeemableBenefitsSection(),
-          const SizedBox(height: 12),
-          _buildJobOpportunitiesSection(),
-          const SizedBox(height: 12),
-          _buildSocialProjectsSection(),
-          const SizedBox(height: 12),
           DailyCheckInCard(
             streak: _asInt(rewardSummary?['login_streak']),
             checkedToday: _asBool(rewardSummary?['checked_in_today']),
@@ -706,6 +698,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             isLoading: isCheckingIn,
             onCheckIn: _doCheckin,
           ),
+          const SizedBox(height: 12),
+          _buildBenefitsSection(),
+          const SizedBox(height: 12),
+          _buildRedeemableBenefitsSection(),
+          const SizedBox(height: 12),
+          _buildJobOpportunitiesSection(),
+          const SizedBox(height: 12),
+          _buildSocialProjectsSection(),
           const SizedBox(height: 12),
           _buildSpecialOfferSection(),
           const SizedBox(height: 12),
@@ -946,7 +946,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     return Column(
       children: [
         _buildSectionHeader(
-          'สิทธิประโยชน์สำหรับคุณ',
+          'สิทธิพิเศษจากพาร์ทเนอร์',
           trailing: 'ดูทั้งหมด',
           onTrailingTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AllPartnersPage())),
         ),
@@ -1069,7 +1069,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     return Column(
       children: [
         _buildSectionHeader(
-          'สิทธิประโยชน์สำหรับคุณ',
+          'แลกแต้มสะสม',
           trailing: 'ดูทั้งหมด',
           onTrailingTap: () => Navigator.push(
             context,
