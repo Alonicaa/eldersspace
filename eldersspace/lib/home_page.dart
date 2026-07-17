@@ -975,15 +975,21 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             ),
           ),
         ),
-        SizedBox(
-          height: 220,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: _availableRewards.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (ctx, i) => _buildRewardCard(_availableRewards[i]),
-          ),
+        ValueListenableBuilder<double>(
+          valueListenable: AppSettingsService.instance.fontScaleNotifier,
+          builder: (context, textScale, _) {
+            final extraHeight = ((textScale - 1.0) * 90.0).clamp(0.0, 130.0);
+            return SizedBox(
+              height: 220 + extraHeight,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: _availableRewards.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (ctx, i) => _buildRewardCard(_availableRewards[i]),
+              ),
+            );
+          },
         ),
       ],
     );
@@ -1118,15 +1124,21 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             MaterialPageRoute(builder: (_) => const AllOpportunitiesPage()),
           ),
         ),
-        SizedBox(
-          height: 108,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: _partnerJobs.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (ctx, i) => _buildJobScrollCard(_partnerJobs[i]),
-          ),
+        ValueListenableBuilder<double>(
+          valueListenable: AppSettingsService.instance.fontScaleNotifier,
+          builder: (context, textScale, _) {
+            final extraHeight = ((textScale - 1.0) * 60.0).clamp(0.0, 90.0);
+            return SizedBox(
+              height: 108 + extraHeight,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: _partnerJobs.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (ctx, i) => _buildJobScrollCard(_partnerJobs[i]),
+              ),
+            );
+          },
         ),
         const SizedBox(height: 4),
       ],

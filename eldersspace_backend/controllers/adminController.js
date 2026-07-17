@@ -435,17 +435,24 @@ async function buildSummaryAndActivity(conn, options = {}) {
   const usersToday = Number(usersTodayRows?.[0]?.total || 0);
 
   const postsToday = postsHasCreatedAt
-    ? await querySingleValue(conn, "SELECT COUNT(*) AS total FROM posts WHERE is_deleted = 0 AND DATE(created_at) = CURRENT_DATE")
+    ? await querySingleValue(
+        conn,
+        `SELECT COUNT(*) AS total FROM posts
+         WHERE is_deleted = 0 AND DATE(created_at + INTERVAL '7 hours') = $1`,
+        [selectedDauDate]
+      )
     : 0;
 
-  // DAU graph: selected day (hourly 00:00-23:00)
+  // DAU graph: selected day (hourly 00:00-23:00, bucketed in Asia/Bangkok time —
+  // activity_at is stored in UTC, so shift +7h before extracting date/hour or the
+  // graph ends up ~7 hours behind actual local usage)
   const dauRows = await safeQuery(
     conn,
-    `SELECT EXTRACT(HOUR FROM activity_at) AS hour_slot,
+    `SELECT EXTRACT(HOUR FROM activity_at + INTERVAL '7 hours') AS hour_slot,
             COUNT(DISTINCT user_id) AS total
      FROM (${activeUnionSql}) active
-     WHERE DATE(activity_at) = $1
-     GROUP BY EXTRACT(HOUR FROM activity_at)`,
+     WHERE DATE(activity_at + INTERVAL '7 hours') = $1
+     GROUP BY EXTRACT(HOUR FROM activity_at + INTERVAL '7 hours')`,
     [selectedDauDate]
   );
 
@@ -473,12 +480,12 @@ async function buildSummaryAndActivity(conn, options = {}) {
 
   const mauRows = await safeQuery(
     conn,
-    `SELECT EXTRACT(DAY FROM activity_at) AS day_of_month,
+    `SELECT EXTRACT(DAY FROM activity_at + INTERVAL '7 hours') AS day_of_month,
             COUNT(DISTINCT user_id) AS total
      FROM (${activeUnionSql}) active
-     WHERE DATE(activity_at) >= $1
-       AND DATE(activity_at) < $2
-     GROUP BY EXTRACT(DAY FROM activity_at)`,
+     WHERE DATE(activity_at + INTERVAL '7 hours') >= $1
+       AND DATE(activity_at + INTERVAL '7 hours') < $2
+     GROUP BY EXTRACT(DAY FROM activity_at + INTERVAL '7 hours')`,
     [monthStart, nextMonthStart]
   );
 
@@ -503,13 +510,13 @@ async function buildSummaryAndActivity(conn, options = {}) {
 
   if (postsHasCreatedAt) {
     const { rows: postWeekRows } = await conn.query(
-      `SELECT DATE(created_at) AS day_key,
+      `SELECT DATE(created_at + INTERVAL '7 hours') AS day_key,
               COUNT(*) AS total
        FROM posts
        WHERE is_deleted = 0
-         AND DATE(created_at) >= $1
-         AND DATE(created_at) <= $2
-       GROUP BY DATE(created_at)`,
+         AND DATE(created_at + INTERVAL '7 hours') >= $1
+         AND DATE(created_at + INTERVAL '7 hours') <= $2
+       GROUP BY DATE(created_at + INTERVAL '7 hours')`,
       [wauStartDate, wauEndDate]
     );
 
@@ -522,12 +529,12 @@ async function buildSummaryAndActivity(conn, options = {}) {
 
   const activeWeekRows = await safeQuery(
     conn,
-    `SELECT DATE(activity_at) AS day_key,
+    `SELECT DATE(activity_at + INTERVAL '7 hours') AS day_key,
             COUNT(DISTINCT user_id) AS total
       FROM (${activeUnionSql}) active
-      WHERE DATE(activity_at) >= $1
-        AND DATE(activity_at) <= $2
-      GROUP BY DATE(activity_at)`,
+      WHERE DATE(activity_at + INTERVAL '7 hours') >= $1
+        AND DATE(activity_at + INTERVAL '7 hours') <= $2
+      GROUP BY DATE(activity_at + INTERVAL '7 hours')`,
     [wauStartDate, wauEndDate]
   );
 
