@@ -232,6 +232,7 @@
                             <input id="company-search" type="text" placeholder="ค้นหาจากชื่อผู้ใช้, เบอร์โทร หรือข้อมูลย่อ" />
                             <button class="btn btn-check" id="company-search-btn" type="button"><i class="fas fa-search"></i> ค้นหา</button>
                             <button class="btn btn-ghost" id="company-search-clear-btn" type="button">ล้าง</button>
+                            <button class="btn btn-ghost" type="button" onclick="exportCompanyUsers()"><i class="fas fa-file-csv"></i> Export CSV</button>
                         </div>
                     </div>
                     <table class="company-users-table">
@@ -279,6 +280,7 @@
                             </div>
                         </div>
                         <input type="hidden" id="points-sort" value="points">
+                        <button class="btn btn-ghost" type="button" onclick="exportPointsLeaderboard()"><i class="fas fa-file-csv"></i> Export CSV</button>
                     </div>
                     <table class="points-table">
                         <thead>
@@ -1800,6 +1802,7 @@
                             </select>
                             <select id="redemption-analytics-sort" class="redemption-analytics-input"></select>
                             <button class="btn btn-ghost" type="button" onclick="resetRedemptionAnalyticsFilters()">ล้าง</button>
+                            <button class="btn btn-ghost" type="button" onclick="exportRedemptionAnalytics()"><i class="fas fa-file-csv"></i> Export CSV</button>
                         </div>
                         <div id="redemption-analytics-summary" class="redemption-analytics-summary">กำลังโหลดข้อมูล...</div>
                     </div>

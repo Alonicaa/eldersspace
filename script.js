@@ -2660,6 +2660,28 @@ function getCompanyDisplayRows() {
         });
 }
 
+// อายุจาก birth_date — ใช้ร่วมกันทั้งตาราง Elder Accounts และ export CSV
+function calculateAgeFromBirthDate(birthDate) {
+    if (!birthDate) return null;
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+    }
+    return age > 0 ? age : null;
+}
+
+function getCompanyBriefInfo(row) {
+    const parts = [];
+    if (row.gender) parts.push(row.gender);
+    const age = calculateAgeFromBirthDate(row.birth_date);
+    if (age) parts.push(`${age} ปี`);
+    if (row.current_location) parts.push(row.current_location);
+    return parts.length > 0 ? parts.join(', ') : '-';
+}
+
 function renderCompanies(entries) {
     const tbody = document.getElementById('company-table');
     if (!tbody) return;
@@ -2672,48 +2694,12 @@ function renderCompanies(entries) {
         return;
     }
 
-    // Helper function to calculate age from birth_date
-    const calculateAge = (birthDate) => {
-        if (!birthDate) return null;
-        const today = new Date();
-        const birth = new Date(birthDate);
-        let age = today.getFullYear() - birth.getFullYear();
-        const monthDiff = today.getMonth() - birth.getMonth();
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-            age--;
-        }
-        return age > 0 ? age : null;
-    };
-
-    // Helper function to generate brief info
-    const getBriefInfo = (row) => {
-        const parts = [];
-        
-        // Add gender
-        if (row.gender) {
-            parts.push(row.gender);
-        }
-        
-        // Add age
-        const age = calculateAge(row.birth_date);
-        if (age) {
-            parts.push(`${age} ปี`);
-        }
-        
-        // Add location
-        if (row.current_location) {
-            parts.push(row.current_location);
-        }
-        
-        return parts.length > 0 ? parts.join(', ') : '-';
-    };
-
     tbody.innerHTML = entries.map(({ row, sourceIndex }) => {
         const index = Number.isInteger(sourceIndex) ? sourceIndex : 0;
         const fullName = row.name || row.full_name || row.username || `ผู้ใช้ #${index + 1}`;
         // Backend maps phone_number to regNo in companies section
         const phone = row.phone || row.phone_number || row.regNo || row.tel || row.contact || row.mobile || '-';
-        const briefInfo = getBriefInfo(row);
+        const briefInfo = getCompanyBriefInfo(row);
         const blocked = Boolean(row.isBlocked || row.is_blocked || row.blocked || String(row.status || '').toLowerCase() === 'blocked');
 
         console.log(`[Company #${index}] name:${fullName}, phone:${phone}, brief:${briefInfo}`, row); // Debug log
@@ -3484,26 +3470,96 @@ function exportRedemptionHistory(groupKey) {
     if (!group) return;
 
     const header = ['ชื่อ', 'เบอร์โทร', 'แคมเปญ', 'แต้ม', 'สถานะ', 'เวลา', 'QR Code'];
+    const rows = group.redemptions.map((row) => [
+        group.userName,
+        group.phoneNumber,
+        getRedemptionCampaignName(row),
+        Number(row.points_redeemed ?? row.points ?? 0) || 0,
+        getNormalizedRedemptionStatus(row),
+        row.redeemed_at || row.created_at || row.redeemedAt || row.createdAt || '',
+        row.qr_code || row.code || ''
+    ]);
+
+    downloadCsv(`redemption-history-${group.phoneNumber || 'user'}.csv`, header, rows);
+}
+
+// Generate + trigger download of a CSV file (BOM prefix so Excel opens Thai text correctly)
+function downloadCsv(filename, header, rows) {
     const lines = [header.join(',')];
-    group.redemptions.forEach((row) => {
-        lines.push([
-            group.userName,
-            group.phoneNumber,
-            getRedemptionCampaignName(row),
-            Number(row.points_redeemed ?? row.points ?? 0) || 0,
-            getNormalizedRedemptionStatus(row),
-            row.redeemed_at || row.created_at || row.redeemedAt || row.createdAt || '',
-            row.qr_code || row.code || ''
-        ].map((value) => `"${String(value).replace(/"/g, '""')}"`).join(','));
+    rows.forEach((cols) => {
+        lines.push(cols.map((value) => `"${String(value ?? '').replace(/"/g, '""')}"`).join(','));
     });
 
-    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `redemption-history-${group.phoneNumber || 'user'}.csv`;
+    link.download = filename;
     link.click();
     URL.revokeObjectURL(url);
+}
+
+// ─── Export: Redemption Analytics (aggregate table currently shown) ─────────
+function exportRedemptionAnalytics() {
+    const records = aggregateRedemptionAnalyticsRows(currentRedemptionVisibleRows);
+    if (!records.length) {
+        alert('ไม่มีข้อมูลสำหรับ export');
+        return;
+    }
+
+    const labelHead = currentRedemptionAnalyticsView === 'daily' ? 'วันที่' : 'แคมเปญ';
+    const header = [labelHead, 'จำนวนแลก', 'ผู้ใช้ไม่ซ้ำ', 'แต้มรวม', 'แคมเปญย่อย', 'ล่าสุด'];
+    const rows = records.map((item) => [
+        item.bucketLabel,
+        item.totalCount,
+        item.uniqueUserCount,
+        item.totalPoints,
+        item.topCampaignSummary,
+        formatDate(item.latestAt)
+    ]);
+
+    downloadCsv(`redemption-analytics-${currentRedemptionAnalyticsView}-${Date.now()}.csv`, header, rows);
+}
+
+// ─── Export: Elder Accounts (user list, respects current search filter) ─────
+function exportCompanyUsers() {
+    const entries = getCompanyDisplayRows();
+    if (!entries.length) {
+        alert('ไม่มีข้อมูลผู้ใช้สำหรับ export');
+        return;
+    }
+
+    const header = ['ชื่อ', 'เบอร์โทร', 'ข้อมูลย่อ', 'สถานะ'];
+    const rows = entries.map(({ row }) => {
+        const fullName = row.name || row.full_name || row.username || '-';
+        const phone = row.phone || row.phone_number || row.regNo || row.tel || row.contact || row.mobile || '-';
+        const briefInfo = getCompanyBriefInfo(row);
+        const blocked = Boolean(row.isBlocked || row.is_blocked || row.blocked || String(row.status || '').toLowerCase() === 'blocked');
+        return [fullName, phone, briefInfo, blocked ? 'ถูกบล็อค' : 'ใช้งานปกติ'];
+    });
+
+    downloadCsv(`elder-accounts-${Date.now()}.csv`, header, rows);
+}
+
+// ─── Export: Points & Rewards leaderboard (respects current search/filter/sort) ─
+function exportPointsLeaderboard() {
+    const rows = Array.isArray(window.pointsFullData) ? window.pointsFullData : [];
+    if (!rows.length) {
+        alert('ไม่มีข้อมูลแต้มสำหรับ export');
+        return;
+    }
+
+    const header = ['อันดับ', 'ชื่อ', 'เบอร์โทร', 'แต้มรวม', 'Streak (วัน)', 'สถานะ'];
+    const csvRows = rows.map((row, index) => [
+        index + 1,
+        row.name || '-',
+        row.phone || '-',
+        row.totalPoints ?? 0,
+        row.streak ?? 0,
+        row.isBlocked ? 'Blocked' : 'Active'
+    ]);
+
+    downloadCsv(`points-leaderboard-${Date.now()}.csv`, header, csvRows);
 }
 
 /* --- New UI helpers: QR modal and Redemption Drawer --- */
