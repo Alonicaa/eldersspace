@@ -6,6 +6,12 @@ class AllSocialProjectsPage extends StatelessWidget {
   final List<Map<String, dynamic>> projects;
   const AllSocialProjectsPage({super.key, required this.projects});
 
+  static String _clean(String s) => s
+      .replaceAll(r'\r\n', '\n')
+      .replaceAll(r'\n', '\n')
+      .replaceAll(r'\r', '\n')
+      .trim();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -35,7 +41,7 @@ class AllSocialProjectsPage extends StatelessWidget {
     final logoUrl = PartnerService.resolveImageUrl(p['partner_logo']);
     final partnerId = p['partner_id'];
     final title = p['title']?.toString() ?? '';
-    final desc = p['description']?.toString() ?? '';
+    final desc = _clean(p['description']?.toString() ?? '');
     final partnerName = p['partner_name']?.toString() ?? '';
 
     return GestureDetector(

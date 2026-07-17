@@ -268,7 +268,11 @@ class _RewardHistoryPageState extends State<RewardHistoryPage> {
     return sourceType;
   }
 
-  String _clean(String s) => s.replaceAll(r'\r\n', '\n').replaceAll(r'\n', '\n').trim();
+  String _clean(String s) => s
+      .replaceAll(r'\r\n', '\n')
+      .replaceAll(r'\n', '\n')
+      .replaceAll(r'\r', '\n')
+      .trim();
 
   String _formatDateTime(dynamic value) {
     if (value == null) return '-';
@@ -337,374 +341,415 @@ class _RewardHistoryPageState extends State<RewardHistoryPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         clipBehavior: Clip.antiAlias,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // ── ส่วนบน: รูปรางวัล / โลโก้ ──
-              Container(
-                width: double.infinity,
-                color: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 32),
-                child: Column(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 440),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ── ส่วนบน: รูปรางวัล / โลโก้ + ปุ่มปิด ──
+                Stack(
                   children: [
-                    // รูปรางวัล (ถ้ามี) หรือ icon placeholder
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: imageUrl.isNotEmpty
-                          ? Image.network(
-                              imageUrl,
-                              height: 120,
-                              width: 200,
-                              fit: BoxFit.contain,
-                              loadingBuilder:
-                                  (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return SizedBox(
-                                  height: 120,
-                                  width: 200,
-                                  child: Center(
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.grey.shade400,
-                                    ),
-                                  ),
-                                );
-                              },
-                              errorBuilder: (context, error, stackTrace) =>
-                                  _buildIconPlaceholder(),
-                            )
-                          : _buildIconPlaceholder(),
+                    Container(
+                      width: double.infinity,
+                      color: Colors.white,
+                      padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          // รูปรางวัล (ถ้ามี) หรือ icon placeholder
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: imageUrl.isNotEmpty
+                                ? Image.network(
+                                    imageUrl,
+                                    height: 120,
+                                    width: 200,
+                                    fit: BoxFit.contain,
+                                    loadingBuilder:
+                                        (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return SizedBox(
+                                        height: 120,
+                                        width: 200,
+                                        child: Center(
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.grey.shade400,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    errorBuilder: (context, error, stackTrace) =>
+                                        _buildIconPlaceholder(),
+                                  )
+                                : _buildIconPlaceholder(),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: GestureDetector(
+                        onTap: () => Navigator.pop(context, false),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.close_rounded,
+                            size: 22,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              ),
 
-              // ── ส่วนล่าง: ข้อมูล + ปุ่ม ──
-              Container(
-                color: const Color(0xFFF2F0F8), // พื้นหลังม่วงอ่อน
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Points badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFA500),
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Text(
-                        '$cost แต้ม',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // ชื่อรางวัล
-                    Text(
-                      name,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                        height: 1.3,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 16),
-
-                    // ── ตารางคำนวณแต้ม ──
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Column(
-                        children: [
-                          // แต้มของคุณ
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'แต้มของคุณ',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey.shade700,
-                                ),
-                              ),
-                              Text(
-                                '$currentPoints แต้ม',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Divider(color: Colors.grey.shade200, height: 1),
-                          const SizedBox(height: 10),
-                          // ใช้แลก
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'ใช้แลก',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey.shade700,
-                                ),
-                              ),
-                              Text(
-                                '- $cost แต้ม',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.red,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Divider(color: Colors.grey.shade200, height: 1),
-                          const SizedBox(height: 10),
-                          // แต้มคงเหลือ
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'แต้มคงเหลือ',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey.shade700,
-                                ),
-                              ),
-                              Text(
-                                '$remainingPoints แต้ม',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: remainingPoints < 0
-                                      ? Colors.red
-                                      : Colors.green.shade600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Description box (ถ้ามี)
-                    if (description.isNotEmpty) ...[
-                      const SizedBox(height: 12),
+                // ── ส่วนล่าง: ข้อมูล + ปุ่ม ──
+                Container(
+                  color: const Color(0xFFF2F0F8), // พื้นหลังม่วงอ่อน
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Points badge
                       Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.amber.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.amber.shade200),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 10,
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '📝 รายละเอียด',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.amber.shade900,
-                                fontWeight: FontWeight.bold,
-                              ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFA500),
+                          borderRadius: BorderRadius.circular(28),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFFFA500).withValues(alpha: 0.3),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
                             ),
-                            const SizedBox(height: 6),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.star_rounded, color: Colors.white, size: 20),
+                            const SizedBox(width: 6),
                             Text(
-                              description,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.amber.shade800,
-                                height: 1.4,
+                              '$cost แต้ม',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                color: Colors.white,
                               ),
                             ),
                           ],
                         ),
                       ),
-                    ],
+                      const SizedBox(height: 14),
 
-                    // Validity Period (ถ้ามี)
-                    if (parsedStart != null || parsedEnd != null) ...[
-                      const SizedBox(height: 12),
+                      // ชื่อรางวัล
+                      Text(
+                        name,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                          height: 1.3,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 18),
+
+                      // ── ตารางคำนวณแต้ม ──
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 16,
+                        ),
                         decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.blue.shade200),
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18),
                         ),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              '📅 ระยะเวลา',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.blue.shade900,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            _buildRedeemCalcRow(
+                              icon: Icons.account_balance_wallet_outlined,
+                              iconColor: Colors.grey.shade500,
+                              label: 'แต้มของคุณ',
+                              value: '$currentPoints แต้ม',
+                              valueColor: Colors.black87,
                             ),
-                            const SizedBox(height: 6),
-                            if (parsedStart != null)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 4),
-                                child: RichText(
+                            const SizedBox(height: 12),
+                            Divider(color: Colors.grey.shade200, height: 1),
+                            const SizedBox(height: 12),
+                            _buildRedeemCalcRow(
+                              icon: Icons.remove_circle_outline,
+                              iconColor: Colors.red.shade300,
+                              label: 'ใช้แลก',
+                              value: '- $cost แต้ม',
+                              valueColor: Colors.red,
+                            ),
+                            const SizedBox(height: 12),
+                            Divider(color: Colors.grey.shade200, height: 1),
+                            const SizedBox(height: 12),
+                            _buildRedeemCalcRow(
+                              icon: Icons.check_circle_outline,
+                              iconColor: remainingPoints < 0
+                                  ? Colors.red.shade300
+                                  : Colors.green.shade400,
+                              label: 'แต้มคงเหลือ',
+                              value: '$remainingPoints แต้ม',
+                              valueColor: remainingPoints < 0
+                                  ? Colors.red
+                                  : Colors.green.shade600,
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Description box (ถ้ามี)
+                      if (description.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.shade50,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: Colors.amber.shade200),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.description_outlined,
+                                      size: 16, color: Colors.amber.shade900),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'รายละเอียด',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.amber.shade900,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                description,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.amber.shade800,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+
+                      // Validity Period (ถ้ามี)
+                      if (parsedStart != null || parsedEnd != null) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: Colors.blue.shade200),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.event_outlined,
+                                      size: 16, color: Colors.blue.shade900),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'ระยะเวลา',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.blue.shade900,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              if (parsedStart != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 4),
+                                  child: RichText(
+                                    text: TextSpan(
+                                      children: [
+                                        TextSpan(
+                                          text: 'เริ่มตั้งแต่: ',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.blue.shade700,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        TextSpan(
+                                          text: _formatDateTimeForDetail(parsedStart),
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.blue.shade900,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              if (parsedEnd != null)
+                                RichText(
                                   text: TextSpan(
                                     children: [
                                       TextSpan(
-                                        text: 'เริ่มตั้งแต่: ',
+                                        text: 'สิ้นสุด: ',
                                         style: TextStyle(
-                                          fontSize: 11,
+                                          fontSize: 13,
                                           color: Colors.blue.shade700,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
                                       TextSpan(
-                                        text: _formatDateTimeForDetail(parsedStart),
+                                        text: _formatDateTimeForDetail(parsedEnd),
                                         style: TextStyle(
-                                          fontSize: 11,
+                                          fontSize: 13,
                                           color: Colors.blue.shade900,
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
-                              ),
-                            if (parsedEnd != null)
-                              RichText(
-                                text: TextSpan(
-                                  children: [
-                                    TextSpan(
-                                      text: 'สิ้นสุด: ',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.blue.shade700,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    TextSpan(
-                                      text: _formatDateTimeForDetail(parsedEnd),
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.blue.shade900,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
-
-                    const SizedBox(height: 20),
-
-                    // คำถามยืนยัน
-                    Text(
-                      'รางวัลของคุณ',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'คุณต้องการแลกรับรางวัลนี้ใช่หรือไม่?',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // ปุ่มยืนยัน
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () => Navigator.pop(context, true),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF27C77F),
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(32),
-                          ),
-                          elevation: 0,
-                        ),
-                        icon: const Icon(
-                          Icons.check_circle_outline,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        label: const Text(
-                          'ยืนยัน',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            ],
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
+                      ],
 
-                    // ปุ่มยกเลิก
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context, false),
-                      child: const Text(
-                        'ยกเลิก',
+                      const SizedBox(height: 22),
+
+                      // คำถามยืนยัน
+                      Text(
+                        'ยืนยันการแลกรางวัล',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.black54,
+                          color: Colors.grey.shade600,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Footer
-                    Text(
-                      'โปรดแสดงหลักฐานคิวอาร์โค้ด\nสำหรับแลกรับส่วนลดที่จุดแลกส่วนลด',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey.shade500,
-                        height: 1.5,
+                      const SizedBox(height: 6),
+                      const Text(
+                        'คุณต้องการแลกรับรางวัลนี้ใช่หรือไม่?',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 22),
+
+                      // ปุ่มยืนยัน
+                      SizedBox(
+                        width: double.infinity,
+                        height: 54,
+                        child: ElevatedButton.icon(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF27C77F),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(32),
+                            ),
+                            elevation: 0,
+                          ),
+                          icon: const Icon(
+                            Icons.check_circle_outline,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                          label: const Text(
+                            'ยืนยันแลกรางวัล',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 17,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
+                      // ปุ่มยกเลิก
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(32),
+                            ),
+                          ),
+                          child: Text(
+                            'ยกเลิก',
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: Colors.grey.shade700,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+
+                      // Footer
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.info_outline, size: 14, color: Colors.grey.shade600),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              'โปรดแสดงหลักฐานคิวอาร์โค้ด\nสำหรับแลกรับส่วนลดที่จุดแลกส่วนลด',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                                height: 1.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -729,6 +774,39 @@ class _RewardHistoryPageState extends State<RewardHistoryPage> {
         size: 64,
         color: Colors.teal.shade300,
       ),
+    );
+  }
+
+  /// แถวในตารางคำนวณแต้ม (แต้มของคุณ / ใช้แลก / แต้มคงเหลือ)
+  Widget _buildRedeemCalcRow({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+    required Color valueColor,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 18, color: iconColor),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+            ),
+          ],
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+            color: valueColor,
+          ),
+        ),
+      ],
     );
   }
 
@@ -2800,7 +2878,7 @@ class _RewardHistoryPageState extends State<RewardHistoryPage> {
     final imageUrl = _resolveRewardImageUrl(
       (reward['image_url'] ?? '').toString(),
     );
-    final description = (reward['description'] ?? '').toString();
+    final description = _clean((reward['description'] ?? '').toString());
     final totalPoints = (_summary?['total_points'] ?? 0).toInt();
     // Validity dates
     final rawStart = reward['start_date'] ?? reward['valid_from'] ?? reward['campaign_start_date'];

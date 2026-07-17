@@ -1069,7 +1069,7 @@ exports.redeemReward = async (req, res) => {
     const { rows: promoCodeResult } = await conn.query(
       `SELECT promo_code_id, code, description, expiry_date
        FROM promo_codes
-       WHERE reward_id = $1 AND is_used = FALSE
+       WHERE reward_id = $1 AND is_used = 0
        ORDER BY created_at ASC LIMIT 1`,
       [reward_id]
     );
@@ -1087,7 +1087,7 @@ exports.redeemReward = async (req, res) => {
 
     // Mark promo code as used
     await conn.query(
-      `UPDATE promo_codes SET is_used = TRUE, used_by_user_id = $1, used_by_phone = $2, used_at = NOW()
+      `UPDATE promo_codes SET is_used = 1, used_by_user_id = $1, used_by_phone = $2, used_at = NOW()
        WHERE promo_code_id = $3`,
       [userId, phone_number, promoCode.promo_code_id]
     );
@@ -1163,6 +1163,15 @@ exports.getRedemptionRecord = async (req, res) => {
 
   const conn = await pool.connect();
   try {
+    // Flip to 'expired' if the 60-min redeem window passed without being used
+    await conn.query(
+      `UPDATE reward_redemption_history
+       SET redemption_status = 'expired', updated_at = NOW()
+       WHERE phone_number = $1 AND qr_code = $2
+         AND redemption_status = 'pending' AND expires_at < NOW()`,
+      [phone, qrCode]
+    );
+
     // ดึง redemption record ล่าสุดที่ตรงกับ phone + QR code
     const { rows: records } = await conn.query(
       `SELECT
@@ -1281,9 +1290,8 @@ exports.verifyQRCode = async (req, res) => {
       return res.status(404).json({ error: 'Reward not found' });
     }
 
-    // Log successful verification
+    // Log successful verification (redemption_status stays 'pending' until use-qr marks it 'used')
     await logQRAction(conn, qr.qr_id, qr_code, qr.user_id, qr.phone_number, 'verify', 'success');
-    await updateRedemptionHistory(conn, qr.user_id, qr.phone_number, qr.reward_id, rewards[0].reward_name, qr.points_redeemed, qr_code, 'scanned', now);
 
     conn.release();
 

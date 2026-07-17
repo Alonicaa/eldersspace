@@ -38,6 +38,12 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
+  static String _clean(String s) => s
+      .replaceAll(r'\r\n', '\n')
+      .replaceAll(r'\n', '\n')
+      .replaceAll(r'\r', '\n')
+      .trim();
+
   Map<String, dynamic>? userData;
   bool isLoadingUser = true;
   String? _profilePictureUrl;
@@ -989,7 +995,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final name = r['reward_name']?.toString().trim().isNotEmpty == true
         ? r['reward_name'].toString()
         : (r['name']?.toString().trim().isNotEmpty == true ? r['name'].toString() : 'สิทธิประโยชน์');
-    final desc = r['description']?.toString().trim() ?? '';
+    final desc = _clean(r['description']?.toString() ?? '');
     const blue = Color(0xFF1565C0);
     return Container(
       width: 180,
@@ -1326,7 +1332,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final logoUrl = PartnerService.resolveImageUrl(p['partner_logo']);
     final partnerId = p['partner_id'];
     final title = p['title']?.toString() ?? '';
-    final desc = p['description']?.toString() ?? '';
+    final desc = _clean(p['description']?.toString() ?? '');
     final partnerName = p['partner_name']?.toString() ?? '';
 
     return GestureDetector(
@@ -1625,7 +1631,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                             .isNotEmpty) ...[
                           const SizedBox(height: 2),
                           Text(
-                            b['description'].toString(),
+                            _clean(b['description'].toString()),
                             style: const TextStyle(
                               color: Colors.white70,
                               fontSize: 12,

@@ -13,6 +13,12 @@ class _AllAnnouncementsPageState extends State<AllAnnouncementsPage> {
   List<Map<String, dynamic>> _banners = [];
   bool _loading = true;
 
+  static String _clean(String s) => s
+      .replaceAll(r'\r\n', '\n')
+      .replaceAll(r'\n', '\n')
+      .replaceAll(r'\r', '\n')
+      .trim();
+
   @override
   void initState() {
     super.initState();
@@ -118,7 +124,7 @@ class _AllAnnouncementsPageState extends State<AllAnnouncementsPage> {
                     if ((b['description']?.toString() ?? '').isNotEmpty) ...[
                       const SizedBox(height: 6),
                       Text(
-                        b['description'].toString(),
+                        _clean(b['description'].toString()),
                         style: const TextStyle(fontSize: 13, color: Colors.grey, height: 1.5),
                         maxLines: 4,
                         overflow: TextOverflow.ellipsis,

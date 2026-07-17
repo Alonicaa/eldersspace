@@ -8,6 +8,15 @@ router.get('/redemptions', async (req, res) => {
     const { search, status, reward_id, date_from, date_to, page = 1, limit = 50 } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
 
+    conn = await pool.connect();
+
+    // Flip to 'expired' any pending redemption whose 60-min window passed
+    await conn.query(
+      `UPDATE reward_redemption_history
+       SET redemption_status = 'expired', updated_at = NOW()
+       WHERE redemption_status = 'pending' AND expires_at < NOW()`
+    );
+
     let query = `
       SELECT
         rh.redemption_id,
@@ -62,7 +71,6 @@ router.get('/redemptions', async (req, res) => {
     query += ` ORDER BY rh.redeemed_at DESC LIMIT $${pi++} OFFSET $${pi++}`;
     params.push(parseInt(limit), offset);
 
-    conn = await pool.connect();
     const redemptionsResult = await conn.query(query, params);
     const redemptions = redemptionsResult.rows;
 
@@ -180,6 +188,12 @@ router.post('/qr/verify', async (req, res) => {
     const now = new Date();
 
     if (record.expires_at && new Date(record.expires_at) < now) {
+      if (record.redemption_status === 'pending') {
+        await conn.query(
+          `UPDATE reward_redemption_history SET redemption_status = 'expired', updated_at = NOW() WHERE redemption_id = $1`,
+          [record.redemption_id]
+        );
+      }
       return res.json({
         status: 'expired',
         message: 'QR code has expired',
