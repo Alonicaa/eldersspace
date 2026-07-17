@@ -4749,6 +4749,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             adminPhoneInput.value = adminPhoneInput.value.replace(/\D/g, '').slice(0, 10);
         });
     }
+    const adminOtpInput = document.getElementById('admin-otp');
+    if (adminOtpInput) {
+        adminOtpInput.addEventListener('input', () => {
+            adminOtpInput.value = adminOtpInput.value.replace(/\D/g, '').slice(0, 6);
+        });
+    }
     const adsTable = document.getElementById('ads-table');
     const statsGrid = document.querySelector('.stats-grid');
     const companyTable = document.getElementById('company-table');
