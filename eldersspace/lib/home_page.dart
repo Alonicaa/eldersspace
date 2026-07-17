@@ -58,6 +58,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Map<String, dynamic>? rewardSummary;
   bool isCheckingIn = false;
   bool _showSessionBanner = true;
+  bool _showNotificationPrompt = false;
   Timer? _sessionTimer;
   Timer? _midnightRefreshTimer;
   int _sessionElapsed = 0;
@@ -138,7 +139,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _loadPartnerData();
     _scheduleMidnightRefresh();
     _startSession();
-    _registerFcmToken();
+    _initNotificationPermission();
     _schedulePopupAds();
     _openPendingSharedPost();
   }
@@ -267,6 +268,38 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         curve: Curves.easeInOut,
       );
     });
+  }
+
+  // บน native ระบบขอ permission ให้แล้วตอน app start (main.dart) เลยลงทะเบียน
+  // token ได้เลย — บน web ต้องเช็คก่อนว่า user เคยกดอนุญาตหรือยัง เพราะ browser
+  // จะเงียบเฉยๆ ถ้า requestPermission() ถูกเรียกโดยไม่มีการกดปุ่มจริงของ user
+  Future<void> _initNotificationPermission() async {
+    if (!kIsWeb) {
+      _registerFcmToken();
+      return;
+    }
+    try {
+      final settings = await FirebaseMessaging.instance.getNotificationSettings();
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        _registerFcmToken();
+      } else if (settings.authorizationStatus == AuthorizationStatus.notDetermined) {
+        if (mounted) setState(() => _showNotificationPrompt = true);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _requestNotificationPermission() async {
+    setState(() => _showNotificationPrompt = false);
+    try {
+      final settings = await FirebaseMessaging.instance.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        await _registerFcmToken();
+      }
+    } catch (_) {}
   }
 
   Future<void> _registerFcmToken() async {
@@ -561,6 +594,70 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           ),
           */
           const SizedBox(height: 12),
+          if (_showNotificationPrompt) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1565C0).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFF1565C0).withValues(alpha: 0.25),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.notifications_active_outlined,
+                      color: Color(0xFF1565C0)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'เปิดการแจ้งเตือน',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'ไม่พลาดสิทธิประโยชน์และข่าวสารใหม่ๆ',
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey.shade700),
+                        ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          height: 36,
+                          child: ElevatedButton(
+                            onPressed: _requestNotificationPermission,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1565C0),
+                              foregroundColor: Colors.white,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: const Text('เปิดการแจ้งเตือน',
+                                style: TextStyle(fontSize: 13)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () =>
+                        setState(() => _showNotificationPrompt = false),
+                    child: Icon(Icons.close,
+                        size: 18, color: Colors.grey.shade600),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           if (_showSessionBanner) ...[
             SessionBanner(
               sessionElapsedMinutes: _sessionElapsed,

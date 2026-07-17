@@ -96,11 +96,17 @@ Future<void> _initFirebase() async {
           sound: true,
         );
 
-    await FirebaseMessaging.instance.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    if (!kIsWeb) {
+      // Browsers block/ignore Notification.requestPermission() calls that
+      // aren't triggered by a real user gesture — asking here on app start
+      // (no tap involved) silently never shows a prompt on web. HomePage
+      // asks instead, from a banner button tap, once the user is logged in.
+      await FirebaseMessaging.instance.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+    }
 
     if (!kIsWeb) {
       await _localNotifications
