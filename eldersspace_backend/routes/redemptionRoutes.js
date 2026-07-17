@@ -1,5 +1,22 @@
 const router = require('express').Router();
 const pool = require('../config/db');
+const { verifyAdminToken } = require('../controllers/authController');
+
+// This router is mounted at /api and only ever called by the admin dashboard
+// (redemption history, QR scan/verify, cancel) — every route here handles
+// other users' phone numbers, names and QR codes, so all of it must require
+// a valid admin token.
+const adminTokenAuth = (req, res, next) => {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const payload = verifyAdminToken(token);
+  if (!payload) {
+    return res.status(401).json({ status: 'error', error: 'Unauthorized: invalid admin token' });
+  }
+  req.admin = payload;
+  return next();
+};
+router.use(adminTokenAuth);
 
 // Get all redemptions with filters
 router.get('/redemptions', async (req, res) => {
@@ -59,12 +76,12 @@ router.get('/redemptions', async (req, res) => {
     }
 
     if (date_from) {
-      query += ` AND CURRENT_DATE >= $${pi++}`;
+      query += ` AND DATE(rh.redeemed_at + INTERVAL '7 hours') >= $${pi++}`;
       params.push(date_from);
     }
 
     if (date_to) {
-      query += ` AND CURRENT_DATE <= $${pi++}`;
+      query += ` AND DATE(rh.redeemed_at + INTERVAL '7 hours') <= $${pi++}`;
       params.push(date_to);
     }
 
@@ -94,11 +111,11 @@ router.get('/redemptions', async (req, res) => {
       countParams.push(reward_id);
     }
     if (date_from) {
-      countQuery += ` AND CURRENT_DATE >= $${cpi++}`;
+      countQuery += ` AND DATE(rh.redeemed_at + INTERVAL '7 hours') >= $${cpi++}`;
       countParams.push(date_from);
     }
     if (date_to) {
-      countQuery += ` AND CURRENT_DATE <= $${cpi++}`;
+      countQuery += ` AND DATE(rh.redeemed_at + INTERVAL '7 hours') <= $${cpi++}`;
       countParams.push(date_to);
     }
 
