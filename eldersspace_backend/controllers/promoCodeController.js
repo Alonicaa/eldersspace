@@ -13,6 +13,38 @@ function maskCode(code) {
   return code.slice(0, visible) + '*'.repeat(Math.min(code.length - visible * 2, 6)) + code.slice(-visible);
 }
 
+// เดาตัวย่อของ partner จากชื่อ เพื่อใช้ตรวจรูปแบบโค้ดที่อัพโหลด (ไม่มีคอลัมน์ตัวย่อเก็บไว้จริง
+// เดาแบบ best-effort เท่านั้น — ชื่อซ้ำ/พ้องเสียงกันอาจได้ตัวย่อชนกัน)
+// เช่น "Café Amazon" -> "CA", "Lotus's" -> "LO", "AIS" -> "AI"
+function derivePartnerPrefix(partnerName) {
+  if (!partnerName) return null;
+  const words = partnerName.trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 2 && /[a-zA-Z]/.test(words[0]) && /[a-zA-Z]/.test(words[1])) {
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }
+  const latinOnly = partnerName.replace(/[^a-zA-Z]/g, '');
+  if (latinOnly.length >= 2) {
+    return latinOnly.slice(0, 2).toUpperCase();
+  }
+  const stripped = partnerName.replace(/\s+/g, '');
+  return stripped.length >= 2 ? stripped.slice(0, 2) : null;
+}
+
+const PROMO_CODE_LENGTH = 13;
+
+// ตรวจรูปแบบโค้ด: ต้องขึ้นต้นด้วยตัวย่อ partner และยาว 13 หลักรวมตัวย่อ
+// คืนค่า null ถ้าผ่าน, หรือข้อความ error ถ้าไม่ผ่าน (ข้าม validation ถ้าหา prefix ของ partner ไม่ได้)
+function validatePromoCodeFormat(code, expectedPrefix) {
+  if (!expectedPrefix) return null;
+  if (!code || code.length !== PROMO_CODE_LENGTH) {
+    return `โค้ดต้องยาว ${PROMO_CODE_LENGTH} หลักรวมตัวย่อ (พบ ${code ? code.length : 0} หลัก)`;
+  }
+  if (!code.toUpperCase().startsWith(expectedPrefix)) {
+    return `โค้ดต้องขึ้นต้นด้วย "${expectedPrefix}"`;
+  }
+  return null;
+}
+
 // ─── Upload promo codes from JSON array (ส่งมาจาก frontend แบบ JSON) ───────
 exports.uploadPromoCodes = async (req, res) => {
   let conn;
@@ -28,6 +60,7 @@ exports.uploadPromoCodes = async (req, res) => {
     let successCount = 0;
     let errorCount = 0;
     const errors = [];
+    const partnerPrefixCache = new Map(); // reward_id -> expected prefix (หรือ null ถ้าไม่มี partner)
 
     await conn.query('BEGIN');
 
@@ -42,13 +75,26 @@ exports.uploadPromoCodes = async (req, res) => {
         }
 
         const reward = await conn.query(
-          'SELECT reward_id FROM rewards WHERE reward_id = $1',
+          `SELECT r.reward_id, r.partner_id, p.name AS partner_name
+           FROM rewards r LEFT JOIN partners p ON r.partner_id = p.id
+           WHERE r.reward_id = $1`,
           [reward_id]
         );
 
         if (!reward.rows.length) {
           errorCount++;
           errors.push({ code, error: 'Reward not found' });
+          continue;
+        }
+
+        if (!partnerPrefixCache.has(reward_id)) {
+          partnerPrefixCache.set(reward_id, derivePartnerPrefix(reward.rows[0].partner_name));
+        }
+        const expectedPrefix = partnerPrefixCache.get(reward_id);
+        const formatErr = validatePromoCodeFormat(code, expectedPrefix);
+        if (formatErr) {
+          errorCount++;
+          errors.push({ code, error: formatErr, type: 'invalid_format' });
           continue;
         }
 
@@ -63,13 +109,21 @@ exports.uploadPromoCodes = async (req, res) => {
           continue;
         }
 
-        await conn.query(
-          `INSERT INTO promo_codes (code, reward_id, description, expiry_date)
-           VALUES ($1, $2, $3, $4)`,
-          [code, reward_id, description || null, expiry_date || null]
-        );
-
-        successCount++;
+        // SAVEPOINT ก่อน insert ทุกครั้ง — ถ้าแถวนี้ error (เช่น expiry_date รูปแบบผิด)
+        // จะ rollback แค่แถวนี้ ไม่ทำให้ทั้ง batch ก่อนหน้าที่สำเร็จแล้วหายไปตอน COMMIT
+        await conn.query('SAVEPOINT sp_promo_code');
+        try {
+          await conn.query(
+            `INSERT INTO promo_codes (code, reward_id, description, expiry_date)
+             VALUES ($1, $2, $3, $4)`,
+            [code, reward_id, description || null, expiry_date || null]
+          );
+          await conn.query('RELEASE SAVEPOINT sp_promo_code');
+          successCount++;
+        } catch (insertError) {
+          await conn.query('ROLLBACK TO SAVEPOINT sp_promo_code');
+          throw insertError;
+        }
       } catch (error) {
         errorCount++;
         errors.push({ code: codeData.code, error: error.message });
@@ -174,7 +228,9 @@ exports.uploadPromoCodesFromCsv = async (req, res) => {
     // Verify reward exists and check for duplicate file upload
     conn = await pool.connect();
     const reward = await conn.query(
-      'SELECT reward_id, reward_name FROM rewards WHERE reward_id = $1',
+      `SELECT r.reward_id, r.reward_name, r.partner_id, p.name AS partner_name
+       FROM rewards r LEFT JOIN partners p ON r.partner_id = p.id
+       WHERE r.reward_id = $1`,
       [rewardId]
     );
 
@@ -182,6 +238,34 @@ exports.uploadPromoCodesFromCsv = async (req, res) => {
       if (csvFilePath) fs.unlink(csvFilePath, () => {});
       conn.release();
       return res.status(404).json({ error: 'ไม่พบรางวัลที่ระบุ' });
+    }
+
+    // ตรวจรูปแบบโค้ดทั้งไฟล์ก่อน insert — ต้องขึ้นต้นด้วยตัวย่อ partner + ยาว 13 หลักรวมตัวย่อ
+    // (ข้ามการตรวจถ้ารางวัลนี้ไม่ได้ผูกกับ partner หรือเดาตัวย่อจากชื่อไม่ได้)
+    const expectedPrefix = derivePartnerPrefix(reward.rows[0].partner_name);
+    if (expectedPrefix) {
+      const formatErrors = [];
+      const validCodes = [];
+      for (const c of codes) {
+        const formatErr = validatePromoCodeFormat(c.code, expectedPrefix);
+        if (formatErr) {
+          formatErrors.push({ code: c.code, error: formatErr, type: 'invalid_format' });
+        } else {
+          validCodes.push(c);
+        }
+      }
+      if (formatErrors.length > 0) {
+        if (csvFilePath) fs.unlink(csvFilePath, () => {});
+        conn.release();
+        return res.status(400).json({
+          error: `พบโค้ด ${formatErrors.length} รายการที่รูปแบบไม่ถูกต้อง (ต้องขึ้นต้นด้วย "${expectedPrefix}" ตัวย่อของ ${reward.rows[0].partner_name} และยาว ${PROMO_CODE_LENGTH} หลักรวมตัวย่อ) กรุณาแก้ไฟล์แล้วอัพโหลดใหม่`,
+          expectedPrefix,
+          partnerName: reward.rows[0].partner_name,
+          invalidCount: formatErrors.length,
+          validCount: validCodes.length,
+          errors: formatErrors.slice(0, 50)
+        });
+      }
     }
 
     // Check if this exact file was uploaded before for this reward
@@ -235,28 +319,39 @@ exports.uploadPromoCodesFromCsv = async (req, res) => {
           continue;
         }
 
-        // Check global duplicate (same code text used in a different reward)
-        const existing = await conn.query(
-          'SELECT promo_code_id FROM promo_codes WHERE code = $1 AND is_deleted = 0',
-          [codeData.code]
-        );
-        if (existing.rows.length) {
-          errorCount++;
-          errors.push({ code: codeData.code, error: 'โค้ดนี้มีอยู่แล้วในระบบ (รางวัลอื่น)', type: 'duplicate_other' });
-          continue;
+        // SAVEPOINT ก่อนแตะ DB ทุกครั้ง — ถ้าแถวนี้ error (เช่น expiry_date รูปแบบผิด,
+        // unique constraint ชน) จะ rollback แค่แถวนี้ ไม่ทำให้ทั้ง batch ก่อนหน้าที่
+        // สำเร็จแล้วหายไปเงียบๆ ตอน COMMIT (Postgres จะเปลี่ยน COMMIT เป็น ROLLBACK
+        // ทั้งก้อนถ้า transaction เข้า state aborted แต่ไม่ throw error ให้เห็น)
+        await conn.query('SAVEPOINT sp_promo_csv_row');
+        try {
+          // Check global duplicate (same code text used in a different reward)
+          const existing = await conn.query(
+            'SELECT promo_code_id FROM promo_codes WHERE code = $1 AND is_deleted = 0',
+            [codeData.code]
+          );
+          if (existing.rows.length) {
+            await conn.query('RELEASE SAVEPOINT sp_promo_csv_row');
+            errorCount++;
+            errors.push({ code: codeData.code, error: 'โค้ดนี้มีอยู่แล้วในระบบ (รางวัลอื่น)', type: 'duplicate_other' });
+            continue;
+          }
+
+          await conn.query(
+            `INSERT INTO promo_codes
+               (code, reward_id, description, expiry_date, batch_upload_id, uploaded_at, file_hash)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [
+              codeData.code, codeData.reward_id, codeData.description,
+              codeData.expiry_date, codeData.batch_upload_id, codeData.uploaded_at, fileHash
+            ]
+          );
+          await conn.query('RELEASE SAVEPOINT sp_promo_csv_row');
+          successCount++;
+        } catch (insertError) {
+          await conn.query('ROLLBACK TO SAVEPOINT sp_promo_csv_row');
+          throw insertError;
         }
-
-        await conn.query(
-          `INSERT INTO promo_codes
-             (code, reward_id, description, expiry_date, batch_upload_id, uploaded_at, file_hash)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [
-            codeData.code, codeData.reward_id, codeData.description,
-            codeData.expiry_date, codeData.batch_upload_id, codeData.uploaded_at, fileHash
-          ]
-        );
-
-        successCount++;
       } catch (err) {
         errorCount++;
         errors.push({ code: codeData.code, error: err.message, type: 'insert_error' });

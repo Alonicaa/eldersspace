@@ -1000,278 +1000,357 @@ class _RewardHistoryPageState extends State<RewardHistoryPage> {
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    topRight: Radius.circular(16),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        clipBehavior: Clip.antiAlias,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 440),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header
+                Container(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 12, 18),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey.shade100, width: 1),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          rewardName,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.close_rounded,
+                            size: 20,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: const Icon(Icons.arrow_back, size: 24),
-                    ),
-                    Expanded(
-                      child: Text(
-                        rewardName,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                // Content
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Status Badge (สถานะจริง + countdown หมดอายุ)
+                      _RedeemStatusBadge(
+                        expiresAt: expiresAt,
+                        status: (reward['redemption_status'] ??
+                                reward['status'] ??
+                                'pending')
+                            .toString(),
                       ),
-                    ),
-                    const SizedBox(width: 24),
-                  ],
-                ),
-              ),
-              // Content
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Status Badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF27C77F).withAlpha(26),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: const Color(0xFF27C77F).withAlpha(128),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            '✓',
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: Color(0xFF27C77F),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'แลกแต้มสำเร็จ',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF27C77F),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
+                      const SizedBox(height: 18),
 
-                    // QR Code Container
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade200),
-                      ),
-                      child: Column(
-                        children: [
-                          // QR Code
-                          if (qrCode.isNotEmpty)
-                            Container(
-                              height: 180,
-                              width: 180,
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.grey.shade200),
-                              ),
-                              child: QrImageView(
-                                data: qrCode,
-                                version: QrVersions.auto,
-                                size: 164,
-                                backgroundColor: Colors.white,
-                                foregroundColor: Colors.black,
-                              ),
-                            )
-                          else
-                            Container(
-                              height: 180,
-                              width: 180,
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade100,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.grey.shade300),
-                              ),
-                              child: Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.qr_code_2,
-                                      size: 48,
-                                      color: Colors.grey.shade400,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'ไม่มี QR Code',
-                                      style: TextStyle(
-                                        color: Colors.grey.shade600,
-                                        fontSize: 12,
+                      // QR Code Container
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.grey.shade200),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            // QR Code
+                            if (qrCode.isNotEmpty)
+                              Container(
+                                height: 180,
+                                width: 180,
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border:
+                                      Border.all(color: Colors.grey.shade200),
+                                ),
+                                child: QrImageView(
+                                  data: qrCode,
+                                  version: QrVersions.auto,
+                                  size: 164,
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: Colors.black,
+                                ),
+                              )
+                            else
+                              Container(
+                                height: 180,
+                                width: 180,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border:
+                                      Border.all(color: Colors.grey.shade300),
+                                ),
+                                child: Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.qr_code_2,
+                                        size: 48,
+                                        color: Colors.grey.shade400,
                                       ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'ไม่มี QR Code',
+                                        style: TextStyle(
+                                          color: Colors.grey.shade600,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            const SizedBox(height: 14),
+                            // QR Code text + ปุ่มคัดลอก
+                            if (qrCode.isNotEmpty)
+                              GestureDetector(
+                                onTap: () {
+                                  Clipboard.setData(ClipboardData(text: qrCode));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('คัดลอกโค้ดแล้ว'),
+                                      duration: Duration(seconds: 2),
                                     ),
-                                  ],
+                                  );
+                                },
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade50,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                        color: Colors.grey.shade300),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.center,
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          qrCode,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            fontFamily: 'monospace',
+                                            color: Colors.black87,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Icon(
+                                        Icons.copy_rounded,
+                                        size: 16,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
-                          const SizedBox(height: 12),
-                          // QR Code text
-                          if (qrCode.isNotEmpty)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade50,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.grey.shade300),
-                              ),
-                              child: Text(
-                                qrCode,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontFamily: 'monospace',
-                                  color: Colors.black87,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Details
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey.shade200),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Reward Name
-                          _detailRow('รางวัล:', rewardName),
-                          const Divider(height: 12),
-                          // Points Used
-                          _detailRow('แต้มที่ใช้:', '$pointsUsed แต้ม'),
-                          const Divider(height: 12),
-                          // Date Redeemed
-                          _detailRow(
-                            'วันแลก:',
-                            createdAt != null
-                                ? _formatDateTimeForDetail(createdAt)
-                                : '-',
-                          ),
-                          // Expiry date
-                          if (expiresAt != null) ...[
-                            const Divider(height: 12),
-                            _detailRow(
-                              'วันหมดอายุ:',
-                              _formatDateTimeForDetail(expiresAt),
-                            ),
                           ],
-                          // Validity Period
-                          if (validityHours > 0) ...[
-                            const Divider(height: 12),
-                            _detailRow(
-                              'ใช้ได้ภายใน:',
-                              validityHours > 24
-                                  ? '${(validityHours / 24).toStringAsFixed(1)} วัน'
-                                  : '$validityHours ชั่วโมง',
-                            ),
-                          ],
-                          // Usage Instructions
-                          if (usageInstructions.isNotEmpty) ...[
-                            const Divider(height: 12),
-                            _detailRow('วิธีใช้:', usageInstructions),
-                          ],
-                          if ((reward['usage_instructions'] ?? '')
-                                  .toString()
-                                  .isNotEmpty &&
-                              (usageInstructions.isEmpty ||
-                                  reward['usage_instructions'].toString() !=
-                                      usageInstructions)) ...[
-                            const Divider(height: 12),
-                            _detailRow(
-                              'เงื่อนไขการใช้:',
-                              reward['usage_instructions'].toString(),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Redemption Format Selection
-                    if (qrCode.isNotEmpty)
-                      _buildRedemptionFormatSelector(
-                        context,
-                        qrCode,
-                        rewardName,
-                      ),
-
-                    const SizedBox(height: 20),
-
-                    // Close button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
                         ),
-                        child: const Text(
-                          'ปิด',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
+                      ),
+
+                      const SizedBox(height: 18),
+
+                      // Details
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          children: [
+                            _buildRewardDetailRow(
+                              Icons.card_giftcard_outlined,
+                              'รางวัล',
+                              rewardName,
+                            ),
+                            _buildRewardDetailRow(
+                              Icons.star_outline_rounded,
+                              'แต้มที่ใช้',
+                              '$pointsUsed แต้ม',
+                            ),
+                            _buildRewardDetailRow(
+                              Icons.event_outlined,
+                              'วันแลก',
+                              createdAt != null
+                                  ? _formatDateTimeForDetail(createdAt)
+                                  : '-',
+                            ),
+                            if (expiresAt != null)
+                              _buildRewardDetailRow(
+                                Icons.event_busy_outlined,
+                                'วันหมดอายุ',
+                                _formatDateTimeForDetail(expiresAt),
+                              ),
+                            if (validityHours > 0)
+                              _buildRewardDetailRow(
+                                Icons.hourglass_bottom_outlined,
+                                'ใช้ได้ภายใน',
+                                validityHours > 24
+                                    ? '${(validityHours / 24).toStringAsFixed(1)} วัน'
+                                    : '$validityHours ชั่วโมง',
+                              ),
+                            if (usageInstructions.isNotEmpty)
+                              _buildRewardDetailRow(
+                                Icons.info_outline,
+                                'วิธีใช้',
+                                usageInstructions,
+                                isLast: (reward['usage_instructions'] ?? '')
+                                        .toString()
+                                        .isEmpty ||
+                                    reward['usage_instructions'].toString() ==
+                                        usageInstructions,
+                              ),
+                            if ((reward['usage_instructions'] ?? '')
+                                    .toString()
+                                    .isNotEmpty &&
+                                (usageInstructions.isEmpty ||
+                                    reward['usage_instructions'].toString() !=
+                                        usageInstructions))
+                              _buildRewardDetailRow(
+                                Icons.rule_outlined,
+                                'เงื่อนไขการใช้',
+                                reward['usage_instructions'].toString(),
+                                isLast: true,
+                              ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Redemption Format Selection
+                      if (qrCode.isNotEmpty)
+                        _buildRedemptionFormatSelector(
+                          context,
+                          qrCode,
+                          rewardName,
+                        ),
+
+                      const SizedBox(height: 20),
+
+                      // Close button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1565C0),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(32),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'ปิด',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// แถวรายละเอียดแบบมีไอคอน ใช้ใน dialog แสดงโค้ด/QR ของรางวัลที่แลกแล้ว
+  Widget _buildRewardDetailRow(
+    IconData icon,
+    String label,
+    String value, {
+    bool isLast = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        border: isLast
+            ? null
+            : Border(
+                bottom: BorderSide(color: Colors.grey.shade200, width: 1),
+              ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: Colors.grey.shade500),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            flex: 2,
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1284,10 +1363,11 @@ class _RewardHistoryPageState extends State<RewardHistoryPage> {
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             color: Colors.blue.shade50,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.blue.shade200),
           ),
           child: Column(
@@ -1296,7 +1376,7 @@ class _RewardHistoryPageState extends State<RewardHistoryPage> {
               Text(
                 'เลือกวิธีแลก',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: Colors.blue.shade700,
                 ),
@@ -1348,30 +1428,34 @@ class _RewardHistoryPageState extends State<RewardHistoryPage> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withAlpha(128)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: color,
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: color.withAlpha(140), width: 1.5),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 26),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1564,35 +1648,6 @@ class _RewardHistoryPageState extends State<RewardHistoryPage> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _detailRow(String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Colors.grey,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-            maxLines: null,
-            overflow: TextOverflow.visible,
-          ),
-        ),
-      ],
     );
   }
 
@@ -3131,6 +3186,157 @@ class _RewardHistoryPageState extends State<RewardHistoryPage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ==========================================
+// Redeem status badge — สถานะจริง (รอใช้ที่ร้าน/ใช้แล้ว/หมดอายุ/ยกเลิก)
+// พร้อม countdown เวลาที่เหลือก่อนโค้ดหมดอายุ
+// ==========================================
+class _RedeemStatusBadge extends StatefulWidget {
+  final dynamic expiresAt;
+  final String status;
+
+  const _RedeemStatusBadge({required this.expiresAt, required this.status});
+
+  @override
+  State<_RedeemStatusBadge> createState() => _RedeemStatusBadgeState();
+}
+
+class _RedeemStatusBadgeState extends State<_RedeemStatusBadge> {
+  Timer? _timer;
+  int _remainingSeconds = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _updateRemaining();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(_updateRemaining);
+    });
+  }
+
+  void _updateRemaining() {
+    if (widget.expiresAt == null) {
+      _remainingSeconds = 0;
+      return;
+    }
+    try {
+      final raw = widget.expiresAt.toString();
+      final normalized = raw.contains('T') ? raw : raw.replaceFirst(' ', 'T');
+      final isoStr = (normalized.endsWith('Z') || normalized.contains('+'))
+          ? normalized
+          : '${normalized}Z';
+      final dt = DateTime.parse(isoStr).toLocal();
+      final secs = dt.difference(DateTime.now()).inSeconds;
+      _remainingSeconds = secs < 0 ? 0 : secs;
+    } catch (_) {
+      _remainingSeconds = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _formatTime(int seconds) {
+    final minutes = seconds ~/ 60;
+    final secs = seconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isUsed = widget.status == 'used';
+    final isCancelled = widget.status == 'cancelled';
+    final isExpired = widget.status == 'expired' ||
+        (!isUsed &&
+            !isCancelled &&
+            widget.expiresAt != null &&
+            _remainingSeconds <= 0);
+
+    final String label;
+    final String icon;
+    final Color color;
+    if (isUsed) {
+      label = 'ใช้แล้ว';
+      icon = '✓';
+      color = const Color(0xFF27C77F);
+    } else if (isCancelled) {
+      label = 'ยกเลิก';
+      icon = '✕';
+      color = Colors.red;
+    } else if (isExpired) {
+      label = 'หมดอายุ';
+      icon = '⏰';
+      color = Colors.grey.shade600;
+    } else {
+      label = 'รอใช้ที่ร้าน';
+      icon = '⏳';
+      color = Colors.orange.shade700;
+    }
+
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: color.withAlpha(26),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withAlpha(128)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(icon, style: TextStyle(fontSize: 18, color: color)),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (!isUsed && !isCancelled && widget.expiresAt != null) ...[
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                isExpired ? Icons.timer_off : Icons.timer_outlined,
+                size: 14,
+                color: isExpired
+                    ? Colors.grey.shade600
+                    : (_remainingSeconds <= 300
+                        ? Colors.red.shade600
+                        : Colors.orange.shade700),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                isExpired
+                    ? 'หมดอายุแล้ว'
+                    : 'เหลือเวลาแลกที่ร้าน ${_formatTime(_remainingSeconds)} นาที',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: isExpired
+                      ? Colors.grey.shade600
+                      : (_remainingSeconds <= 300
+                          ? Colors.red.shade600
+                          : Colors.orange.shade700),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 }
