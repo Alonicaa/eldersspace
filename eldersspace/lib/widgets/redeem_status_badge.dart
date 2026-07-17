@@ -131,7 +131,7 @@ class _RedeemStatusBadgeState extends State<RedeemStatusBadge> {
               Text(
                 isExpired
                     ? 'หมดอายุแล้ว'
-                    : 'เหลือเวลาแลกที่ร้าน ${_formatTime(_remainingSeconds)} นาที',
+                    : 'เหลือเวลาแลกที่ร้าน ${_formatTime(_remainingSeconds)} น.',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,

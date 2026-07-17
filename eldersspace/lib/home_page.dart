@@ -650,8 +650,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   GestureDetector(
                     onTap: () =>
                         setState(() => _showNotificationPrompt = false),
-                    child: Icon(Icons.close,
-                        size: 18, color: Colors.grey.shade600),
+                    child: Container(
+                      padding: const EdgeInsets.all(13),
+                      child: Icon(Icons.close,
+                          size: 18, color: Colors.grey.shade600),
+                    ),
                   ),
                 ],
               ),
@@ -1877,10 +1880,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       gradient: LinearGradient(
                         begin: Alignment.bottomCenter,
                         end: Alignment.topCenter,
+                        // สีทึบคงที่ตลอดพื้นที่ข้อความ (ไม่ไล่จางเป็น transparent)
+                        // เพราะรูป banner ที่พาร์ทเนอร์อัพโหลดมาบางรูปมีตัวอักษรฝังอยู่แล้ว
+                        // gradient แบบเดิมโปร่งใสเกินไปทำให้ทับกับตัวอักษรในรูปจนอ่านไม่ออก
                         colors: [
-                          Colors.black.withValues(alpha: 0.65),
+                          Colors.black.withValues(alpha: 0.85),
+                          Colors.black.withValues(alpha: 0.85),
                           Colors.transparent,
                         ],
+                        stops: const [0.0, 0.6, 1.0],
                       ),
                     ),
                     child: Text(
@@ -1889,6 +1897,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black87,
+                            blurRadius: 4,
+                            offset: Offset(0, 1),
+                          ),
+                        ],
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
