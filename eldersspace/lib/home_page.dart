@@ -1,5 +1,6 @@
 ﻿import 'dart:async';
 import 'dart:math';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -270,7 +271,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   Future<void> _registerFcmToken() async {
     try {
-      final token = await FirebaseMessaging.instance.getToken();
+      // Web push requires a VAPID key (Firebase console > Project settings
+      // > Cloud Messaging > Web Push certificates); without it getToken()
+      // returns null on web and no fcm_token ever gets registered.
+      final token = await FirebaseMessaging.instance.getToken(
+        vapidKey: kIsWeb ? AppConfig.webPushVapidKey : null,
+      );
       if (token != null) {
         await AdService.registerFcmToken(
           phone: widget.phoneNumber,

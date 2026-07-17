@@ -7,6 +7,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'login_page.dart';
 import 'home_page.dart';
+import 'services/app_config.dart';
 import 'services/app_settings_service.dart';
 import 'services/deep_link_service.dart';
 
@@ -29,6 +30,10 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 Future<void> _showForegroundNotification(RemoteMessage message) async {
   final notification = message.notification;
   if (notification == null) return;
+  // flutter_local_notifications has no web implementation; foreground push
+  // on web is left unhandled for now (background push still shows via the
+  // service worker's showNotification call).
+  if (kIsWeb) return;
 
   await _localNotifications.show(
     notification.hashCode,
@@ -49,18 +54,40 @@ Future<void> _showForegroundNotification(RemoteMessage message) async {
 
 Future<void> _initFirebase() async {
   try {
-    await Firebase.initializeApp();
+    if (kIsWeb) {
+      // Native platforms pick up config from google-services.json /
+      // GoogleService-Info.plist automatically; web has no such file, so
+      // it needs an explicit FirebaseOptions matching the Web app
+      // registered in the Firebase console.
+      await Firebase.initializeApp(
+        options: FirebaseOptions(
+          apiKey: AppConfig.webFirebaseApiKey,
+          appId: AppConfig.webFirebaseAppId,
+          messagingSenderId: '330333979241',
+          projectId: 'eldersspace',
+          authDomain: 'eldersspace.firebaseapp.com',
+          storageBucket: 'eldersspace.firebasestorage.app',
+        ),
+      );
+    } else {
+      await Firebase.initializeApp();
+    }
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-    await _localNotifications.initialize(
-      const InitializationSettings(android: androidInit),
-    );
-    await _localNotifications
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.createNotificationChannel(_pushChannel);
+    // flutter_local_notifications has no web platform implementation —
+    // skip it there; the service worker handles background notification
+    // display on web instead.
+    if (!kIsWeb) {
+      const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+      await _localNotifications.initialize(
+        const InitializationSettings(android: androidInit),
+      );
+      await _localNotifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >()
+          ?.createNotificationChannel(_pushChannel);
+    }
 
     await FirebaseMessaging.instance
         .setForegroundNotificationPresentationOptions(
@@ -75,11 +102,13 @@ Future<void> _initFirebase() async {
       sound: true,
     );
 
-    await _localNotifications
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.requestNotificationsPermission();
+    if (!kIsWeb) {
+      await _localNotifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >()
+          ?.requestNotificationsPermission();
+    }
 
     FirebaseMessaging.onMessage.listen(_showForegroundNotification);
   } catch (_) {
