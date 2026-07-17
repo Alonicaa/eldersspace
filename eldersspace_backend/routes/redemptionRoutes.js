@@ -2,10 +2,11 @@ const router = require('express').Router();
 const pool = require('../config/db');
 const { verifyAdminToken } = require('../controllers/authController');
 
-// This router is mounted at /api and only ever called by the admin dashboard
-// (redemption history, QR scan/verify, cancel) — every route here handles
-// other users' phone numbers, names and QR codes, so all of it must require
-// a valid admin token.
+// Most routes here are admin-dashboard-only, but GET /redemptions is also
+// called directly by the Flutter app (reward_service.dart) with only a
+// phone-number filter — regular users never hold an admin token, so that
+// one route is intentionally left open (see note below). Everything else
+// (QR verify/stats, mark-used, cancel, per-id lookup) is admin-only.
 const adminTokenAuth = (req, res, next) => {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
@@ -16,9 +17,20 @@ const adminTokenAuth = (req, res, next) => {
   req.admin = payload;
   return next();
 };
-router.use(adminTokenAuth);
+// IMPORTANT: this router is mounted at the bare '/api' prefix in server.js
+// (for legacy URL compatibility), so router.use(adminTokenAuth) would run
+// for every '/api/*' request that reaches this router first — including
+// completely unrelated endpoints like /api/tts/synthesize, /api/groups,
+// /api/partners, etc. mounted later in server.js. Apply auth per-route
+// instead of blanket.
 
 // Get all redemptions with filters
+// NOTE: no adminTokenAuth here — the Flutter app calls this directly with
+// ?search=<phone_number> to load a user's own redemption history, and this
+// codebase has no user session token to check ownership against. The admin
+// dashboard also uses this endpoint but for full unfiltered listing; the
+// underlying PII-scoping-by-search-param gap is pre-existing and needs a
+// real user auth token to close properly, not something to paper over here.
 router.get('/redemptions', async (req, res) => {
   let conn;
   try {
@@ -141,7 +153,7 @@ router.get('/redemptions', async (req, res) => {
 });
 
 // Get single redemption details
-router.get('/redemptions/:id', async (req, res) => {
+router.get('/redemptions/:id', adminTokenAuth, async (req, res) => {
   let conn;
   try {
     conn = await pool.connect();
@@ -173,7 +185,7 @@ router.get('/redemptions/:id', async (req, res) => {
 });
 
 // Verify QR code
-router.post('/qr/verify', async (req, res) => {
+router.post('/qr/verify', adminTokenAuth, async (req, res) => {
   let conn;
   try {
     const { code } = req.body;
@@ -247,7 +259,7 @@ router.post('/qr/verify', async (req, res) => {
 });
 
 // Mark redemption as used
-router.post('/redemptions/:id/mark-used', async (req, res) => {
+router.post('/redemptions/:id/mark-used', adminTokenAuth, async (req, res) => {
   let conn;
   try {
     conn = await pool.connect();
@@ -280,7 +292,7 @@ router.post('/redemptions/:id/mark-used', async (req, res) => {
 });
 
 // Cancel/Invalidate redemption
-router.post('/redemptions/:id/cancel', async (req, res) => {
+router.post('/redemptions/:id/cancel', adminTokenAuth, async (req, res) => {
   let conn;
   try {
     const { reason } = req.body;
@@ -314,7 +326,7 @@ router.post('/redemptions/:id/cancel', async (req, res) => {
 });
 
 // Get QR usage statistics
-router.get('/qr/stats', async (req, res) => {
+router.get('/qr/stats', adminTokenAuth, async (req, res) => {
   let conn;
   try {
     conn = await pool.connect();
@@ -353,7 +365,7 @@ router.get('/qr/stats', async (req, res) => {
 });
 
 // Get reward statistics with stock info
-router.get('/rewards/stats/:id', async (req, res) => {
+router.get('/rewards/stats/:id', adminTokenAuth, async (req, res) => {
   let conn;
   try {
     conn = await pool.connect();
