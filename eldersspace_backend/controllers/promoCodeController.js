@@ -13,38 +13,6 @@ function maskCode(code) {
   return code.slice(0, visible) + '*'.repeat(Math.min(code.length - visible * 2, 6)) + code.slice(-visible);
 }
 
-// เดาตัวย่อของ partner จากชื่อ เพื่อใช้ตรวจรูปแบบโค้ดที่อัพโหลด (ไม่มีคอลัมน์ตัวย่อเก็บไว้จริง
-// เดาแบบ best-effort เท่านั้น — ชื่อซ้ำ/พ้องเสียงกันอาจได้ตัวย่อชนกัน)
-// เช่น "Café Amazon" -> "CA", "Lotus's" -> "LO", "AIS" -> "AI"
-function derivePartnerPrefix(partnerName) {
-  if (!partnerName) return null;
-  const words = partnerName.trim().split(/\s+/).filter(Boolean);
-  if (words.length >= 2 && /[a-zA-Z]/.test(words[0]) && /[a-zA-Z]/.test(words[1])) {
-    return (words[0][0] + words[1][0]).toUpperCase();
-  }
-  const latinOnly = partnerName.replace(/[^a-zA-Z]/g, '');
-  if (latinOnly.length >= 2) {
-    return latinOnly.slice(0, 2).toUpperCase();
-  }
-  const stripped = partnerName.replace(/\s+/g, '');
-  return stripped.length >= 2 ? stripped.slice(0, 2) : null;
-}
-
-const PROMO_CODE_LENGTH = 13;
-
-// ตรวจรูปแบบโค้ด: ต้องขึ้นต้นด้วยตัวย่อ partner และยาว 13 หลักรวมตัวย่อ
-// คืนค่า null ถ้าผ่าน, หรือข้อความ error ถ้าไม่ผ่าน (ข้าม validation ถ้าหา prefix ของ partner ไม่ได้)
-function validatePromoCodeFormat(code, expectedPrefix) {
-  if (!expectedPrefix) return null;
-  if (!code || code.length !== PROMO_CODE_LENGTH) {
-    return `โค้ดต้องยาว ${PROMO_CODE_LENGTH} หลักรวมตัวย่อ (พบ ${code ? code.length : 0} หลัก)`;
-  }
-  if (!code.toUpperCase().startsWith(expectedPrefix)) {
-    return `โค้ดต้องขึ้นต้นด้วย "${expectedPrefix}"`;
-  }
-  return null;
-}
-
 // ─── Upload promo codes from JSON array (ส่งมาจาก frontend แบบ JSON) ───────
 exports.uploadPromoCodes = async (req, res) => {
   let conn;
@@ -60,7 +28,6 @@ exports.uploadPromoCodes = async (req, res) => {
     let successCount = 0;
     let errorCount = 0;
     const errors = [];
-    const partnerPrefixCache = new Map(); // reward_id -> expected prefix (หรือ null ถ้าไม่มี partner)
 
     await conn.query('BEGIN');
 
@@ -75,26 +42,13 @@ exports.uploadPromoCodes = async (req, res) => {
         }
 
         const reward = await conn.query(
-          `SELECT r.reward_id, r.partner_id, p.name AS partner_name
-           FROM rewards r LEFT JOIN partners p ON r.partner_id = p.id
-           WHERE r.reward_id = $1`,
+          'SELECT reward_id FROM rewards WHERE reward_id = $1',
           [reward_id]
         );
 
         if (!reward.rows.length) {
           errorCount++;
           errors.push({ code, error: 'Reward not found' });
-          continue;
-        }
-
-        if (!partnerPrefixCache.has(reward_id)) {
-          partnerPrefixCache.set(reward_id, derivePartnerPrefix(reward.rows[0].partner_name));
-        }
-        const expectedPrefix = partnerPrefixCache.get(reward_id);
-        const formatErr = validatePromoCodeFormat(code, expectedPrefix);
-        if (formatErr) {
-          errorCount++;
-          errors.push({ code, error: formatErr, type: 'invalid_format' });
           continue;
         }
 
@@ -228,9 +182,7 @@ exports.uploadPromoCodesFromCsv = async (req, res) => {
     // Verify reward exists and check for duplicate file upload
     conn = await pool.connect();
     const reward = await conn.query(
-      `SELECT r.reward_id, r.reward_name, r.partner_id, p.name AS partner_name
-       FROM rewards r LEFT JOIN partners p ON r.partner_id = p.id
-       WHERE r.reward_id = $1`,
+      'SELECT reward_id, reward_name FROM rewards WHERE reward_id = $1',
       [rewardId]
     );
 
@@ -238,34 +190,6 @@ exports.uploadPromoCodesFromCsv = async (req, res) => {
       if (csvFilePath) fs.unlink(csvFilePath, () => {});
       conn.release();
       return res.status(404).json({ error: 'ไม่พบรางวัลที่ระบุ' });
-    }
-
-    // ตรวจรูปแบบโค้ดทั้งไฟล์ก่อน insert — ต้องขึ้นต้นด้วยตัวย่อ partner + ยาว 13 หลักรวมตัวย่อ
-    // (ข้ามการตรวจถ้ารางวัลนี้ไม่ได้ผูกกับ partner หรือเดาตัวย่อจากชื่อไม่ได้)
-    const expectedPrefix = derivePartnerPrefix(reward.rows[0].partner_name);
-    if (expectedPrefix) {
-      const formatErrors = [];
-      const validCodes = [];
-      for (const c of codes) {
-        const formatErr = validatePromoCodeFormat(c.code, expectedPrefix);
-        if (formatErr) {
-          formatErrors.push({ code: c.code, error: formatErr, type: 'invalid_format' });
-        } else {
-          validCodes.push(c);
-        }
-      }
-      if (formatErrors.length > 0) {
-        if (csvFilePath) fs.unlink(csvFilePath, () => {});
-        conn.release();
-        return res.status(400).json({
-          error: `พบโค้ด ${formatErrors.length} รายการที่รูปแบบไม่ถูกต้อง (ต้องขึ้นต้นด้วย "${expectedPrefix}" ตัวย่อของ ${reward.rows[0].partner_name} และยาว ${PROMO_CODE_LENGTH} หลักรวมตัวย่อ) กรุณาแก้ไฟล์แล้วอัพโหลดใหม่`,
-          expectedPrefix,
-          partnerName: reward.rows[0].partner_name,
-          invalidCount: formatErrors.length,
-          validCount: validCodes.length,
-          errors: formatErrors.slice(0, 50)
-        });
-      }
     }
 
     // Check if this exact file was uploaded before for this reward
