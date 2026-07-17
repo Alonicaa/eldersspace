@@ -428,7 +428,10 @@ async function handleRequestAdminOtp() {
         }
         if (verifyBtn) verifyBtn.disabled = false;
         if (otpHint) {
-            otpHint.textContent = 'ส่ง OTP แล้ว กรุณาตรวจสอบอุปกรณ์ของคุณ';
+            const hasDevOtp = data?.isDevelopment === true && data?.otp;
+            otpHint.textContent = hasDevOtp
+                ? `โหมดพัฒนา — รหัส OTP คือ ${data.otp}`
+                : 'ส่ง OTP แล้ว กรุณาตรวจสอบอุปกรณ์ของคุณ';
         }
     } catch (error) {
         if (loginError) loginError.textContent = error.message || 'ขอ OTP ไม่สำเร็จ';
