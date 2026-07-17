@@ -137,6 +137,12 @@ router.get('/promo-codes/stats', adminTokenAuth, promoCodeCtrl.getPromoStats);
 // POST /api/admin/promo-codes/upload-csv → upload promo codes via CSV file
 router.post('/promo-codes/upload-csv', adminTokenAuth, upload.uploadCsv.single('file'), promoCodeCtrl.uploadPromoCodesFromCsv);
 
+// POST /api/admin/promo-codes/upload → upload promo codes from a parsed JSON array (Excel upload path)
+router.post('/promo-codes/upload', adminTokenAuth, promoCodeCtrl.uploadPromoCodes);
+
+// DELETE /api/admin/promo-codes → soft-delete codes (request body: { codes: string[] })
+router.delete('/promo-codes', adminTokenAuth, promoCodeCtrl.deletePromoCodes);
+
 // Cleanup expired codes (request body: { older_than_days?: number })
 router.post('/promo-codes/cleanup-expired', adminTokenAuth, promoCodeCtrl.cleanupExpiredPromoCodes);
 
