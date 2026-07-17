@@ -16,6 +16,7 @@ import 'widgets/comment_dialog.dart';
 import 'widgets/post_component.dart';
 import 'widgets/share_sheet.dart';
 import 'widgets/action_sheet_tile.dart';
+import 'all_groups_page.dart';
 
 class CommunityPage extends StatefulWidget {
   final String phoneNumber;
@@ -2553,11 +2554,15 @@ class _CommunityPageState extends State<CommunityPage> {
                 ),
                 TextButton(
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('เลือกจากกลุ่มแนะนำด้านล่างได้เลย'),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AllGroupsPage(
+                          phoneNumber: widget.phoneNumber,
+                          groups: _recommendedGroups,
+                        ),
                       ),
-                    );
+                    ).then((_) => loadPosts());
                   },
                   child: const Text(
                     'ดูทั้งหมด',
